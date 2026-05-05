@@ -1,0 +1,12 @@
+defaults:
+  - dataset: jamendomaxcaps
+  - runtime: default
+  - stage: ingest
+  - _self_
+
+pipeline_name: jamendo_instruct
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

@@ -1,0 +1,28 @@
+name: caption_join
+
+io:
+  input_manifest_csv: ${runtime.output_root}/${runtime.run_name}/ingest/normalized_track_manifest.csv
+  output_dir: ${runtime.output_root}/${runtime.run_name}/caption_join
+  output_manifest_csv: normalized_track_manifest_with_rewrites.csv
+  report_file: caption_join_report.json
+
+rewrites:
+  enabled: true
+  csv_path: null
+  id_column: track_id
+  captions_column: captions
+  primary_caption_strategy: longest   # longest | first
+  separator: "§§"
+  trim_each_part: true
+  drop_empty_parts: true
+
+behavior:
+  require_rewrites_file: false
+  keep_unmatched_rows: true
+  overwrite_caption_fields: false
+
+progress:
+  enabled: true
+  every_n_rows: 50000
+  show_bar: true
+  bar_width: 28

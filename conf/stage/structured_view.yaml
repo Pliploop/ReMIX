@@ -1,0 +1,18 @@
+name: structured_view
+
+io:
+  input_manifest_csv: ${runtime.output_root}/${runtime.run_name}/ingest/normalized_track_manifest.csv
+  output_dir: ${runtime.output_root}/${runtime.run_name}/structured_view
+  output_manifest_csv: structured_clip_manifest.csv
+  report_file: structured_view_report.json
+
+caption_normalization:
+  lowercase: true
+  collapse_whitespace: true
+  strip_outer_punctuation: false
+
+progress:
+  enabled: true
+  every_n_rows: 50000
+  show_bar: true
+  bar_width: 28

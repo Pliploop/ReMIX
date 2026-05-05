@@ -1,0 +1,33 @@
+defaults:
+  - dataset: jamendomaxcaps
+  - runtime: default
+  - _self_
+
+pipeline_name: jamendo_instruct
+
+pipeline:
+  run_stages: []
+  include_caption_join: false
+  use_caption_join_output_for_structured_view: false
+  start_stage: auto
+  end_stage: neighborhood
+  mode: resume   # resume | from_scratch
+  log_stage_boundaries: true
+
+stage_overrides:
+  ingest: {}
+  caption_join: {}
+  lyrics: {}
+  structured_view: {}
+  embeddings: {}
+  neighborhood: {}
+  graph: {}
+  chains: {}
+  instructions: {}
+  validation: {}
+  relevance_pool: {}
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

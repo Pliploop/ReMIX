@@ -1,0 +1,66 @@
+name: instructions
+
+io:
+  input_manifest_csv: ${runtime.output_root}/${runtime.run_name}/structured_view/structured_clip_manifest.csv
+  input_chains_jsonl: ${runtime.output_root}/${runtime.run_name}/chains/sampled_chains.jsonl
+  output_dir: ${runtime.output_root}/${runtime.run_name}/instructions
+  output_instructions_jsonl: chain_step_instructions.jsonl
+  output_prepared_jsonl: chain_step_instruction_inputs.jsonl
+  report_file: instructions_report.json
+
+models:
+  model_id: google/gemma-4-31B-it
+
+auth:
+  hf_token_env: HF_TOKEN
+
+runtime:
+  backend: transformers   # transformers | vllm_local
+  device: auto   # auto | cuda | cpu
+  torch_dtype: auto   # auto | bfloat16 | float16 | float32
+  enable_thinking: false
+  generation_batch_size: 4
+  vllm_host: 127.0.0.1
+  vllm_port: 8000
+  vllm_api_key: EMPTY
+  vllm_tensor_parallel_size: 1
+  vllm_quantization: null   # e.g. modelopt, modelopt_fp4
+  vllm_trust_remote_code: false
+  vllm_gpu_memory_utilization: 0.9
+  vllm_max_model_len: 32768
+  vllm_health_timeout_sec: 600
+
+behavior:
+  max_chains: null
+  max_steps: null
+  random_seed: ${runtime.seed}
+  overwrite_existing: false
+  discard_failed: true
+  write_prepared_records: true
+  strict_json_retry_attempts: 2
+
+caption:
+  signal_mode: both   # fuzzy | raw | both
+  min_token_len: 3
+  max_terms_per_list: 8
+  max_phrases_per_list: 6
+
+generation:
+  temperature: 0.8
+  top_p: 0.95
+  max_new_tokens: 512
+  short_probability: 0.34
+  medium_probability: 0.33
+  long_probability: 0.33
+
+verification:
+  enabled: false
+  temperature: 0.0
+  top_p: 1.0
+  max_new_tokens: 384
+
+progress:
+  enabled: true
+  every_n_rows: 100
+  show_bar: true
+  bar_width: 28

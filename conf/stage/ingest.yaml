@@ -1,0 +1,62 @@
+name: ingest
+
+io:
+  output_dir: ${runtime.output_root}/${runtime.run_name}/ingest
+  normalized_manifest_file: normalized_track_manifest.csv
+  ingest_report_file: ingest_report.json
+  dropped_rows_file: dropped_rows.csv
+  write_dropped_rows: true
+
+tracks:
+  metadata_dir: /gpfs/scratch/acw749/datasets/maxcaps_instruct/metadata
+  shard_glob: "*.jsonl"
+  exclude_files:
+    - final_caption30sec.jsonl
+  max_shards: null
+
+download:
+  enabled: true
+  repo_id: amaai-lab/JamendoMaxCaps
+  max_files: null
+  include_captions_file: true
+  overwrite: false
+  timeout_sec: 120
+  allow_only_jsonl: true
+
+captions:
+  file: /gpfs/scratch/acw749/datasets/maxcaps_instruct/metadata/final_caption30sec.jsonl
+  separator: " §§ "
+  primary_caption: longest
+  min_caption_chars: 1
+
+audio:
+  root: /data/EECS-Pauwels-C4DM/JamendoMaxCaps
+  path_mode: track_id_suffix_dir
+  file_template: "{shard}/{track_id}.mp3"
+  verify_exists: false
+
+normalization:
+  lowercase_tags: true
+  dedupe_tags: true
+  dedupe_captions: true
+  strip_punctuation_tags: true
+
+split:
+  mode: custom_track_grouped   # custom_track_grouped | source_column
+  source_column: split
+  group_key: artist_id
+  train_ratio: 0.90
+  val_ratio: 0.05
+  test_ratio: 0.05
+  seed: ${runtime.seed}
+
+filters:
+  drop_missing_caption: true
+  drop_missing_tags: false
+  drop_unavailable_audio: false
+
+progress:
+  enabled: true
+  every_n_rows: 50000
+  show_bar: true
+  bar_width: 28

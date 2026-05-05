@@ -1,0 +1,39 @@
+name: graph
+
+io:
+  input_manifest_csv: ${runtime.output_root}/${runtime.run_name}/structured_view/structured_clip_manifest.csv
+  input_nodes_csv: ${runtime.output_root}/${runtime.run_name}/neighborhood/neighborhood_nodes.csv
+  input_edges_csv: ${runtime.output_root}/${runtime.run_name}/neighborhood/neighborhood_edges.csv
+  output_dir: ${runtime.output_root}/${runtime.run_name}/graph
+  output_adjacency_memmap_dir: transition_graph_adjacency_memmap
+  output_adjacency_shards_dir: transition_graph_adjacency_shards
+  output_adjacency_metadata_json: transition_graph_adjacency_metadata.json
+  report_file: graph_report.json
+
+filters:
+  max_changed_tags: 6
+
+scoring:
+  audio_weight: 0.4
+  text_weight: 0.4
+  tag_weight: 0.2
+
+runtime:
+  input_edge_chunk_size: 250000
+
+behavior:
+  overwrite_existing: false
+  cleanup_chunks_after_merge: true
+
+output:
+  compact: true
+  include_structured_delta_json: true
+  include_caption_text_in_structured_delta: true
+  include_lyrics_text_in_structured_delta: true
+  adjacency_shard_count: 4096
+
+progress:
+  enabled: true
+  every_n_rows: 50000
+  show_bar: true
+  bar_width: 28

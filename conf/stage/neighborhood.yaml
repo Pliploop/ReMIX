@@ -1,0 +1,46 @@
+name: neighborhood
+
+io:
+  input_manifest_csv: ${runtime.output_root}/${runtime.run_name}/structured_view/structured_clip_manifest.csv
+  audio_embeddings_dir: ${runtime.output_root}/audio/${runtime.run_name}
+  text_embeddings_dir: ${runtime.output_root}/text/${runtime.run_name}
+  input_lookup_manifest_csv: ${runtime.output_root}/${runtime.run_name}/embeddings/embedding_lookup_manifest.csv
+  output_dir: ${runtime.output_root}/${runtime.run_name}/neighborhood
+  output_nodes_csv: neighborhood_nodes.csv
+  output_edges_csv: neighborhood_edges.csv
+  report_file: neighborhood_report.json
+
+retrieval:
+  audio_backend: auto
+  audio_top_k: 500
+  retain_top_k: 100
+  use_text_rerank: true
+  rerank_audio_weight: 0.5
+  rerank_text_weight: 0.5
+  faiss_candidate_multiplier: 4
+  normalize_loaded_embeddings: true
+
+runtime:
+  query_chunk_size: 64
+  candidate_chunk_size: 8192
+  embedding_load_workers: 8
+
+behavior:
+  max_rows: null
+  seed_row_limit: null
+  seed_splits: []
+  require_text_embeddings: true
+  overwrite_existing: false
+  resume_existing_chunks: true
+  exclude_self: true
+  exclude_same_track: true
+  enforce_same_split: true
+  exclude_duplicate_file_path: false
+  min_audio_similarity: null
+  max_changed_tags_pre_rerank: 6
+
+progress:
+  enabled: true
+  every_n_rows: 100
+  show_bar: true
+  bar_width: 28

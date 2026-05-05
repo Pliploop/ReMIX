@@ -1,0 +1,5 @@
+[console_scripts]
+jamendo-embeddings = jamendo_instruct.stages.embeddings:main
+jamendo-ingest = jamendo_instruct.stages.ingest:main
+jamendo-run = jamendo_instruct.run:main
+jamendo-structured-view = jamendo_instruct.stages.structured_view:main

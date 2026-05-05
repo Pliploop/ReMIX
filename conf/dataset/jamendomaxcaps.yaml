@@ -1,0 +1,21 @@
+name: jamendomaxcaps
+
+fields:
+  track_id: id
+  title: name
+  duration: duration
+  artist_id: artist_id
+  artist_name: artist_name
+  release_date: releasedate
+  audio_url: audio
+  audio_download_url: audiodownload
+  license_url: license_ccurl
+  musicinfo: musicinfo
+  source_split: split
+
+musicinfo_fields:
+  vocals: vocalinstrumental
+  speed: speed
+  tags_genres: genres
+  tags_instruments: instruments
+  tags_vartags: vartags

@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+src/jamendo_instruct/__init__.py
+src/jamendo_instruct/__main__.py
+src/jamendo_instruct/progress.py
+src/jamendo_instruct/run.py
+src/jamendo_instruct.egg-info/PKG-INFO
+src/jamendo_instruct.egg-info/SOURCES.txt
+src/jamendo_instruct.egg-info/dependency_links.txt
+src/jamendo_instruct.egg-info/entry_points.txt
+src/jamendo_instruct.egg-info/requires.txt
+src/jamendo_instruct.egg-info/top_level.txt
+src/jamendo_instruct/stages/__init__.py
+src/jamendo_instruct/stages/caption_join.py
+src/jamendo_instruct/stages/embeddings.py
+src/jamendo_instruct/stages/ingest.py
+src/jamendo_instruct/stages/structured_view.py

@@ -1,0 +1,79 @@
+name: relevance_pool
+
+io:
+  input_manifest_csv: ${runtime.output_root}/${runtime.run_name}/structured_view/structured_clip_manifest.csv
+  input_lookup_manifest_csv: ${runtime.output_root}/${runtime.run_name}/embeddings/embedding_lookup_manifest.csv
+  input_nodes_csv: ${runtime.output_root}/${runtime.run_name}/neighborhood/neighborhood_nodes.csv
+  input_edges_csv: ${runtime.output_root}/${runtime.run_name}/neighborhood/neighborhood_edges.csv
+  input_chains_jsonl: ${runtime.output_root}/${runtime.run_name}/chains/sampled_chains.jsonl
+  input_prepared_jsonl: ${runtime.output_root}/${runtime.run_name}/instructions/chain_step_instruction_inputs.jsonl
+  input_validation_jsonl: ${runtime.output_root}/${runtime.run_name}/validation/validated_instructions.jsonl
+  output_dir: ${runtime.output_root}/${runtime.run_name}/relevance_pool
+  output_pools_jsonl: chain_step_relevance_pools.jsonl
+  output_reason_labels_jsonl: chain_step_candidate_reason_labels.jsonl
+  report_file: relevance_pool_report.json
+
+behavior:
+  max_steps: null
+  require_validated_instructions: true
+  only_keep_validation_passed: true
+  write_full_dataset_labels: false
+  full_dataset_label_splits: ["validation", "test"]
+  run_solvability_audit: true
+  solvability_top_k: 3
+  solvability_score_threshold: 0.35
+  use_text_encoder_audit: true
+  use_candidate_llm_judge: true
+  candidate_llm_judge_splits: ["validation", "test"]
+
+models:
+  text_model_id: google/embeddinggemma-300m
+  judge_model_id: google/gemma-4-31B-it
+
+auth:
+  hf_token_env: HF_TOKEN
+
+runtime:
+  device: auto
+  enable_thinking: false
+
+text:
+  max_length: 512
+
+judge:
+  temperature: 0.0
+  top_p: 1.0
+  max_new_tokens: 256
+
+pool:
+  construction_mode: constructive
+  max_candidates_per_step: 96
+  include_exact_target: true
+  include_source_clip: false
+  include_target_neighborhood: true
+  include_seed_neighborhood: true
+  include_history_reference_neighborhood: true
+  include_history_targets: true
+  min_rerank_score: null
+  caption_strong_threshold: 0.55
+  caption_moderate_threshold: 0.35
+  caption_miss_threshold: 0.2
+  strong_threshold: 0.85
+  good_threshold: 0.65
+  partial_threshold: 0.45
+  near_miss_threshold: 0.25
+  shortcut_negative_prev_threshold: 0.8
+  shortcut_negative_seed_ceiling: 0.6
+  target_tag_recall_weight: 0.15
+  target_tag_precision_weight: 0.05
+  target_caption_recall_weight: 0.1
+  target_caption_precision_weight: 0.05
+  seed_constraint_weight: 0.35
+  prev_constraint_weight: 0.2
+  semantic_score_weight: 0.1
+
+progress:
+  enabled: true
+  every_n_rows: 100
+  show_bar: true
+  bar_width: 28

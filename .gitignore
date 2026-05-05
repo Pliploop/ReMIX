@@ -1,0 +1,8 @@
+.biblio
+slurm
+logs
+.codex
+PLAN.md
+run.log
+
+*.pyc

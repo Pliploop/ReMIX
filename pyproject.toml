@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jamendo-instruct"
+version = "0.1.0"
+description = "Stage-wise dataset generation for multi-turn compositional music retrieval"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "hydra-core>=1.3.2",
+  "omegaconf>=2.3.0",
+  "rich>=13.7.0",
+  "tqdm>=4.66.0"
+]
+
+[project.optional-dependencies]
+faiss = [
+  "faiss-cpu>=1.8.0"
+]
+asr = [
+  "accelerate>=0.34.0",
+  "transformers>=4.46.0"
+]
+demo = [
+  "gradio>=5.0.0"
+]
+
+[project.scripts]
+jamendo-ingest = "jamendo_instruct.stages.ingest:main"
+jamendo-embeddings = "jamendo_instruct.stages.embeddings:main"
+jamendo-graph = "jamendo_instruct.stages.graph:main"
+jamendo-instructions = "jamendo_instruct.stages.instructions:main"
+jamendo-lyrics = "jamendo_instruct.stages.lyrics:main"
+jamendo-neighborhood = "jamendo_instruct.stages.neighborhood:main"
+jamendo-relevance-pool = "jamendo_instruct.stages.relevance_pool:main"
+jamendo-structured-view = "jamendo_instruct.stages.structured_view:main"
+jamendo-validation = "jamendo_instruct.stages.validation:main"
+jamendo-chains = "jamendo_instruct.stages.chains:main"
+jamendo-chains-demo = "jamendo_instruct.demo.chains_demo:main"
+jamendo-maxcaps-catalog = "jamendo_instruct.demo.maxcaps_catalog:main"
+jamendo-run = "jamendo_instruct.run:main"
+jamendo-pipeline = "jamendo_instruct.pipeline:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

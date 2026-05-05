@@ -1,0 +1,32 @@
+name: chains
+
+io:
+  input_manifest_csv: ${runtime.output_root}/${runtime.run_name}/structured_view/structured_clip_manifest.csv
+  input_nodes_csv: ${runtime.output_root}/${runtime.run_name}/neighborhood/neighborhood_nodes.csv
+  input_transition_memmap_dir: ${runtime.output_root}/${runtime.run_name}/graph/transition_graph_adjacency_memmap
+  input_transition_shards_dir: ${runtime.output_root}/${runtime.run_name}/graph/transition_graph_adjacency_shards
+  input_transition_shards_metadata_json: ${runtime.output_root}/${runtime.run_name}/graph/transition_graph_adjacency_metadata.json
+  output_dir: ${runtime.output_root}/${runtime.run_name}/chains
+  output_chains_jsonl: sampled_chains.jsonl
+  report_file: chains_report.json
+
+behavior:
+  target_num_chains: 1_000_000
+  min_chain_length: 1
+  max_chain_length: 6
+  max_chain_attempts: 200000
+  keep_shorter_on_dead_end: true
+  random_seed: ${runtime.seed}
+
+sampling:
+  length_lognormal_mean: 0.7
+  length_lognormal_sigma: 0.75
+
+runtime:
+  transition_shard_cache_size: 2
+
+progress:
+  enabled: true
+  every_n_rows: 1000
+  show_bar: true
+  bar_width: 28

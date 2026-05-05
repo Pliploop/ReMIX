@@ -1,0 +1,48 @@
+name: validation
+
+io:
+  input_instructions_jsonl: ${runtime.output_root}/${runtime.run_name}/instructions/chain_step_instructions.jsonl
+  input_prepared_jsonl: ${runtime.output_root}/${runtime.run_name}/instructions/chain_step_instruction_inputs.jsonl
+  output_dir: ${runtime.output_root}/${runtime.run_name}/validation
+  output_validated_jsonl: validated_instructions.jsonl
+  report_file: validation_report.json
+
+models:
+  model_id: google/gemma-4-31B-it
+
+auth:
+  hf_token_env: HF_TOKEN
+
+runtime:
+  device: auto   # auto | cuda | cpu
+  torch_dtype: auto   # auto | bfloat16 | float16 | float32
+  enable_thinking: false
+
+behavior:
+  max_steps: null
+  discard_failed: false
+  require_both_variants: true
+  use_llm_judge: true
+  skip_llm_on_precheck_failure: false
+  strict_json_retry_attempts: 3
+
+checks:
+  require_relative_language: true
+  require_caption_signal: true
+  require_constraint_signal: true
+  require_genuine_change: true
+  require_caption_only_grounding: true
+  require_seed_solvable: true
+  min_instruction_chars: 12
+  require_history_callback: false
+
+judge:
+  temperature: 0.0
+  top_p: 1.0
+  max_new_tokens: 512
+
+progress:
+  enabled: true
+  every_n_rows: 100
+  show_bar: true
+  bar_width: 28

@@ -1,0 +1,4 @@
+seed: 13
+output_root: /gpfs/scratch/acw749/datasets/maxcaps_instruct
+run_name: ${now:%Y%m%d_%H%M%S}
+work_dir: ${runtime.output_root}/${runtime.run_name}/_tmp

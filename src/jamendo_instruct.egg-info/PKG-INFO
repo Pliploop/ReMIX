@@ -1,0 +1,149 @@
+Metadata-Version: 2.4
+Name: jamendo-instruct
+Version: 0.1.0
+Summary: Stage-wise dataset generation for multi-turn compositional music retrieval
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: hydra-core>=1.3.2
+Requires-Dist: omegaconf>=2.3.0
+Requires-Dist: rich>=13.7.0
+Requires-Dist: tqdm>=4.66.0
+
+# Jamendo-Instruct
+
+Hydra/OmegaConf stage-wise pipeline for building a multi-turn compositional music retrieval dataset.
+
+## Current Status
+
+Implemented: **Stage 1 (`ingest`)**, **Stage 2 (`caption_join`)**, **Stage 3 (`structured_view`)**, and **Optional Stage 3.5 (`embeddings`)**
+
+- Reads JamendoMaxCaps date-sharded track JSONL files
+- Reads `final_caption30sec.jsonl`
+- Builds a clip-level normalized manifest by deduplicating shard snapshots on `track_id` and emitting one row per captioned clip
+- Creates custom grouped train/val/test split (default group key: `artist_id`)
+- Exports QC-style ingest report and optional dropped-rows table
+- Automatically downloads missing metadata shards/captions from Hugging Face (configurable)
+- Optionally joins external rewritten `§§` captions CSV by `track_id` in a separate stage
+- Builds a lightweight clip-level structured manifest from tags and captions
+- Extracts clip-level audio and text embeddings for retrieval and neighborhood construction
+
+## Config Layout
+
+- `conf/config.yaml` root composition
+- `conf/dataset/jamendomaxcaps.yaml` dataset field mapping
+- `conf/runtime/default.yaml` runtime/output settings
+- `conf/stage/ingest.yaml` Stage 1 parameters
+- `conf/stage/caption_join.yaml` Stage 2 parameters
+- `conf/stage/structured_view.yaml` Stage 3 parameters
+- `conf/stage/embeddings.yaml` Optional Stage 3.5 parameters
+
+## Stage 1 Outputs
+
+Default output directory:
+`artifacts/<run_name>/ingest/`
+
+Files:
+- `normalized_track_manifest.csv`
+- `ingest_report.json`
+- `dropped_rows.csv` (if any dropped rows and enabled)
+
+## Stage 2 Outputs
+
+Default output directory:
+`artifacts/<run_name>/caption_join/`
+
+Files:
+- `normalized_track_manifest_with_rewrites.csv`
+- `caption_join_report.json`
+
+## Stage 3 Outputs
+
+Default output directory:
+`artifacts/<run_name>/structured_view/`
+
+Files:
+- `structured_clip_manifest.csv`
+- `structured_view_report.json`
+
+## Optional Stage 3.5 Outputs
+
+Default output directory:
+`artifacts/<run_name>/embeddings/`
+
+Files:
+- `audio/` containing one `.npy` file per clip
+- `text/` containing one `.npy` file per clip
+- `embedding_lookup_manifest.csv`
+- `embeddings_report.json`
+
+## Run
+
+Install:
+
+```bash
+pip install -e .
+```
+
+Run ingest stage directly:
+
+```bash
+jamendo-ingest
+```
+
+Or run orchestrator:
+
+```bash
+jamendo-run
+```
+
+Run caption join stage (with your rewritten captions CSV):
+
+```bash
+python -m jamendo_instruct.run stage=caption_join stage.rewrites.csv_path=/path/to/rewritten_captions.csv
+```
+
+Run structured-view stage:
+
+```bash
+python -m jamendo_instruct.run stage=structured_view
+```
+
+Run embeddings stage:
+
+```bash
+python -m jamendo_instruct.run stage=embeddings
+```
+
+Override config values:
+
+```bash
+jamendo-ingest stage.tracks.metadata_dir=/gpfs/scratch/acw749/datasets/maxcaps_instruct/metadata
+```
+
+Use source split instead of custom grouped split:
+
+```bash
+jamendo-ingest stage.split.mode=source_column
+```
+
+Limit download for a quick smoke run:
+
+```bash
+jamendo-ingest stage.download.max_files=10 runtime.run_name=ingest_smoke
+```
+
+## Notes
+
+- Audio is **not** downloaded.
+- Metadata JSONLs and `final_caption30sec.jsonl` are expected under `/gpfs/scratch/acw749/datasets/maxcaps_instruct/metadata` by default.
+- `file_path` is synthesized from `stage.audio.file_template` and `track_id`.
+- Captions are loaded directly in memory during ingest (no SQLite dependency).
+- The default ingest dataset is caption-only at clip level: duplicate shard snapshots are collapsed on `track_id`, then one manifest row is written per captioned clip with parent `track_id`, `clip_id`, `start_time`, and `end_time`.
+- `structured_view` is intentionally lightweight in v1 and derives its output only from normalized tags and captions, while leaving room for optional richer parsing later.
+- `embeddings` uses Hugging Face-hosted models for clip-level similarity search: `OpenMuQ/MuQ-MuLan-large` for audio and `google/embeddinggemma-300m` for text.
+- `embeddings` slices audio by `start_time` and `end_time` when clip boundaries are available.
+- `embeddings` resumes by treating the per-clip `.npy` files as the source of truth: if an embedding file already exists, that row is skipped unless `stage.behavior.overwrite_existing=true`.
+- The canonical embedding outputs are per-clip `.npy` files under `audio/` and `text/`, with `embedding_lookup_manifest.csv` recording the exact paths for each `clip_id`.
+- The default embedding output directory now lives under the experiment run directory: `${runtime.output_root}/${runtime.run_name}/embeddings`.
+- `google/embeddinggemma-300m` requires accepting the model license on Hugging Face before first download.
+- `caption_join` is optional; if no rewrite CSV is provided, it performs a pass-through join with `has_rewrite=0`.

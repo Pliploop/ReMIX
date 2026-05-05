@@ -1,0 +1,54 @@
+name: embeddings
+
+io:
+  input_manifest_csv: ${runtime.output_root}/${runtime.run_name}/structured_view/structured_clip_manifest.csv
+  output_dir: ${runtime.output_root}/${runtime.run_name}/embeddings
+  audio_embeddings_dir: ${runtime.output_root}/audio/${runtime.run_name}
+  text_embeddings_dir: ${runtime.output_root}/text/${runtime.run_name}
+  lookup_manifest_file: embedding_lookup_manifest.csv
+  report_file: embeddings_report.json
+
+models:
+  audio_model_id: OpenMuQ/MuQ-MuLan-large
+  text_model_id: google/embeddinggemma-300m
+
+runtime:
+  device: auto   # auto | cuda | cpu
+  cudnn_benchmark: true
+  empty_cache_between_chunks: true
+
+auth:
+  hf_token_env: HF_TOKEN
+
+embedding:
+  normalize: true
+
+behavior:
+  max_rows: null
+  resume_chunk_size: 512
+  manifest_only: false
+  overwrite_existing: false
+  reuse_lookup_manifest: true
+  verify_existing_files: false
+
+audio:
+  sample_rate: 24000
+  mono: true
+  batch_size: 256
+  num_workers: 8
+  persistent_workers: true
+  prefetch_factor: 2
+  min_duration_sec: 0.5
+  max_duration_sec: null
+
+text:
+  input_field: normalized_caption
+  batch_size: 2048
+  max_length: 512
+  truncate_dim: null
+
+progress:
+  enabled: true
+  every_n_rows: 1000
+  show_bar: true
+  bar_width: 28
