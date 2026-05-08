@@ -3,8 +3,9 @@ from __future__ import annotations
 import csv
 import json
 import re
+from collections import Counter
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Set
 
 from jamendo_instruct.progress import StageTracker, rich_tqdm
 
@@ -58,13 +59,33 @@ def _parse_tag_list(row: Dict[str, str]) -> List[str]:
     return [part for part in parts if part]
 
 
-def _build_output_row(row: Dict[str, str], cfg: DictConfig) -> Dict[str, Any]:
+def _tag_vocabulary(rows: List[Dict[str, str]], cfg: DictConfig) -> Set[str] | None:
+    tags_cfg = getattr(cfg.stage, "tags", None)
+    top_n = getattr(tags_cfg, "top_n", None) if tags_cfg is not None else None
+    if top_n is None:
+        return None
+
+    limit = int(top_n)
+    if limit <= 0:
+        return set()
+
+    counts: Counter[str] = Counter()
+    for row in rows:
+        counts.update(_parse_tag_list(row))
+
+    ranked = sorted(counts.items(), key=lambda item: (-int(item[1]), item[0]))
+    return {tag for tag, _ in ranked[:limit]}
+
+
+def _build_output_row(row: Dict[str, str], cfg: DictConfig, tag_vocabulary: Set[str] | None = None) -> Dict[str, Any]:
     clip_id = str(row.get("clip_id", "") or "").strip() or str(row.get("track_id", "") or "").strip()
     track_id = str(row.get("track_id", "") or "").strip()
     caption = str(row.get("caption", "") or "").strip()
     primary_caption = str(row.get("primary_caption", "") or "").strip() or caption
     track_primary_caption = str(row.get("track_primary_caption", "") or "").strip() or primary_caption
     normalized_tags = _parse_tag_list(row)
+    if tag_vocabulary is not None:
+        normalized_tags = [tag for tag in normalized_tags if tag in tag_vocabulary]
     track_captions = _parse_json_list(row.get("track_captions_json", ""))
     clip_captions = _parse_json_list(row.get("captions_json", ""))
 
@@ -188,9 +209,16 @@ def run_structured_view(cfg: DictConfig) -> Dict[str, object]:
         "rows_with_tags": 0,
         "rows_without_tags": 0,
         "rows_with_track_context": 0,
+        "tag_vocabulary_size": 0,
+        "top_n_tags": None,
     }
     seen_clips = set()
     seen_tracks = set()
+    tag_vocabulary = _tag_vocabulary(rows, cfg)
+    if tag_vocabulary is not None:
+        counts["tag_vocabulary_size"] = len(tag_vocabulary)
+        counts["top_n_tags"] = getattr(cfg.stage.tags, "top_n", None)
+        _log(cfg, f"Filtering normalized tags to top {counts['tag_vocabulary_size']:,} by corpus frequency")
 
     tracker.step("Normalize captions and tags", detail=f"{total:,} rows")
     with out_csv.open("w", encoding="utf-8", newline="") as f:
@@ -198,7 +226,7 @@ def run_structured_view(cfg: DictConfig) -> Dict[str, object]:
         writer.writeheader()
         with rich_tqdm(cfg, total=total, desc="Build rows", unit="row") as progress:
             for i, row in enumerate(rows, start=1):
-                out_row = _build_output_row(row, cfg)
+                out_row = _build_output_row(row, cfg, tag_vocabulary)
                 writer.writerow(out_row)
                 counts["output_rows"] += 1
                 seen_clips.add(out_row["clip_id"])

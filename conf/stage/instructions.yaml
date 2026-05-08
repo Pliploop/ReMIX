@@ -6,6 +6,7 @@ io:
   output_dir: ${runtime.output_root}/${runtime.run_name}/instructions
   output_instructions_jsonl: chain_step_instructions.jsonl
   output_prepared_jsonl: chain_step_instruction_inputs.jsonl
+  output_step_json_dir: ${runtime.output_root}/${runtime.run_name}/instructions/step_json
   report_file: instructions_report.json
 
 models:
@@ -18,14 +19,17 @@ runtime:
   backend: transformers   # transformers | vllm_local
   device: auto   # auto | cuda | cpu
   torch_dtype: auto   # auto | bfloat16 | float16 | float32
+  llm_model_family: auto   # auto | causal_lm | qwen3_6
   enable_thinking: false
   generation_batch_size: 4
   vllm_host: 127.0.0.1
   vllm_port: 8000
   vllm_api_key: EMPTY
   vllm_tensor_parallel_size: 1
+  vllm_dtype: auto
   vllm_quantization: null   # e.g. modelopt, modelopt_fp4
   vllm_trust_remote_code: false
+  vllm_enforce_eager: false
   vllm_gpu_memory_utilization: 0.9
   vllm_max_model_len: 32768
   vllm_health_timeout_sec: 600
@@ -38,6 +42,8 @@ behavior:
   discard_failed: true
   write_prepared_records: true
   strict_json_retry_attempts: 2
+  claim_dir: null   # optional shared directory for atomic per-step claims across concurrent jobs
+  write_step_json: false   # write one atomic JSON file per step instead of shared JSONL
 
 caption:
   signal_mode: both   # fuzzy | raw | both

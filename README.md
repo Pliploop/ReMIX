@@ -395,6 +395,7 @@ Useful options:
 - `stage.io.input_manifest_csv=/path/to/normalized_track_manifest.csv`
 - `stage.caption_normalization.lowercase=true|false`
 - `stage.caption_normalization.collapse_whitespace=true|false`
+- `stage.tags.top_n=<N>` to keep only the top-N normalized tags by corpus frequency for downstream deltas
 
 ### `embeddings`
 
@@ -476,6 +477,13 @@ Useful options:
 - `stage.verification.enabled=true|false`
 - `stage.models.model_id=<hf_model>`
 - `stage.runtime.device=auto|cuda|cpu`
+- Qwen3.6 normal Transformers backend:
+  `stage.models.model_id=Qwen/Qwen3.6-35B-A3B stage.runtime.llm_model_family=qwen3_6`
+- Qwen3.6 local vLLM backend:
+  `stage.models.model_id=Qwen/Qwen3.6-35B-A3B stage.runtime.backend=vllm_local stage.runtime.vllm_dtype=bfloat16`
+- Qwen3.6 FP8 local vLLM backend:
+  `stage.models.model_id=Qwen/Qwen3.6-35B-A3B-FP8 stage.runtime.backend=vllm_local stage.runtime.vllm_dtype=auto`
+  The instruction stage launches the local vLLM server; downstream judge stages can also use an OpenAI-compatible vLLM endpoint via `stage.runtime.backend=vllm_local`.
 
 ### `validation`
 
@@ -492,6 +500,8 @@ Useful options:
 - `stage.behavior.discard_failed=true|false`
 - `stage.checks.require_caption_only_grounding=true|false`
 - `stage.checks.require_seed_solvable=true|false`
+- `stage.models.model_id=Qwen/Qwen3.6-35B-A3B stage.runtime.llm_model_family=qwen3_6`
+- `stage.models.model_id=Qwen/Qwen3.6-35B-A3B-FP8 stage.runtime.backend=vllm_local stage.runtime.vllm_host=<host> stage.runtime.vllm_port=<port>`
 
 ### `relevance_pool`
 
@@ -507,6 +517,8 @@ Useful options:
 - `stage.behavior.write_full_dataset_labels=true|false`
 - `stage.behavior.full_dataset_label_splits=[validation,test]`
 - `stage.behavior.run_solvability_audit=true|false`
+- `stage.models.judge_model_id=Qwen/Qwen3.6-35B-A3B stage.runtime.llm_model_family=qwen3_6`
+- `stage.models.judge_model_id=Qwen/Qwen3.6-35B-A3B-FP8 stage.runtime.backend=vllm_local stage.runtime.vllm_host=<host> stage.runtime.vllm_port=<port>`
 - `stage.behavior.use_text_encoder_audit=true|false`
 - `stage.behavior.use_candidate_llm_judge=true|false`
 - `stage.behavior.candidate_llm_judge_splits=[validation,test]`
@@ -808,7 +820,7 @@ jamendo-ingest stage.download.max_files=10 runtime.run_name=ingest_smoke
 - `structured_view` is intentionally lightweight in v1 and derives its output only from normalized tags and captions, while leaving room for optional richer parsing later.
 - `embeddings` uses Hugging Face-hosted models for clip-level similarity search: `OpenMuQ/MuQ-MuLan-large` for audio and `google/embeddinggemma-300m` for text.
 - `embeddings` slices audio by `start_time` and `end_time` when clip boundaries are available.
-- `embeddings` resumes by treating `embedding_lookup_manifest.csv` as the source of truth by default; set `stage.behavior.verify_existing_files=true` to rebuild resume status from on-disk `.npy` files.
+- `embeddings` resumes from `embedding_lookup_manifest.csv`, and pending rows are reconciled with on-disk `.npy` files so interrupted chunked runs can continue; set `stage.behavior.verify_existing_files=true` to force a full disk verification.
 - The canonical embedding outputs are per-clip `.npy` files under `audio/` and `text/`, with `embedding_lookup_manifest.csv` recording the exact paths for each `clip_id`.
 - By default, embedding vectors are stored under `${runtime.output_root}/audio/${runtime.run_name}` and `${runtime.output_root}/text/${runtime.run_name}`, while the lookup manifest and report live under `${runtime.output_root}/${runtime.run_name}/embeddings`.
 - The current canonical run name is `v1`; the older timestamped name `20260405_211504` is kept as a compatibility symlink in the artifact, audio, and text directories.

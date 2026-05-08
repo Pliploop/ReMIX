@@ -14,9 +14,14 @@ auth:
   hf_token_env: HF_TOKEN
 
 runtime:
+  backend: transformers   # transformers | vllm_local
   device: auto   # auto | cuda | cpu
   torch_dtype: auto   # auto | bfloat16 | float16 | float32
+  llm_model_family: auto   # auto | causal_lm | qwen3_6
   enable_thinking: false
+  vllm_host: 127.0.0.1
+  vllm_port: 8000
+  vllm_api_key: EMPTY
 
 behavior:
   max_steps: null

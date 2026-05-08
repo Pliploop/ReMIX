@@ -9,6 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence, Tuple
 
+from jamendo_instruct.llm_backends import build_openai_chat_client, decode_openai_chat_completion, load_chat_processor_and_model
 from jamendo_instruct.progress import StageTracker, rich_tqdm
 from jamendo_instruct.semantic_delta import build_typed_semantic_delta, typed_item_texts
 
@@ -173,27 +174,44 @@ def _encode_texts(texts: List[str], cfg: DictConfig, ctx: Any) -> Any:
 
 
 def _build_llm_judge(cfg: DictConfig):
-    from transformers import AutoModelForCausalLM, AutoProcessor
+    backend = str(getattr(cfg.stage.runtime, "backend", "transformers"))
+    model_id = str(getattr(cfg.stage.models, "judge_model_id", cfg.stage.models.text_model_id))
+    if backend == "vllm_local":
+        _log(cfg, f"Using OpenAI-compatible vLLM relevance-pool judge {model_id}")
+        return build_openai_chat_client(
+            model_id=model_id,
+            host=str(getattr(cfg.stage.runtime, "vllm_host", "127.0.0.1")),
+            port=int(getattr(cfg.stage.runtime, "vllm_port", 8000)),
+            api_key=str(getattr(cfg.stage.runtime, "vllm_api_key", "EMPTY")),
+        )
+    if backend != "transformers":
+        raise ValueError(f"Unsupported stage.runtime.backend: {backend}")
 
     runtime = _resolve_torch_device(cfg)
     torch = runtime.torch
     device = runtime.device
     token_env = str(getattr(cfg.stage.auth, "hf_token_env", "HF_TOKEN"))
     token = os.environ.get(token_env, "").strip() or None
-    model_id = str(getattr(cfg.stage.models, "judge_model_id", cfg.stage.models.text_model_id))
     _log(cfg, f"Loading relevance-pool judge model {model_id} on {device}")
-    processor = AutoProcessor.from_pretrained(model_id, token=token)
-    model_kwargs: Dict[str, Any] = {"token": token}
-    if str(device).startswith("cuda"):
-        model_kwargs["device_map"] = "auto"
-    model = AutoModelForCausalLM.from_pretrained(model_id, **model_kwargs)
-    if not str(device).startswith("cuda"):
-        model = model.to(device)
-    model.eval()
-    return SimpleNamespace(model=model, processor=processor, torch=torch, device=device)
+    processor, model, model_family = load_chat_processor_and_model(
+        model_id=model_id,
+        token=token,
+        device=device,
+        model_family=str(getattr(cfg.stage.runtime, "llm_model_family", "auto")),
+    )
+    return SimpleNamespace(model=model, processor=processor, torch=torch, device=device, model_family=model_family)
 
 
 def _decode_judge_response(ctx: Any, cfg: DictConfig, messages: List[Dict[str, str]]) -> str:
+    if str(getattr(ctx, "backend", "transformers")) == "vllm_local":
+        return decode_openai_chat_completion(
+            ctx,
+            messages=messages,
+            max_tokens=int(getattr(cfg.stage.judge, "max_new_tokens", 256)),
+            temperature=float(getattr(cfg.stage.judge, "temperature", 0.0)),
+            top_p=float(getattr(cfg.stage.judge, "top_p", 1.0)),
+        )
+
     processor = ctx.processor
     model = ctx.model
     torch = ctx.torch
@@ -459,6 +477,13 @@ def _semantic_delta_typed_pair(prepared: Dict[str, Any], validation_record: Dict
     return full_typed, verbalized_typed
 
 
+def _instruction_plan(validation_record: Dict[str, Any] | None) -> Dict[str, Any] | None:
+    if validation_record is None:
+        return None
+    plan = validation_record.get("instruction_plan")
+    return plan if isinstance(plan, dict) else None
+
+
 def _candidate_has_term(candidate_row: Dict[str, str], term: str) -> bool:
     normalized = str(term).strip().lower()
     if not normalized:
@@ -588,6 +613,7 @@ def _candidate_llm_judge_prompt(
     semantic_delta_verbalized: Dict[str, Any],
     semantic_delta_verbalized_typed: Dict[str, Any],
     semantic_delta_full: Dict[str, Any],
+    instruction_plan: Dict[str, Any] | None,
     heuristic_candidate: Dict[str, Any],
     source_row: Dict[str, str],
     target_row: Dict[str, str],
@@ -598,6 +624,7 @@ def _candidate_llm_judge_prompt(
         "semantic_delta_full": semantic_delta_full,
         "semantic_delta_verbalized": semantic_delta_verbalized,
         "semantic_delta_verbalized_typed": semantic_delta_verbalized_typed,
+        "instruction_plan": instruction_plan,
         "source_caption": _caption_text(source_row),
         "source_tags": _tag_set(source_row),
         "target_caption": _caption_text(target_row),
@@ -1075,6 +1102,7 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
 
                         semantic_full, semantic_verbalized = _semantic_delta_pair(prepared, validation_record)
                         semantic_full_typed, semantic_verbalized_typed = _semantic_delta_typed_pair(prepared, validation_record)
+                        instruction_plan = _instruction_plan(validation_record)
                         if bool(semantic_full.get("caption_only_change", False)):
                             counts["steps_with_caption_only_change"] += 1
                         history_node_indices: List[int] = []
@@ -1273,6 +1301,7 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                                     semantic_delta_verbalized=semantic_verbalized,
                                     semantic_delta_verbalized_typed=semantic_verbalized_typed,
                                     semantic_delta_full=semantic_full,
+                                    instruction_plan=instruction_plan,
                                     heuristic_candidate=item,
                                     source_row=source_row,
                                     target_row=target_row,
@@ -1414,6 +1443,7 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                             "semantic_delta_verbalized": semantic_verbalized,
                             "semantic_delta_full_typed": semantic_full_typed,
                             "semantic_delta_verbalized_typed": semantic_verbalized_typed,
+                            "instruction_plan": instruction_plan,
                             "semantic_constraints": semantic_full,
                             "source_node_idx": source_node_idx,
                             "target_node_idx": target_node_idx,

@@ -205,6 +205,15 @@ def _needs_status_verification(lookup_rows: List[Dict[str, Any]]) -> bool:
     return False
 
 
+def _has_pending_status(lookup_rows: List[Dict[str, Any]]) -> bool:
+    for row in lookup_rows:
+        if _normalize_embedding_status(row.get("audio_embedding_status")) == "pending":
+            return True
+        if _normalize_embedding_status(row.get("text_embedding_status")) == "pending":
+            return True
+    return False
+
+
 def _write_json(path: Path, payload: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(path.suffix + ".tmp")
@@ -805,6 +814,13 @@ def run_embeddings(cfg: DictConfig) -> Dict[str, object]:
             _log(cfg, "Verifying existing embedding files from disk for resume state.")
         elif requires_status_upgrade:
             _log(cfg, "Upgrading lookup manifest resume statuses from legacy schema.")
+        _refresh_lookup_statuses_from_files(lookup_rows, overwrite_existing=False)
+        lookup_dirty = True
+    elif _has_pending_status(lookup_rows):
+        _log(
+            cfg,
+            "Lookup manifest has pending rows; checking disk for embeddings written by an interrupted run.",
+        )
         _refresh_lookup_statuses_from_files(lookup_rows, overwrite_existing=False)
         lookup_dirty = True
 

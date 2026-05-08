@@ -11,6 +11,9 @@ caption_normalization:
   collapse_whitespace: true
   strip_outer_punctuation: false
 
+tags:
+  top_n: null
+
 progress:
   enabled: true
   every_n_rows: 50000

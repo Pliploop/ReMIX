@@ -7,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Tuple
 
+from jamendo_instruct.llm_backends import build_openai_chat_client, decode_openai_chat_completion, load_chat_processor_and_model
 from jamendo_instruct.progress import StageTracker, rich_tqdm
 from jamendo_instruct.semantic_delta import build_typed_semantic_delta, typed_item_texts
 
@@ -231,6 +232,25 @@ def _semantic_delta_typed_pair(record: Dict[str, Any], payload: Dict[str, Any]) 
     return full_typed, verbalized_typed
 
 
+def _instruction_plan(record: Dict[str, Any]) -> Dict[str, Any]:
+    plan = record.get("instruction_plan")
+    return plan if isinstance(plan, dict) else {}
+
+
+def _plan_evidence_terms(plan: Dict[str, Any], key: str) -> List[str]:
+    values = plan.get(key, [])
+    if not isinstance(values, list):
+        return []
+    out: List[str] = []
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("evidence", "") or "").strip()
+        if text:
+            out.append(text)
+    return _dedupe_list(out)
+
+
 def _contains_any(text: str, terms: List[str]) -> bool:
     lowered = str(text or "").lower()
     for term in terms:
@@ -274,8 +294,11 @@ def _validate_variant(cfg: DictConfig, payload: Dict[str, Any], record: Dict[str
     lyric_terms = _collect_lyric_terms(payload)
     semantic_full, semantic_verbalized = _semantic_delta_pair(record, payload)
     semantic_full_typed, semantic_verbalized_typed = _semantic_delta_typed_pair(record, payload)
-    genuine_change_terms = _dedupe_list(list(semantic_verbalized.get("new", [])) + list(semantic_verbalized.get("lost", [])))
-    preserved_terms = _dedupe_list(list(semantic_full.get("preserved", [])))
+    plan = _instruction_plan(record)
+    plan_change_terms = _plan_evidence_terms(plan, "selected_changes")
+    plan_preservation_terms = _plan_evidence_terms(plan, "selected_preservations")
+    genuine_change_terms = plan_change_terms or _dedupe_list(list(semantic_verbalized.get("new", [])) + list(semantic_verbalized.get("lost", [])))
+    preserved_terms = plan_preservation_terms or _dedupe_list(list(semantic_full.get("preserved", [])))
     caption_semantic_terms = typed_item_texts(
         semantic_verbalized_typed if bool(semantic_full.get("caption_only_change", False)) else semantic_full_typed,
         source="caption",
@@ -330,6 +353,7 @@ def _validate_variant(cfg: DictConfig, payload: Dict[str, Any], record: Dict[str
         "semantic_delta_verbalized_used": semantic_verbalized,
         "semantic_delta_full_typed_used": semantic_full_typed,
         "semantic_delta_verbalized_typed_used": semantic_verbalized_typed,
+        "instruction_plan_used": plan or None,
         "caption_semantic_hits": caption_semantic_hits,
         "lyric_semantic_hits": lyric_semantic_hits,
         "preserved_term_count": len(preserved_terms),
@@ -374,7 +398,7 @@ def _judge_prompt(payload: Dict[str, Any], record: Dict[str, Any], heuristic: Di
         "}\n\n"
         f"Payload:\n{json.dumps(payload, ensure_ascii=True, indent=2)}\n\n"
         "Generated instructions:\n"
-        f"{json.dumps({'semantic_delta_full': record.get('semantic_delta_full') or record.get('semantic_constraints'), 'semantic_delta_verbalized': record.get('semantic_delta_verbalized'), 'history_unaware_instruction': record.get('history_unaware_instruction', ''), 'history_aware_instruction': record.get('history_aware_instruction', '')}, ensure_ascii=True, indent=2)}\n\n"
+        f"{json.dumps({'semantic_delta_full': record.get('semantic_delta_full') or record.get('semantic_constraints'), 'semantic_delta_verbalized': record.get('semantic_delta_verbalized'), 'instruction_plan': record.get('instruction_plan'), 'history_unaware_instruction': record.get('history_unaware_instruction', ''), 'history_aware_instruction': record.get('history_aware_instruction', '')}, ensure_ascii=True, indent=2)}\n\n"
         f"Heuristic precheck:\n{json.dumps(heuristic, ensure_ascii=True, indent=2)}"
     )
     return [
@@ -411,7 +435,18 @@ def _resolve_torch_dtype(cfg: DictConfig, torch_module: Any) -> Any:
 
 
 def _build_judge(cfg: DictConfig) -> Any:
-    from transformers import AutoModelForCausalLM, AutoProcessor
+    backend = str(getattr(cfg.stage.runtime, "backend", "transformers"))
+    if backend == "vllm_local":
+        model_id = str(cfg.stage.models.model_id)
+        _log(cfg, f"Using OpenAI-compatible vLLM validation judge {model_id}")
+        return build_openai_chat_client(
+            model_id=model_id,
+            host=str(getattr(cfg.stage.runtime, "vllm_host", "127.0.0.1")),
+            port=int(getattr(cfg.stage.runtime, "vllm_port", 8000)),
+            api_key=str(getattr(cfg.stage.runtime, "vllm_api_key", "EMPTY")),
+        )
+    if backend != "transformers":
+        raise ValueError(f"Unsupported stage.runtime.backend: {backend}")
 
     runtime = _resolve_torch_device(cfg)
     torch = runtime.torch
@@ -423,18 +458,26 @@ def _build_judge(cfg: DictConfig) -> Any:
     model_id = str(cfg.stage.models.model_id)
     dtype = _resolve_torch_dtype(cfg, torch)
     _log(cfg, f"Loading validation model {model_id} on {device}")
-    processor = AutoProcessor.from_pretrained(model_id, token=token)
-    model_kwargs: Dict[str, Any] = {"token": token, "torch_dtype": dtype}
-    if str(device).startswith("cuda"):
-        model_kwargs["device_map"] = "auto"
-    model = AutoModelForCausalLM.from_pretrained(model_id, **model_kwargs)
-    if not str(device).startswith("cuda"):
-        model = model.to(device)
-    model.eval()
-    return SimpleNamespace(model=model, processor=processor, torch=torch, device=device)
+    processor, model, model_family = load_chat_processor_and_model(
+        model_id=model_id,
+        token=token,
+        torch_dtype=dtype,
+        device=device,
+        model_family=str(getattr(cfg.stage.runtime, "llm_model_family", "auto")),
+    )
+    return SimpleNamespace(model=model, processor=processor, torch=torch, device=device, model_family=model_family)
 
 
 def _decode_response_text(ctx: Any, messages: List[Dict[str, str]], cfg: DictConfig) -> str:
+    if str(getattr(ctx, "backend", "transformers")) == "vllm_local":
+        return decode_openai_chat_completion(
+            ctx,
+            messages=messages,
+            max_tokens=int(cfg.stage.judge.max_new_tokens),
+            temperature=float(cfg.stage.judge.temperature),
+            top_p=float(cfg.stage.judge.top_p),
+        )
+
     processor = ctx.processor
     model = ctx.model
     torch = ctx.torch
