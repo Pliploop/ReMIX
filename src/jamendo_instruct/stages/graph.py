@@ -238,6 +238,9 @@ def _process_edge_chunk(
         "edges_filtered_cross_split": 0,
         "missing_node_refs": 0,
         "missing_structured_refs": 0,
+        "edges_with_source_lyrics": 0,
+        "edges_with_target_lyrics": 0,
+        "edges_with_lyric_change": 0,
     }
 
     tmp_csv = chunk_csv.with_suffix(".tmp")
@@ -273,6 +276,15 @@ def _process_edge_chunk(
                 include_captions=include_captions,
                 include_lyrics=include_lyrics,
             )
+            if include_lyrics:
+                source_lyrics = str(delta.get("source_lyrics", "") or "").strip()
+                target_lyrics = str(delta.get("target_lyrics", "") or "").strip()
+                if source_lyrics:
+                    counts["edges_with_source_lyrics"] += 1
+                if target_lyrics:
+                    counts["edges_with_target_lyrics"] += 1
+                if source_lyrics != target_lyrics:
+                    counts["edges_with_lyric_change"] += 1
             tag_delta_size = _tag_delta_size(delta)
             if tag_delta_size > max_changed:
                 counts["edges_filtered_max_changed_tags"] += 1
@@ -592,6 +604,9 @@ def run_graph(cfg: DictConfig) -> Dict[str, object]:
         "edges_filtered_cross_split": 0,
         "missing_node_refs": 0,
         "missing_structured_refs": 0,
+        "edges_with_source_lyrics": 0,
+        "edges_with_target_lyrics": 0,
+        "edges_with_lyric_change": 0,
         "chunks_total": total_chunks,
         "chunks_processed": 0,
     }
@@ -618,6 +633,9 @@ def run_graph(cfg: DictConfig) -> Dict[str, object]:
                 "edges_filtered_cross_split",
                 "missing_node_refs",
                 "missing_structured_refs",
+                "edges_with_source_lyrics",
+                "edges_with_target_lyrics",
+                "edges_with_lyric_change",
             ):
                 counts[key] += int(meta.get(key, 0))
             counts["chunks_processed"] += 1

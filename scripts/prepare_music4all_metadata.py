@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, Sequence
 
@@ -68,6 +69,36 @@ def _vocals_label(track_id: str, tags: Iterable[str], lyrics_dir: Path) -> str:
     return ""
 
 
+def _read_lyrics(track_id: str, lyrics_dir: Path) -> Dict[str, str]:
+    path = lyrics_dir / f"{track_id}.txt"
+    if not path.exists():
+        return {
+            "lyrics": "",
+            "lyrics_status": "missing",
+            "lyrics_source": "",
+            "lyrics_language": "",
+            "lyrics_error": "",
+        }
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        return {
+            "lyrics": "",
+            "lyrics_status": "failed",
+            "lyrics_source": str(path),
+            "lyrics_language": "",
+            "lyrics_error": f"{exc.__class__.__name__}: {exc}",
+        }
+    text = re.sub(r"\s+", " ", text).strip()
+    return {
+        "lyrics": text,
+        "lyrics_status": "ok" if text else "empty",
+        "lyrics_source": str(path),
+        "lyrics_language": "",
+        "lyrics_error": "",
+    }
+
+
 def _record(
     *,
     track_id: str,
@@ -84,6 +115,7 @@ def _record(
     tag_genres = genres
     tag_vartags = [tag for tag in tags if tag not in set(genres)]
     all_tags = genres + [tag for tag in tags if tag not in set(genres)]
+    lyric_fields = _read_lyrics(track_id, lyrics_dir)
     return {
         "id": track_id,
         "name": info.get("song", ""),
@@ -95,6 +127,7 @@ def _record(
         "audiodownload": str(audio_path),
         "license_ccurl": "",
         "split": "",
+        **lyric_fields,
         "musicinfo": {
             "vocalinstrumental": _vocals_label(track_id, all_tags, lyrics_dir),
             "speed": _speed_label(metadata),
@@ -163,6 +196,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "with_genres": 0,
         "with_tags": 0,
         "with_language": 0,
+        "with_lyrics": 0,
+        "empty_lyrics": 0,
+        "missing_lyrics": 0,
+        "failed_lyrics": 0,
         "vocal": 0,
         "instrumental": 0,
     }
@@ -193,6 +230,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 counts["with_tags"] += 1
             if rec["musicinfo"]["language"]:
                 counts["with_language"] += 1
+            lyric_status = str(rec.get("lyrics_status", "") or "")
+            if lyric_status == "ok":
+                counts["with_lyrics"] += 1
+            elif lyric_status == "empty":
+                counts["empty_lyrics"] += 1
+            elif lyric_status == "missing":
+                counts["missing_lyrics"] += 1
+            elif lyric_status == "failed":
+                counts["failed_lyrics"] += 1
             f.write(json.dumps(rec, ensure_ascii=True) + "\n")
             counts["written"] += 1
 

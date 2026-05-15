@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import contextlib
 import hashlib
 import json
 import os
@@ -9,11 +10,22 @@ import re
 import subprocess
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from jamendo_instruct.llm_backends import append_vllm_common_args, decode_openai_chat_completion, load_chat_processor_and_model
+from jamendo_instruct.llm_backends import (
+    OPENAI_COMPAT_BACKENDS,
+    append_vllm_common_args,
+    build_vllm_offline_chat_model,
+    decode_openai_chat_completion,
+    decode_vllm_chat_completion,
+    decode_vllm_chat_completions,
+    get_visible_gpu_info,
+    load_chat_processor_and_model,
+    resolve_backend_name,
+)
 from jamendo_instruct.progress import StageTracker, rich_tqdm
 from jamendo_instruct.semantic_delta import build_typed_semantic_delta
 
@@ -79,6 +91,165 @@ _KIND_TO_INSTRUCTION_AXIS = {
     "texture": "texture_production",
     "atmosphere": "texture_production",
 }
+
+
+def _axis_guidance_enabled(cfg: DictConfig) -> bool:
+    section = getattr(cfg.stage, "axis_guidance", None)
+    if section is None:
+        return False
+    return bool(getattr(section, "enabled", False))
+
+
+def _axis_guidance_state_path(cfg: DictConfig) -> Path:
+    section = getattr(cfg.stage, "axis_guidance", None)
+    if section is not None and getattr(section, "state_path", None):
+        return Path(str(section.state_path))
+    return Path(str(cfg.stage.io.output_dir)) / "axis_guidance_state.json"
+
+
+def _empty_axis_guidance_state() -> Dict[str, Any]:
+    return {
+        "steps_written": 0,
+        "selected_change_axes": {},
+        "selected_preservation_axes": {},
+    }
+
+
+def _load_axis_guidance_state(cfg: DictConfig) -> Dict[str, Any]:
+    path = _axis_guidance_state_path(cfg)
+    if not path.exists():
+        return _empty_axis_guidance_state()
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return _empty_axis_guidance_state()
+    if not isinstance(data, dict):
+        return _empty_axis_guidance_state()
+    state = _empty_axis_guidance_state()
+    for key in ("selected_change_axes", "selected_preservation_axes"):
+        value = data.get(key, {})
+        if isinstance(value, dict):
+            state[key] = {str(axis): int(count or 0) for axis, count in value.items() if str(axis).strip()}
+    try:
+        state["steps_written"] = int(data.get("steps_written", 0) or 0)
+    except (TypeError, ValueError):
+        state["steps_written"] = 0
+    return state
+
+
+@contextlib.contextmanager
+def _axis_guidance_lock(path: Path) -> Iterable[None]:
+    lock_path = path.with_suffix(f"{path.suffix}.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("w", encoding="utf-8") as lock_f:
+        try:
+            import fcntl
+
+            fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_f.fileno(), fcntl.LOCK_UN)
+        except ImportError:
+            yield
+
+
+def _write_axis_guidance_state(path: Path, state: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f"{path.name}.tmp.{os.getpid()}.{time.time_ns()}")
+    with tmp_path.open("w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=True, indent=2, sort_keys=True)
+        f.write("\n")
+    os.replace(tmp_path, path)
+
+
+def _axis_guidance_label(count: int, nonzero_counts: Sequence[int]) -> str:
+    if count <= 0:
+        return "rare"
+    if not nonzero_counts:
+        return "rare"
+    max_count = max(nonzero_counts)
+    if max_count <= 0:
+        return "rare"
+    ratio = count / max_count
+    if ratio >= 0.75:
+        return "very common"
+    if ratio >= 0.35:
+        return "common"
+    if ratio >= 0.12:
+        return "uncommon"
+    return "rare"
+
+
+def _axis_guidance_usage_lines(axis_counts: Dict[str, int]) -> List[str]:
+    counts = {axis: int(axis_counts.get(axis, 0) or 0) for axis in _INSTRUCTION_AXES}
+    nonzero_counts = [count for count in counts.values() if count > 0]
+    ordered = sorted(_INSTRUCTION_AXES, key=lambda axis: (-counts[axis], axis))
+    return [f"- {axis}: {_axis_guidance_label(counts[axis], nonzero_counts)} ({counts[axis]})" for axis in ordered]
+
+
+def _axis_guidance_prompt_block(snapshot: Dict[str, Any]) -> str:
+    if not snapshot:
+        return ""
+    change_counts = dict(snapshot.get("selected_change_axes", {}) or {})
+    preservation_counts = dict(snapshot.get("selected_preservation_axes", {}) or {})
+    include_preservation = bool(snapshot.get("include_preservation_guidance", True))
+    lines = [
+        "Axis balancing policy:",
+        "The recent dataset is overusing very common axes, especially genre_style. Correct that bias when the evidence allows it.",
+        "Before choosing genre_style, explicitly check whether the transition is better expressed through vocals, texture_production, instrumentation, energy, rhythm, mood, speed, or lyrics_theme.",
+        "If an underused axis has clear evidence and can produce a natural faithful request, choose that axis instead of genre_style, even if genre/style tags also changed.",
+        "Use genre_style only when it is clearly the most faithful natural edit or when no underused axis is genuinely supported.",
+        "Do not fabricate axes: every selected change or preservation axis still needs clear source-target evidence.",
+        "For selected_change_axes, prefer one or two specific supported axes over a broad genre/style label.",
+        "",
+        "Recent selected change-axis usage:",
+        *_axis_guidance_usage_lines(change_counts),
+    ]
+    if include_preservation:
+        lines.extend(
+            [
+                "",
+                "Recent explicit preservation-axis usage:",
+                *_axis_guidance_usage_lines(preservation_counts),
+                "Preservation axes are overusing vocals. Do not list vocals merely because source and target are both vocal.",
+                "Before selecting vocals or speed as preservation, check for a more instruction-worthy preserved cue in genre_style, mood, texture_production, instrumentation, rhythm, energy, or lyrics_theme.",
+                "Prefer an underused preservation axis when it is clearly true and would sound natural. Use vocals/speed only when they are salient or no better preservation cue is supported.",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def _axis_guidance_snapshot(cfg: DictConfig) -> Dict[str, Any]:
+    if not _axis_guidance_enabled(cfg):
+        return {}
+    state = _load_axis_guidance_state(cfg)
+    section = getattr(cfg.stage, "axis_guidance", None)
+    state["include_preservation_guidance"] = bool(getattr(section, "include_preservation_guidance", True))
+    state["state_path"] = str(_axis_guidance_state_path(cfg))
+    return state
+
+
+def _update_axis_guidance_state(cfg: DictConfig, record: Dict[str, Any]) -> None:
+    if not _axis_guidance_enabled(cfg):
+        return
+    section = getattr(cfg.stage, "axis_guidance", None)
+    if not bool(getattr(section, "update_after_accept", True)):
+        return
+    path = _axis_guidance_state_path(cfg)
+    with _axis_guidance_lock(path):
+        state = _load_axis_guidance_state(cfg)
+        state["steps_written"] = int(state.get("steps_written", 0) or 0) + 1
+        for record_key, state_key in (
+            ("selected_change_axes", "selected_change_axes"),
+            ("selected_preservation_axes", "selected_preservation_axes"),
+        ):
+            counts = Counter({str(axis): int(count or 0) for axis, count in dict(state.get(state_key, {}) or {}).items()})
+            for axis in _normalize_axis_list(record.get(record_key, [])):
+                counts[axis] += 1
+            state[state_key] = dict(sorted(counts.items()))
+        _write_axis_guidance_state(path, state)
 
 
 def _log(cfg: DictConfig, message: str) -> None:
@@ -184,7 +355,80 @@ def _mark_claim_done(claim_path_raw: Any, *, status: str) -> None:
 
 
 def _payload_for_write(payload: Dict[str, Any]) -> Dict[str, Any]:
-    return {k: v for k, v in payload.items() if not str(k).startswith("_")}
+    return {k: v for k, v in payload.items() if not str(k).startswith("_") and k != "axis_guidance_context"}
+
+
+def _metadata_for_prompt(value: Any) -> Dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    keep = ("title", "artist_name", "vocals", "speed")
+    return {key: value.get(key) for key in keep if value.get(key) not in (None, "")}
+
+
+def _view_for_prompt(value: Any) -> Dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        "metadata": _metadata_for_prompt(value.get("metadata")),
+        "tags": list(value.get("tags", []) or []),
+        "caption": str(value.get("caption", "") or ""),
+        "lyrics": str(value.get("lyrics", "") or ""),
+        "lyrics_truncated": bool(value.get("lyrics_truncated", False)),
+    }
+
+
+def _delta_for_prompt(value: Any) -> Dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    keep = (
+        "tags_added",
+        "tags_removed",
+        "tags_preserved",
+        "source_vocals",
+        "target_vocals",
+        "source_speed",
+        "target_speed",
+    )
+    return {key: value.get(key) for key in keep if value.get(key) not in (None, "", [])}
+
+
+def _accumulated_intent_for_prompt(value: Any) -> Dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    out = dict(value)
+    out.pop("latest_caption", None)
+    metadata = out.get("metadata")
+    if isinstance(metadata, dict):
+        out["metadata"] = _metadata_for_prompt(metadata)
+    return out
+
+
+def _payload_for_prompt(payload: Dict[str, Any]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        "chain_id": payload.get("chain_id"),
+        "turn_index": payload.get("turn_index"),
+        "seed_clip_id": payload.get("seed_clip_id"),
+        "source_clip_id": payload.get("source_clip_id"),
+        "target_clip_id": payload.get("target_clip_id"),
+        "verbosity": payload.get("verbosity"),
+        "clause_budget": payload.get("clause_budget", {}),
+        "seed_view": _view_for_prompt(payload.get("seed_view")),
+        "previous_view": _view_for_prompt(payload.get("previous_view")),
+        "target_view": _view_for_prompt(payload.get("target_view")),
+        "delta_from_seed": _delta_for_prompt(payload.get("delta_from_seed")),
+        "delta_from_previous": _delta_for_prompt(payload.get("delta_from_previous")),
+        "persistent_constraints": payload.get("persistent_constraints", {}),
+        "new_constraints": payload.get("new_constraints", {}),
+        "removed_constraints": payload.get("removed_constraints", {}),
+        "caption_signal_mode": payload.get("caption_signal_mode"),
+        "caption_differences_fuzzy": payload.get("caption_differences_fuzzy", {}),
+        "lyric_differences_fuzzy": payload.get("lyric_differences_fuzzy", {}),
+        "history_reference_candidates": payload.get("history_reference_candidates", []),
+        "accumulated_intent_state": _accumulated_intent_for_prompt(payload.get("accumulated_intent_state")),
+    }
+    if payload.get("axis_guidance_context"):
+        out["axis_guidance_context"] = payload.get("axis_guidance_context")
+    return {key: value for key, value in out.items() if value not in (None, "", [], {})}
 
 
 def _step_record_name(chain_id: str, turn_index: int) -> str:
@@ -248,6 +492,43 @@ def _caption_text(row: Dict[str, str]) -> str:
 
 def _lyrics_text(row: Dict[str, str]) -> str:
     return str(row.get("normalized_lyrics", "") or row.get("lyrics", "") or "").strip()
+
+
+def _clip_text_for_prompt(text: str, max_chars: int) -> str:
+    value = str(text or "").strip()
+    if max_chars <= 0 or len(value) <= max_chars:
+        return value
+    clipped = value[:max_chars].rsplit(" ", 1)[0].strip()
+    return clipped or value[:max_chars].strip()
+
+
+def _lyrics_max_chars(cfg: DictConfig, key: str, default: int) -> int:
+    lyrics_cfg = getattr(cfg.stage, "lyrics", None)
+    if lyrics_cfg is None:
+        return default
+    raw = getattr(lyrics_cfg, key, default)
+    if raw in (None, ""):
+        return default
+    return max(0, int(raw))
+
+
+def _refresh_delta_lyrics_from_manifest(
+    delta: Dict[str, Any],
+    source_row: Dict[str, str],
+    target_row: Dict[str, str],
+    cfg: DictConfig,
+) -> Dict[str, Any]:
+    lyrics_cfg = getattr(cfg.stage, "lyrics", None)
+    refresh = True if lyrics_cfg is None else bool(getattr(lyrics_cfg, "refresh_delta_from_manifest", True))
+    if not refresh:
+        return delta
+    out = dict(delta)
+    source_lyrics = _lyrics_text(source_row)
+    target_lyrics = _lyrics_text(target_row)
+    if source_lyrics or target_lyrics:
+        out["source_lyrics"] = source_lyrics
+        out["target_lyrics"] = target_lyrics
+    return out
 
 
 def _metadata_view(row: Dict[str, str]) -> Dict[str, str]:
@@ -501,6 +782,60 @@ def _choose_verbosity(cfg: DictConfig, rng: random.Random) -> str:
     return "long"
 
 
+def _clause_budget_enabled(cfg: DictConfig) -> bool:
+    section = getattr(cfg.stage, "clause_budget", None)
+    if section is None:
+        return False
+    return bool(getattr(section, "enabled", False))
+
+
+def _sample_clause_count(cfg: DictConfig, rng: random.Random) -> int:
+    section = getattr(cfg.stage, "clause_budget", None)
+    weights = [
+        max(0.0, float(getattr(section, "zero_probability", 0.72))),
+        max(0.0, float(getattr(section, "one_probability", 0.22))),
+        max(0.0, float(getattr(section, "two_probability", 0.055))),
+        max(0.0, float(getattr(section, "three_probability", 0.005))),
+    ]
+    total = sum(weights)
+    if total <= 0:
+        return 0
+    pick = rng.random() * total
+    cumulative = 0.0
+    for count, weight in enumerate(weights):
+        cumulative += weight
+        if pick < cumulative:
+            return count
+    return len(weights) - 1
+
+
+def _choose_clause_budget(cfg: DictConfig, rng: random.Random) -> Dict[str, int]:
+    if not _clause_budget_enabled(cfg):
+        return {}
+    raw_change_count = _sample_clause_count(cfg, rng)
+    raw_preservation_count = _sample_clause_count(cfg, rng)
+    target_change_count = max(1, raw_change_count)
+    target_preservation_count = raw_preservation_count
+    max_total_clauses = max(1, int(getattr(cfg.stage.clause_budget, "max_total_clauses", 4) or 4))
+
+    while target_change_count + target_preservation_count > max_total_clauses:
+        if target_preservation_count > 0:
+            target_preservation_count -= 1
+        elif target_change_count > 1:
+            target_change_count -= 1
+        else:
+            break
+
+    return {
+        "raw_change_draw": raw_change_count,
+        "raw_preservation_draw": raw_preservation_count,
+        "target_change_axes": target_change_count,
+        "target_preservation_axes": target_preservation_count,
+        "target_total_clauses": target_change_count + target_preservation_count,
+        "max_total_clauses": max_total_clauses,
+    }
+
+
 def _build_step_payload(
     *,
     chain: Dict[str, Any],
@@ -523,7 +858,9 @@ def _build_step_payload(
     delta_from_previous = dict(step.get("structured_delta", {}) or {})
     if not delta_from_previous:
         delta_from_previous = _structured_delta(source_row, target_row)
+    delta_from_previous = _refresh_delta_lyrics_from_manifest(delta_from_previous, source_row, target_row, cfg)
     delta_from_seed = _structured_delta(seed_row, target_row)
+    delta_from_seed = _refresh_delta_lyrics_from_manifest(delta_from_seed, seed_row, target_row, cfg)
 
     prev_persistent, prev_new, prev_removed = _delta_semantic_buckets(delta_from_previous)
     seed_persistent, seed_new, seed_removed = _delta_semantic_buckets(delta_from_seed)
@@ -531,14 +868,22 @@ def _build_step_payload(
     source_caption = str(delta_from_previous.get("source_caption", _caption_text(source_row)) or "")
     target_caption = str(delta_from_previous.get("target_caption", _caption_text(target_row)) or "")
     seed_caption = _caption_text(seed_row)
-    source_lyrics = str(delta_from_previous.get("source_lyrics", _lyrics_text(source_row)) or "")
-    target_lyrics = str(delta_from_previous.get("target_lyrics", _lyrics_text(target_row)) or "")
-    seed_lyrics = _lyrics_text(seed_row)
+    source_lyrics_full = str(delta_from_previous.get("source_lyrics", _lyrics_text(source_row)) or "")
+    target_lyrics_full = str(delta_from_previous.get("target_lyrics", _lyrics_text(target_row)) or "")
+    seed_lyrics_full = _lyrics_text(seed_row)
+    lyric_diff_limit = _lyrics_max_chars(cfg, "max_chars_for_diff", 2400)
+    lyric_view_limit = _lyrics_max_chars(cfg, "max_chars_per_view", 1800)
+    source_lyrics_for_diff = _clip_text_for_prompt(source_lyrics_full, lyric_diff_limit)
+    target_lyrics_for_diff = _clip_text_for_prompt(target_lyrics_full, lyric_diff_limit)
+    seed_lyrics_for_diff = _clip_text_for_prompt(seed_lyrics_full, lyric_diff_limit)
+    source_lyrics_view = _clip_text_for_prompt(source_lyrics_full, lyric_view_limit)
+    target_lyrics_view = _clip_text_for_prompt(target_lyrics_full, lyric_view_limit)
+    seed_lyrics_view = _clip_text_for_prompt(seed_lyrics_full, lyric_view_limit)
 
     caption_fuzzy_previous = _caption_differences_fuzzy(source_caption, target_caption, cfg)
     caption_fuzzy_seed = _caption_differences_fuzzy(seed_caption, target_caption, cfg)
-    lyric_fuzzy_previous = _lyrics_differences_fuzzy(source_lyrics, target_lyrics, cfg)
-    lyric_fuzzy_seed = _lyrics_differences_fuzzy(seed_lyrics, target_lyrics, cfg)
+    lyric_fuzzy_previous = _lyrics_differences_fuzzy(source_lyrics_for_diff, target_lyrics_for_diff, cfg)
+    lyric_fuzzy_seed = _lyrics_differences_fuzzy(seed_lyrics_for_diff, target_lyrics_for_diff, cfg)
     same_tags_now = sorted(delta_from_previous.get("tags_added", [])) == [] and sorted(delta_from_previous.get("tags_removed", [])) == []
     caption_fuzzy_previous["same_tags_caption_shift"] = bool(same_tags_now)
     caption_fuzzy_seed["same_tags_caption_shift"] = bool(
@@ -560,8 +905,8 @@ def _build_step_payload(
 
     caption_raw_seed = _caption_differences_raw(seed_caption, target_caption)
     caption_raw_previous = _caption_differences_raw(source_caption, target_caption)
-    lyric_raw_seed = _lyrics_differences_raw(seed_lyrics, target_lyrics)
-    lyric_raw_previous = _lyrics_differences_raw(source_lyrics, target_lyrics)
+    lyric_raw_seed = _lyrics_differences_raw(seed_lyrics_for_diff, target_lyrics_for_diff)
+    lyric_raw_previous = _lyrics_differences_raw(source_lyrics_for_diff, target_lyrics_for_diff)
     active_fuzzy, active_raw = _apply_caption_signal_mode(
         cfg=cfg,
         caption_fuzzy_seed=caption_fuzzy_seed,
@@ -569,6 +914,12 @@ def _build_step_payload(
         caption_raw_seed=caption_raw_seed,
         caption_raw_previous=caption_raw_previous,
     )
+    payload_delta_from_previous = dict(delta_from_previous)
+    payload_delta_from_seed = dict(delta_from_seed)
+    payload_delta_from_previous["source_lyrics"] = source_lyrics_for_diff
+    payload_delta_from_previous["target_lyrics"] = target_lyrics_for_diff
+    payload_delta_from_seed["source_lyrics"] = seed_lyrics_for_diff
+    payload_delta_from_seed["target_lyrics"] = target_lyrics_for_diff
 
     return {
         "chain_id": str(chain.get("chain_id", "") or ""),
@@ -582,26 +933,30 @@ def _build_step_payload(
         "hardness": str(step.get("hardness", "") or ""),
         "transition_score": float(step.get("transition_score", 0.0) or 0.0),
         "verbosity": _choose_verbosity(cfg, rng),
+        "clause_budget": _choose_clause_budget(cfg, rng),
         "seed_view": {
             "metadata": _metadata_view(seed_row),
             "tags": _tag_set(seed_row),
             "caption": seed_caption,
-            "lyrics": seed_lyrics,
+            "lyrics": seed_lyrics_view,
+            "lyrics_truncated": len(seed_lyrics_full) > len(seed_lyrics_view),
         },
         "previous_view": {
             "metadata": _metadata_view(source_row),
             "tags": _tag_set(source_row),
             "caption": source_caption,
-            "lyrics": source_lyrics,
+            "lyrics": source_lyrics_view,
+            "lyrics_truncated": len(source_lyrics_full) > len(source_lyrics_view),
         },
         "target_view": {
             "metadata": _metadata_view(target_row),
             "tags": _tag_set(target_row),
             "caption": target_caption,
-            "lyrics": target_lyrics,
+            "lyrics": target_lyrics_view,
+            "lyrics_truncated": len(target_lyrics_full) > len(target_lyrics_view),
         },
-        "delta_from_seed": delta_from_seed,
-        "delta_from_previous": delta_from_previous,
+        "delta_from_seed": payload_delta_from_seed,
+        "delta_from_previous": payload_delta_from_previous,
         "persistent_constraints": {
             "from_seed": seed_persistent,
             "from_previous": prev_persistent,
@@ -632,7 +987,7 @@ def _build_step_payload(
 
 def _prompt_header() -> str:
     return (
-        "You are generating concise, colloquial edit commands for compositional music retrieval.\n"
+        "You are generating concise, colloquial edit commands for composed music retrieval.\n"
         "Return exactly one JSON object and nothing else.\n"
         "Do not wrap the JSON in markdown fences.\n"
         "Do not add explanations, notes, or extra keys."
@@ -644,46 +999,49 @@ def _shared_generation_rules() -> str:
         "Shared rules for both instructions:\n"
         "SEMANTIC DELTA EXTRACTION:\n"
         "1. Fill `semantic_delta_full` exhaustively before writing either instruction.\n"
-        "2. `semantic_delta_full.preserved`: list every source quality that should still hold in the target, from tags, vocals, speed, captions, and lyrics when supported.\n"
+        "2. `semantic_delta_full.preserved`: list every source quality that should still hold in the target, using tags and discrete metadata as firm constraints while also incorporating supported caption and lyric semantics.\n"
         "3. `semantic_delta_full.new`: list every new target quality that was absent from the source.\n"
         "4. `semantic_delta_full.lost`: list every source quality that should no longer hold.\n"
         "5. `semantic_delta_full.primary_edit`: one sentence describing the dominant semantic change.\n"
-        "6. `semantic_delta_full.caption_only_change`: true only when tags, vocals, and speed do not explain the turn but the captions still shift meaningfully.\n"
+        "6. `semantic_delta_full.caption_only_change`: true only when tags, vocals, and speed do not explain the turn but captions and/or lyrics still shift meaningfully.\n"
         "7. Fill `semantic_delta_verbalized` as the subset of the full semantic delta that both instruction variants are actually allowed to request.\n"
         "8. `semantic_delta_verbalized` must be a subset of `semantic_delta_full`.\n"
         "9. Both instruction variants should verbalize the same requested semantic subset; only the history dependence should differ.\n\n"
         "INSTRUCTION VERBALIZATION:\n"
         "10. Instructions must be faithful to `semantic_delta_full`, but they do NOT need to mention every item.\n"
         "11. Instructions should express the requested content in `semantic_delta_verbalized` and should not silently require extra hidden changes from the full delta.\n"
-        "12. Short: verbalize one salient genuine change from `semantic_delta_verbalized.new` or `semantic_delta_verbalized.lost`.\n"
-        "13. Medium: verbalize one salient change plus one preservation cue from `semantic_delta_verbalized.preserved` when available.\n"
-        "14. Long: verbalize at most two salient changes or one change with one preservation cue. Stay compact.\n"
-        "15. Caption-only turns must surface caption- and/or lyric-derived content such as mood, texture, energy, atmosphere, narrative cues, or emotional register.\n"
-        "16. Keep the language colloquial, natural, varied, and concise.\n"
-        "17. Write as an imperative edit command, not as a first-person wish.\n"
-        "18. Do not start with or include frames like 'I want', 'I'd like', 'I would like', 'can you', 'please', or 'could you'.\n"
-        "19. Use direct phrasing such as 'make it more dreamy', 'less energy', 'keep the beat but soften it', or 'push it toward electropop'.\n"
-        "20. Write like a real person giving a quick edit request in everyday language, not like an annotator, rubric, or metadata template.\n"
-        "21. Avoid stiff, overly formal, robotic, or benchmark-style wording.\n"
-        "22. Do not sound like you are listing attributes from a schema.\n"
-        "23. Short fragments are allowed when they are natural, e.g. 'less frantic', 'more acoustic', or 'brighter vocals'.\n"
-        "24. The result should read like a believable human edit command first, while still staying faithful to the payload.\n"
-        "25. Do not invent unsupported metadata or contradict preserved constraints.\n"
-        "26. Do not mention JSON, metadata fields, or the dataset.\n"
-        "27. Prefer terse, to-the-point requests over long explanations.\n"
-        "28. Rephrase caption wording instead of copying it verbatim whenever possible.\n"
-        "29. Use synonyms, reformulations, and natural user language rather than echoing source captions.\n"
-        "30. Avoid formulaic rewrite templates such as 'keep X but make it more Y', 'take away X and add Y', or 'make it sound like' when a fresher, shorter phrasing would say the same thing.\n"
-        "31. Vary sentence openings and verbs across examples; do not default to repeatedly starting with 'keep', 'make', 'take', 'swap', or 'bring back'.\n"
-        "32. Prefer the way a person would casually describe the change in one shot, not a mechanical before/after decomposition.\n"
-        "33. If the draft sounds like an annotation, checklist, caption rewrite, or first-person preference, silently rewrite it into a concise edit command before returning it.\n"
-        "34. Aim for roughly 3-8 words for short, 5-12 words for medium, and 8-18 words for long.\n"
-        "35. Good requests often have a little voice or texture, for example: 'lean dreamier', 'softer corporate feel', 'lose the glitchiness', or 'more electropop, less new wave'.\n"
+        # "12. Short: verbalize one salient genuine change from `semantic_delta_verbalized.new` or `semantic_delta_verbalized.lost`.\n"
+        # "13. Medium: verbalize one salient change plus one preservation cue from `semantic_delta_verbalized.preserved` when available.\n"
+        # "14. Long: verbalize at most two salient changes or one change with one preservation cue. Stay compact.\n"
+        "15. Use both metadata and captions when they are informative, but treat tags and discrete metadata as firm evidence that must not be ignored or contradicted.\n"
+        "16. Captions and lyrics may add nuance, mood, texture, or phrasing beyond the tags; they should enrich the request, not override clear tag or metadata evidence.\n"
+        "17. Caption-only turns must surface caption- and/or lyric-derived content such as mood, texture, energy, atmosphere, narrative cues, or emotional register.\n"
+        "18. Keep the language colloquial, natural, varied, and concise.\n"
+        "19. Write as an imperative edit command, not as a first-person wish.\n"
+        "20. Do not start with or include frames like 'I want', 'I'd like', 'I would like', 'can you', 'please', or 'could you'.\n"
+        "21. Use direct phrasing such as 'make it more dreamy', 'less energy', 'keep the beat but soften it', or 'push it toward electropop'.\n"
+        "22. Write like a real person giving a quick edit request in everyday language, not like an annotator, rubric, or metadata template.\n"
+        "23. Avoid stiff, overly formal, robotic, or benchmark-style wording.\n"
+        "24. Do not sound like you are listing attributes from a schema.\n"
+        "25. Short fragments are allowed when they are natural, e.g. 'less frantic', 'more acoustic', or 'brighter vocals'.\n"
+        "26. The result should read like a believable human edit command first, while still staying faithful to the payload.\n"
+        "27. Do not invent unsupported metadata or contradict preserved constraints.\n"
+        "28. Do not mention JSON, metadata fields, or the dataset.\n"
+        "29. Prefer terse, to-the-point requests over long explanations.\n"
+        "30. Rephrase caption wording instead of copying it verbatim whenever possible.\n"
+        "31. Use synonyms, reformulations, and natural user language rather than echoing source captions.\n"
+        "32. Avoid formulaic rewrite templates such as 'keep X but make it more Y', 'take away X and add Y', or 'make it sound like' when a fresher, shorter phrasing would say the same thing.\n"
+        "33. Vary sentence openings and verbs across examples; do not default to repeatedly starting with 'keep', 'make', 'take', 'swap', or 'bring back'.\n"
+        "34. Prefer the way a person would casually describe the change in one shot, not a mechanical before/after decomposition.\n"
+        "35. If the draft sounds like an annotation, checklist, caption rewrite, or first-person preference, silently rewrite it into a concise edit command before returning it.\n"
+        "36. Aim for roughly 2-7 words for short, 4-10 words for medium, and 6-14 words for long.\n"
+        "37. Good requests often have a little voice or texture, for example: 'lean dreamier', 'softer corporate feel', 'lose the glitchiness', or 'more electropop, less new wave'.\n"
         "36. Bad requests sound wordy, templated, literal, or first-person, for example: 'I want more electropop', 'remove glitch and add piano', 'keep inspirational and add corporate', or 'change the dreamy Indian fusion to a confusing techno beat'."
     )
 
 
 def _history_unaware_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]:
+    prompt_payload = _payload_for_prompt(payload)
     user_content = (
         f"{_prompt_header()}\n\n"
         "Task:\n"
@@ -695,11 +1053,11 @@ def _history_unaware_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]:
         "1. Anchor the edit relative to the seed state.\n"
         "2. Reflect all required changes from seed to target.\n"
         "3. Preserve all seed-to-target constraints that still hold.\n"
-        "4. Always use caption and lyric evidence from the payload when available.\n"
+        "4. Use caption and lyric evidence from the payload when available.\n"
         "5. The instruction should be solvable from the seed plus this request alone.\n\n"
         "Output format:\n"
         '{"history_unaware_instruction": "<text>"}\n\n'
-        f"Payload:\n{json.dumps(payload, ensure_ascii=True, indent=2)}"
+        f"Payload:\n{json.dumps(prompt_payload, ensure_ascii=True, indent=2)}"
     )
     return [
         {"role": "system", "content": "You follow formatting rules exactly and produce faithful, natural retrieval instructions."},
@@ -708,6 +1066,7 @@ def _history_unaware_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]:
 
 
 def _history_aware_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]:
+    prompt_payload = _payload_for_prompt(payload)
     user_content = (
         f"{_prompt_header()}\n\n"
         "Task:\n"
@@ -721,10 +1080,10 @@ def _history_aware_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]:
         "3. If an earlier turn provides a useful preserved vibe, attribute, or caption cue, consider weaving it in.\n"
         "4. Do not collapse into a generic previous-step edit if the payload supports broader history use.\n"
         "5. Still cover the full current-step semantics, not just the referenced callback.\n"
-        "6. Always use caption and lyric evidence from the payload when available.\n\n"
+        "6. Use caption and lyric evidence from the payload when available.\n\n"
         "Output format:\n"
         '{"history_aware_instruction": "<text>"}\n\n'
-        f"Payload:\n{json.dumps(payload, ensure_ascii=True, indent=2)}"
+        f"Payload:\n{json.dumps(prompt_payload, ensure_ascii=True, indent=2)}"
     )
     return [
         {"role": "system", "content": "You produce faithful history-aware retrieval instructions and follow JSON output constraints exactly."},
@@ -733,7 +1092,10 @@ def _history_aware_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]:
 
 
 def _combined_generation_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]:
+    prompt_payload = _payload_for_prompt(payload)
     axis_menu = ", ".join(_INSTRUCTION_AXES)
+    axis_guidance = _axis_guidance_prompt_block(dict(payload.get("axis_guidance_context", {}) or {}))
+    axis_guidance_section = f"{axis_guidance}\n\n" if axis_guidance else ""
     user_content = (
         f"{_prompt_header()}\n\n"
         "Task:\n"
@@ -764,9 +1126,21 @@ def _combined_generation_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]
         f"1. Choose `selected_change_axes` from this menu only: {axis_menu}.\n"
         "2. Choose the axis or axes that make the most salient, natural user request for this specific transition.\n"
         "3. `semantic_delta_verbalized.new` and `semantic_delta_verbalized.lost` should match the selected change axes.\n"
-        "4. If the instruction preserves something explicitly, list its axis in `selected_preservation_axes`; otherwise use an empty list.\n"
-        "5. Axis labels are for metadata only. Do not make the instruction sound like a taxonomy, checklist, or schema.\n"
-        "6. Prefer musically meaningful axes over incidental geography, artist, year, or noisy tags.\n\n"
+        "4. `persistent_constraints` are truth constraints, not automatic preservation requests.\n"
+        "5. Only list an axis in `selected_preservation_axes` if the instruction explicitly preserves an instruction-worthy quality.\n"
+        "6. Do not list vocals or speed as preservation just because the metadata stayed equal; use them only when that preservation is musically salient in the instruction.\n"
+        "7. If another true preservation cue exists in style, mood, texture/production, instrumentation, rhythm, energy, or lyrics, prefer that over defaulting to vocals.\n"
+        "8. If the instruction has no explicit preservation clause, use an empty `selected_preservation_axes` list.\n"
+        "9. Axis labels are for metadata only. Do not make the instruction sound like a taxonomy, checklist, or schema.\n"
+        "10. Prefer musically meaningful axes over incidental geography, artist, year, or noisy tags.\n\n"
+        "Clause budget:\n"
+        "1. Follow `clause_budget.target_change_axes` and `clause_budget.target_preservation_axes` when faithful evidence supports them.\n"
+        "2. These are target counts, not licenses to invent content: use fewer clauses if the source-target delta does not support the full budget naturally.\n"
+        "3. Every instruction must include at least one genuine change clause.\n"
+        "4. Never exceed `clause_budget.max_total_clauses` total change plus preservation clauses.\n"
+        "5. Count distinct selected axes as clauses; keep each clause terse.\n"
+        "6. One-clause instructions should be the default feel. Three-clause instructions should be rare, and four-clause instructions exceptional.\n\n"
+        f"{axis_guidance_section}"
         "Style target:\n"
         "1. Sound like a real user giving an edit command to a retrieval system.\n"
         "2. Be crisp, direct, and imperative; prefer fragments when they sound natural.\n"
@@ -774,11 +1148,11 @@ def _combined_generation_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]
         "4. Do not use assistant-request frames like 'can you', 'could you', or 'please'.\n"
         "5. Short natural fragments are fine, such as 'less energy', 'more acoustic', or 'darker and slower'.\n"
         "6. Avoid long multi-clause restatements; even long examples should feel like a compact edit note.\n"
-        "7. When the captions mention a concept directly, try to paraphrase it rather than repeat the exact phrase.\n"
+        "7. Mix tag-grounded and caption-grounded wording naturally when both help, but never let caption phrasing contradict clear tags or discrete metadata.\n"
         "8. Prefer compact, natural edits over verbose explanations, but avoid falling into canned sentence templates.\n"
         "9. Use colloquial, everyday phrasing a real human would naturally type as an edit.\n"
         "10. Avoid sounding like a taxonomy, checklist, or metadata summary.\n"
-        "11. If there is a choice, prefer the more human-sounding phrasing over the more literal caption wording.\n"
+        "11. If there is a choice, prefer the shorter human-sounding phrasing while preserving any clear tag- or metadata-grounded facts.\n"
         "12. Do not reuse the same sentence skeleton across examples; aim for phrasing variety.\n"
         "13. Favor requests that feel spoken or typed by a listener, not generated from attribute diffs.\n"
         "14. A slightly idiomatic, conversational command is better than a perfectly literal restatement.\n\n"
@@ -802,10 +1176,10 @@ def _combined_generation_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]
         "5. Each instruction value must be a single string.\n"
         "6. Do not leave any required field empty.\n\n"
         "Length guidance by verbosity:\n"
-        "1. short: roughly 3-8 words, often a fragment.\n"
-        "2. medium: roughly 5-12 words, one compact edit command.\n"
-        "3. long: roughly 8-18 words, at most one extra preservation or refinement clause.\n\n"
-        f"Payload:\n{json.dumps(payload, ensure_ascii=True, indent=2)}"
+        "1. short: roughly 2-7 words, often a fragment.\n"
+        "2. medium: roughly 4-10 words, one compact edit command.\n"
+        "3. long: roughly 6-14 words, still compressed even when the clause budget is larger.\n\n"
+        f"Payload:\n{json.dumps(prompt_payload, ensure_ascii=True, indent=2)}"
     )
     return [
         {
@@ -816,7 +1190,34 @@ def _combined_generation_prompt(payload: Dict[str, Any]) -> List[Dict[str, str]]
     ]
 
 
+def _render_instruction_prompt(messages: Sequence[Dict[str, str]]) -> str:
+    chunks: List[str] = []
+    for message in messages:
+        role = str(message.get("role", "") or "").strip().upper() or "MESSAGE"
+        content = str(message.get("content", "") or "")
+        chunks.append(f"{role}:\n{content}")
+    return "\n\n".join(chunks) + "\n"
+
+
+def _instruction_prompt_path(cfg: DictConfig, rendered_prompt: str) -> Path:
+    run_name = Path(str(cfg.runtime.run_name)).name
+    prompt_hash = hashlib.sha256(rendered_prompt.encode("utf-8")).hexdigest()
+    return Path(str(cfg.stage.io.output_dir)) / f"{run_name}_{prompt_hash}.prompt"
+
+
+def _write_instruction_prompt_if_absent(cfg: DictConfig, messages: Sequence[Dict[str, str]]) -> Path:
+    rendered_prompt = _render_instruction_prompt(messages)
+    path = _instruction_prompt_path(cfg, rendered_prompt)
+    try:
+        with path.open("x", encoding="utf-8") as f:
+            f.write(rendered_prompt)
+    except FileExistsError:
+        pass
+    return path
+
+
 def _verification_prompt(payload: Dict[str, Any], generated: Dict[str, str]) -> List[Dict[str, str]]:
+    prompt_payload = _payload_for_prompt(payload)
     user_content = (
         f"{_prompt_header()}\n\n"
         "Task:\n"
@@ -838,7 +1239,7 @@ def _verification_prompt(payload: Dict[str, Any], generated: Dict[str, str]) -> 
         '   FAIL label: "failed:history_incoherent"\n'
         "7. For caption-only turns: FAIL if the instruction uses only generic tag language with no caption-derived content.\n"
         '   FAIL label: "failed:caption_only_verbalization_missing"\n'
-        f"Payload:\n{json.dumps(payload, ensure_ascii=True, indent=2)}\n\n"
+        f"Payload:\n{json.dumps(prompt_payload, ensure_ascii=True, indent=2)}\n\n"
         f"Generated:\n{json.dumps(generated, ensure_ascii=True, indent=2)}"
     )
     return [
@@ -986,10 +1387,27 @@ def _resolve_torch_dtype(cfg: DictConfig, torch_module: Any) -> Any:
 
 
 def _build_generator(cfg: DictConfig) -> Any:
-    backend = str(getattr(cfg.stage.runtime, "backend", "transformers"))
+    model_id = str(cfg.stage.models.model_id)
+    resolved = resolve_backend_name(
+        configured_backend=str(getattr(cfg.stage.runtime, "backend", "transformers")),
+        model_id=model_id,
+        model_params_b=getattr(cfg.stage.models, "params_b", None),
+        allow_sglang=bool(getattr(cfg.stage.runtime, "auto_allow_sglang", False)),
+    )
+    backend = str(resolved["backend"])
+    if str(getattr(cfg.stage.runtime, "backend", "transformers")) == "auto":
+        _log(
+            cfg,
+            "Auto-selected LLM backend "
+            f"{backend} ({resolved.get('reason', 'unknown')}; GPUs={resolved.get('gpu_names', [])})",
+        )
     if backend == "vllm_local":
         return _build_vllm_local_generator(cfg)
-    if backend != "transformers":
+    if backend == "vllm":
+        return _build_vllm_generator(cfg, resolved)
+    if backend == "sglang_local":
+        return _build_sglang_local_generator(cfg)
+    if backend not in {"transformers", "transformers_bnb"}:
         raise ValueError(f"Unsupported stage.runtime.backend: {backend}")
 
     runtime = _resolve_torch_device(cfg)
@@ -999,17 +1417,76 @@ def _build_generator(cfg: DictConfig) -> Any:
     token = os.environ.get(token_env, "").strip() or None
     if token is None:
         _log(cfg, f"No Hugging Face token found in ${token_env}; gated model downloads may fail.")
-    model_id = str(cfg.stage.models.model_id)
     dtype = _resolve_torch_dtype(cfg, torch)
-    _log(cfg, f"Loading instruction model {model_id} on {device}")
+    quantization = "nf4" if backend == "transformers_bnb" else None
+    _log(cfg, f"Loading instruction model {model_id} on {device} with backend={backend}")
     processor, model, model_family = load_chat_processor_and_model(
         model_id=model_id,
         token=token,
         torch_dtype=dtype,
         device=device,
         model_family=str(getattr(cfg.stage.runtime, "llm_model_family", "auto")),
+        quantization=quantization,
     )
     return SimpleNamespace(model=model, processor=processor, torch=torch, device=device, backend=backend, model_family=model_family)
+
+
+def _build_vllm_generator(cfg: DictConfig, resolved: Dict[str, Any] | None = None) -> Any:
+    model_id = str(cfg.stage.models.model_id)
+    resolved = resolved or {}
+    tensor_parallel_size = int(getattr(cfg.stage.runtime, "vllm_tensor_parallel_size", 0) or 0)
+    if tensor_parallel_size <= 0:
+        tensor_parallel_size = int(resolved.get("tensor_parallel_size", 1) or 1)
+    dtype = str(getattr(cfg.stage.runtime, "vllm_dtype", "auto"))
+    quantization = getattr(cfg.stage.runtime, "vllm_quantization", None)
+    if quantization is None:
+        quantization = resolved.get("quantization")
+    kv_cache_dtype = str(getattr(cfg.stage.runtime, "vllm_kv_cache_dtype", resolved.get("kv_cache_dtype", "auto")))
+    tokenizer_mode = getattr(cfg.stage.runtime, "vllm_tokenizer_mode", None)
+    max_num_batched_tokens = int(getattr(cfg.stage.runtime, "vllm_max_num_batched_tokens", 0) or 0)
+    max_num_seqs = int(getattr(cfg.stage.runtime, "vllm_max_num_seqs", 0) or 0)
+    enable_prefix_caching = getattr(cfg.stage.runtime, "vllm_enable_prefix_caching", None)
+    additional_config: Dict[str, Any] = {}
+    gdn_prefill_backend = str(getattr(cfg.stage.runtime, "vllm_gdn_prefill_backend", "") or "").strip()
+    if gdn_prefill_backend:
+        additional_config["gdn_prefill_backend"] = gdn_prefill_backend
+    _log(
+        cfg,
+        f"Loading offline vLLM instruction model {model_id} "
+        f"(tp={tensor_parallel_size}, dtype={dtype}, quantization={quantization}, kv_cache_dtype={kv_cache_dtype}, "
+        f"max_num_batched_tokens={max_num_batched_tokens or 'auto'}, max_num_seqs={max_num_seqs or 'auto'}, "
+        f"prefix_caching={enable_prefix_caching})",
+    )
+    return build_vllm_offline_chat_model(
+        model_id=model_id,
+        tensor_parallel_size=tensor_parallel_size,
+        dtype=dtype,
+        quantization=quantization,
+        kv_cache_dtype=kv_cache_dtype,
+        gpu_memory_utilization=float(getattr(cfg.stage.runtime, "vllm_gpu_memory_utilization", 0.9)),
+        max_model_len=int(getattr(cfg.stage.runtime, "vllm_max_model_len", 0) or 0),
+        trust_remote_code=bool(getattr(cfg.stage.runtime, "vllm_trust_remote_code", False)),
+        enforce_eager=bool(getattr(cfg.stage.runtime, "vllm_enforce_eager", False)),
+        tokenizer_mode=tokenizer_mode,
+        max_num_batched_tokens=max_num_batched_tokens,
+        max_num_seqs=max_num_seqs,
+        enable_prefix_caching=enable_prefix_caching,
+        additional_config=additional_config or None,
+    )
+
+
+def _build_sglang_local_generator(cfg: DictConfig) -> Any:
+    from jamendo_instruct.llm_backends import build_openai_chat_client
+
+    model_id = str(cfg.stage.models.model_id)
+    _log(cfg, f"Using OpenAI-compatible SGLang instruction backend {model_id}")
+    return build_openai_chat_client(
+        model_id=model_id,
+        host=str(getattr(cfg.stage.runtime, "sglang_host", getattr(cfg.stage.runtime, "vllm_host", "127.0.0.1"))),
+        port=int(getattr(cfg.stage.runtime, "sglang_port", getattr(cfg.stage.runtime, "vllm_port", 8000))),
+        api_key=str(getattr(cfg.stage.runtime, "sglang_api_key", getattr(cfg.stage.runtime, "vllm_api_key", "EMPTY"))),
+        backend="sglang_local",
+    )
 
 
 def _build_vllm_local_generator(cfg: DictConfig) -> Any:
@@ -1031,12 +1508,18 @@ def _build_vllm_local_generator(cfg: DictConfig) -> Any:
     port = int(getattr(cfg.stage.runtime, "vllm_port", 8000))
     api_key = str(getattr(cfg.stage.runtime, "vllm_api_key", "EMPTY"))
     tensor_parallel_size = int(getattr(cfg.stage.runtime, "vllm_tensor_parallel_size", 1))
+    if tensor_parallel_size <= 0:
+        tensor_parallel_size = max(1, int(get_visible_gpu_info().count or 1))
     quantization = getattr(cfg.stage.runtime, "vllm_quantization", None)
     dtype = getattr(cfg.stage.runtime, "vllm_dtype", "auto")
     trust_remote_code = bool(getattr(cfg.stage.runtime, "vllm_trust_remote_code", False))
     enforce_eager = bool(getattr(cfg.stage.runtime, "vllm_enforce_eager", False))
     gpu_mem_util = float(getattr(cfg.stage.runtime, "vllm_gpu_memory_utilization", 0.9))
     max_model_len = int(getattr(cfg.stage.runtime, "vllm_max_model_len", 32768))
+    tokenizer_mode = getattr(cfg.stage.runtime, "vllm_tokenizer_mode", None)
+    max_num_batched_tokens = int(getattr(cfg.stage.runtime, "vllm_max_num_batched_tokens", 0) or 0)
+    max_num_seqs = int(getattr(cfg.stage.runtime, "vllm_max_num_seqs", 0) or 0)
+    enable_prefix_caching = getattr(cfg.stage.runtime, "vllm_enable_prefix_caching", None)
     health_timeout_sec = int(getattr(cfg.stage.runtime, "vllm_health_timeout_sec", 300))
     base_url = f"http://{host}:{port}"
     env = os.environ.copy()
@@ -1107,7 +1590,15 @@ def _build_vllm_local_generator(cfg: DictConfig) -> Any:
             cmd.extend(["--quantization", str(quantization).strip()])
         if enforce_eager:
             cmd.append("--enforce-eager")
-        append_vllm_common_args(cmd, dtype=str(dtype), trust_remote_code=trust_remote_code)
+        append_vllm_common_args(
+            cmd,
+            dtype=str(dtype),
+            trust_remote_code=trust_remote_code,
+            tokenizer_mode=tokenizer_mode,
+            max_num_batched_tokens=max_num_batched_tokens,
+            max_num_seqs=max_num_seqs,
+            enable_prefix_caching=enable_prefix_caching,
+        )
         _log(
             cfg,
             f"Starting local vLLM server for {model_id} at {base_url} "
@@ -1190,13 +1681,23 @@ def _build_vllm_local_generator(cfg: DictConfig) -> Any:
 
 
 def _decode_response_text(ctx: Any, messages: List[Dict[str, str]], cfg: DictConfig, *, max_new_tokens: int, temperature: float, top_p: float) -> str:
-    if str(getattr(ctx, "backend", "transformers")) == "vllm_local":
+    backend = str(getattr(ctx, "backend", "transformers"))
+    if backend in OPENAI_COMPAT_BACKENDS:
         return decode_openai_chat_completion(
             ctx,
             messages=messages,
             max_tokens=int(max_new_tokens),
             temperature=float(temperature),
             top_p=float(top_p),
+        )
+    if backend == "vllm":
+        return decode_vllm_chat_completion(
+            ctx,
+            messages=messages,
+            max_tokens=int(max_new_tokens),
+            temperature=float(temperature),
+            top_p=float(top_p),
+            enable_thinking=bool(getattr(cfg.stage.runtime, "enable_thinking", False)),
         )
 
     processor = ctx.processor
@@ -1234,7 +1735,8 @@ def _decode_response_text_batch(
     temperature: float,
     top_p: float,
 ) -> List[str]:
-    if str(getattr(ctx, "backend", "transformers")) == "vllm_local":
+    backend = str(getattr(ctx, "backend", "transformers"))
+    if backend in OPENAI_COMPAT_BACKENDS:
         return [
             _decode_response_text(
                 ctx,
@@ -1246,6 +1748,15 @@ def _decode_response_text_batch(
             )
             for messages in messages_batch
         ]
+    if backend == "vllm":
+        return decode_vllm_chat_completions(
+            ctx,
+            messages_batch=messages_batch,
+            max_tokens=int(max_new_tokens),
+            temperature=float(temperature),
+            top_p=float(top_p),
+            enable_thinking=bool(getattr(cfg.stage.runtime, "enable_thinking", False)),
+        )
 
     processor = ctx.processor
     model = ctx.model
@@ -1318,7 +1829,7 @@ _NON_IMPERATIVE_FRAME_RE = re.compile(
 
 def _instruction_style_errors(generated: Dict[str, Any], *, verbosity: str = "") -> Dict[str, str]:
     errors: Dict[str, str] = {}
-    max_words_by_verbosity = {"short": 14, "medium": 20, "long": 28}
+    max_words_by_verbosity = {"short": 10, "medium": 14, "long": 20}
     max_words = max_words_by_verbosity.get(str(verbosity or "").strip().lower())
     for key in ("history_unaware_instruction", "history_aware_instruction"):
         value = str(generated.get(key, "") or "").strip()
@@ -1332,8 +1843,19 @@ def _instruction_style_errors(generated: Dict[str, Any], *, verbosity: str = "")
     return errors
 
 
+def _required_generated_field_errors(generated: Dict[str, Any]) -> Dict[str, str]:
+    errors: Dict[str, str] = {}
+    for key in ("history_unaware_instruction", "history_aware_instruction"):
+        if not str(generated.get(key, "") or "").strip():
+            errors[key.replace("_instruction", "")] = "missing_instruction"
+    if not list(generated.get("selected_change_axes", []) or []):
+        errors["selected_change_axes"] = "missing_change_axis"
+    return errors
+
+
 def _generate_instruction_pair(ctx: Any, cfg: DictConfig, payload: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, str]]:
     messages = _combined_generation_prompt(payload)
+    _write_instruction_prompt_if_absent(cfg, messages)
     retries = max(1, int(cfg.stage.behavior.strict_json_retry_attempts))
     last_error = ""
     for attempt in range(retries):
@@ -1390,11 +1912,7 @@ def _generate_instruction_pair(ctx: Any, cfg: DictConfig, payload: Dict[str, Any
                 "history_unaware_instruction": str(parsed.get("history_unaware_instruction", "") or "").strip(),
                 "history_aware_instruction": str(parsed.get("history_aware_instruction", "") or "").strip(),
             }
-            errors = {
-                key.replace("_instruction", ""): "missing_instruction"
-                for key, value in generated.items()
-                if not value
-            }
+            errors = _required_generated_field_errors(generated)
             if errors:
                 raise ValueError(f"Missing required instructions: {sorted(errors)}")
             style_errors = _instruction_style_errors(generated, verbosity=str(payload.get("verbosity", "") or ""))
@@ -1412,7 +1930,8 @@ def _generate_instruction_pair(ctx: Any, cfg: DictConfig, payload: Dict[str, Any
             _log(
                 cfg,
                 f"Generation parse/validation failed for chain={payload.get('chain_id')} "
-                f"turn={payload.get('turn_index')} on attempt {attempt + 1}/{retries}: {exc.__class__.__name__}",
+                f"turn={payload.get('turn_index')} on attempt {attempt + 1}/{retries}: "
+                f"{exc.__class__.__name__}: {str(exc)[:180]}",
             )
     return {}, {"history_unaware": last_error or "unknown_generation_error", "history_aware": last_error or "unknown_generation_error"}
 
@@ -1449,11 +1968,7 @@ def _parse_generated_instruction_payload(payload: Dict[str, Any], parsed: Dict[s
         "history_unaware_instruction": str(parsed.get("history_unaware_instruction", "") or "").strip(),
         "history_aware_instruction": str(parsed.get("history_aware_instruction", "") or "").strip(),
     }
-    errors = {
-        key.replace("_instruction", ""): "missing_instruction"
-        for key, value in generated.items()
-        if not value
-    }
+    errors = _required_generated_field_errors(generated)
     if errors:
         raise ValueError(f"Missing required instructions: {sorted(errors)}")
     style_errors = _instruction_style_errors(generated, verbosity=str(payload.get("verbosity", "") or ""))
@@ -1473,7 +1988,13 @@ def _generate_instruction_pairs_batch(
     temperature = float(cfg.stage.generation.temperature)
     top_p = float(cfg.stage.generation.top_p)
     retries = max(1, int(cfg.stage.behavior.strict_json_retry_attempts))
+    axis_guidance_context = _axis_guidance_snapshot(cfg)
+    if axis_guidance_context:
+        for payload in payloads:
+            payload["axis_guidance_context"] = axis_guidance_context
     messages_batch = [_combined_generation_prompt(payload) for payload in payloads]
+    if messages_batch:
+        _write_instruction_prompt_if_absent(cfg, messages_batch[0])
     for payload in payloads[:3]:
         if int(payload.get("turn_index", 0)) <= 3:
             _log(
@@ -1506,7 +2027,8 @@ def _generate_instruction_pairs_batch(
             _log(
                 cfg,
                 f"Generation parse/validation failed for chain={payload.get('chain_id')} "
-                f"turn={payload.get('turn_index')} on attempt 1/{retries}: {exc.__class__.__name__}",
+                f"turn={payload.get('turn_index')} on attempt 1/{retries}: "
+                f"{exc.__class__.__name__}: {str(exc)[:180]}",
             )
             if retries > 1:
                 results.append(_generate_instruction_pair(ctx, cfg, payload))
@@ -1573,10 +2095,8 @@ def run_instructions(cfg: DictConfig) -> Dict[str, object]:
 
     tracker.step("Load structured clips and sampled chains", detail=f"manifest={structured_path.name}")
     structured_by_clip = _structured_index(structured_path)
-    chains = list(_read_jsonl(chains_path))
     max_chains = cfg.stage.behavior.max_chains
-    if max_chains is not None:
-        chains = chains[: max(0, int(max_chains))]
+    max_chains_int = None if max_chains is None else max(0, int(max_chains))
 
     rng = random.Random(int(cfg.stage.behavior.random_seed))
     model_load_start = time.perf_counter()
@@ -1595,7 +2115,7 @@ def run_instructions(cfg: DictConfig) -> Dict[str, object]:
         generation_batch_size = max(1, int(getattr(cfg.stage.runtime, "generation_batch_size", 1)))
 
         counts: Dict[str, Any] = {
-            "chains_seen": len(chains),
+            "chains_seen": 0,
             "steps_seen": 0,
             "steps_attempted": 0,
             "steps_written": 0,
@@ -1726,6 +2246,7 @@ def run_instructions(cfg: DictConfig) -> Dict[str, object]:
                     "hardness": payload["hardness"],
                     "transition_score": payload["transition_score"],
                     "verbosity": payload["verbosity"],
+                    "clause_budget": dict(payload.get("clause_budget", {}) or {}),
                     "semantic_delta_full": generated["semantic_delta_full"],
                     "semantic_delta_verbalized": generated["semantic_delta_verbalized"],
                     "semantic_delta_full_typed": generated["semantic_delta_full_typed"],
@@ -1738,10 +2259,13 @@ def run_instructions(cfg: DictConfig) -> Dict[str, object]:
                     "history_aware_instruction": generated["history_aware_instruction"],
                     "model_id": str(cfg.stage.models.model_id),
                     "caption_signal_mode": str(cfg.stage.caption.signal_mode),
-                    "prompt_version": "v4_humanized_semantic_deltas",
+                    "prompt_version": "v5_clause_budget_tag_grounded",
+                    "axis_guidance_enabled": _axis_guidance_enabled(cfg),
+                    "axis_guidance_snapshot": dict(payload.get("axis_guidance_context", {}) or {}),
                     "status": "ok",
                 }
                 _write_instruction_record(out_f, step_record_dir, record)
+                _update_axis_guidance_state(cfg, record)
                 _mark_claim_done(payload.get("_claim_path"), status="ok")
                 counts["steps_written"] += 1
                 counts["accepted_by_verbosity"][payload["verbosity"]] += 1
@@ -1757,7 +2281,8 @@ def run_instructions(cfg: DictConfig) -> Dict[str, object]:
                     _log(cfg, f"Instruction steps processed: {counts['steps_seen']:,} (mean generation {mean_gen:.2f}s/step)")
                     progress.update(1)
         stage_start = time.perf_counter()
-        tracker.step("Generate instruction records", detail=f"chains={len(chains):,}, max_steps={max_steps if max_steps is not None else 'all'}")
+        chains_detail = f"max_chains={max_chains_int if max_chains_int is not None else 'streaming all'}"
+        tracker.step("Generate instruction records", detail=f"{chains_detail}, max_steps={max_steps if max_steps is not None else 'all'}")
         claims_enabled = _claim_dir(cfg) is not None
         output_mode = "a" if claims_enabled and not bool(cfg.stage.behavior.overwrite_existing) else "w"
         out_cm = open(os.devnull, "w", encoding="utf-8") if write_step_json else out_jsonl.open(output_mode, encoding="utf-8")
@@ -1770,7 +2295,10 @@ def run_instructions(cfg: DictConfig) -> Dict[str, object]:
                 with rich_tqdm(cfg, total=total_steps_hint, desc="Instruction steps", unit="step") as progress:
                     stop = False
                     batch_payloads: List[Dict[str, Any]] = []
-                    for chain in chains:
+                    for chain_idx, chain in enumerate(_read_jsonl(chains_path), start=1):
+                        if max_chains_int is not None and counts["chains_seen"] >= max_chains_int:
+                            break
+                        counts["chains_seen"] += 1
                         steps = list(chain.get("steps", []))
                         for idx, step in enumerate(steps, start=1):
                             if max_steps is not None and counts["steps_seen"] >= int(max_steps):
@@ -1845,13 +2373,21 @@ def run_instructions(cfg: DictConfig) -> Dict[str, object]:
                 "runtime": _cfg_section_to_plain(cfg.stage.runtime),
                 "behavior": _cfg_section_to_plain(cfg.stage.behavior),
                 "caption": _cfg_section_to_plain(cfg.stage.caption),
+                "lyrics": _cfg_section_to_plain(getattr(cfg.stage, "lyrics", {})),
                 "generation": _cfg_section_to_plain(cfg.stage.generation),
+                "clause_budget": _cfg_section_to_plain(getattr(cfg.stage, "clause_budget", {})),
                 "verification": _cfg_section_to_plain(cfg.stage.verification),
+                "axis_guidance": _cfg_section_to_plain(getattr(cfg.stage, "axis_guidance", {})),
             },
             "outputs": {
                 "output_instructions_jsonl": str(out_jsonl),
                 "output_step_json_dir": str(step_json_dir) if write_step_json else None,
                 "output_prepared_jsonl": str(prepared_jsonl) if write_prepared else None,
+                "prompt_files": [
+                    str(path)
+                    for path in sorted(out_dir.glob(f"{Path(str(cfg.runtime.run_name)).name}_*.prompt"))
+                ],
+                "axis_guidance_state": str(_axis_guidance_state_path(cfg)) if _axis_guidance_enabled(cfg) else None,
                 "report": str(report_path),
             },
             "verifier_failure_examples": verifier_failure_examples[:25],

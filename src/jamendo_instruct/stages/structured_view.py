@@ -209,6 +209,9 @@ def run_structured_view(cfg: DictConfig) -> Dict[str, object]:
         "rows_with_tags": 0,
         "rows_without_tags": 0,
         "rows_with_track_context": 0,
+        "rows_with_lyrics": 0,
+        "rows_without_lyrics": 0,
+        "lyrics_status_counts": {},
         "tag_vocabulary_size": 0,
         "top_n_tags": None,
     }
@@ -237,6 +240,13 @@ def run_structured_view(cfg: DictConfig) -> Dict[str, object]:
                     counts["rows_without_tags"] += 1
                 if out_row["track_caption_count"] > 1:
                     counts["rows_with_track_context"] += 1
+                if str(out_row.get("normalized_lyrics", "") or out_row.get("lyrics", "") or "").strip():
+                    counts["rows_with_lyrics"] += 1
+                else:
+                    counts["rows_without_lyrics"] += 1
+                lyric_status = str(out_row.get("lyrics_status", "") or "").strip() or "unset"
+                status_counts = counts["lyrics_status_counts"]
+                status_counts[lyric_status] = status_counts.get(lyric_status, 0) + 1
                 if every_n > 0 and i % every_n == 0:
                     _log(cfg, f"Rows processed: {i:,}")
                 progress.update(1)

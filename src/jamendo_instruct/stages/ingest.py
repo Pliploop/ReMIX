@@ -268,6 +268,12 @@ def _extract_track_base(row: Dict[str, Any], cfg: DictConfig) -> Dict[str, Any]:
         "license_url": str(row.get(fields.license_url, "") or ""),
         "vocals": str(musicinfo.get(mfields.vocals, "") if isinstance(musicinfo, dict) else ""),
         "speed": str(musicinfo.get(mfields.speed, "") if isinstance(musicinfo, dict) else ""),
+        "lyrics": str(row.get("lyrics", "") or ""),
+        "lyrics_language": str(row.get("lyrics_language", "") or ""),
+        "lyrics_segments_json": str(row.get("lyrics_segments_json", "[]") or "[]"),
+        "lyrics_status": str(row.get("lyrics_status", "") or ""),
+        "lyrics_source": str(row.get("lyrics_source", "") or ""),
+        "lyrics_error": str(row.get("lyrics_error", "") or ""),
         "normalized_tags": normalized_tags,
         "source_split": str(row.get(fields.source_split, "") or ""),
         "raw_metadata": row,
@@ -449,6 +455,11 @@ def run_ingest(cfg: DictConfig) -> Dict[str, Any]:
             kept_records.append(rec)
 
             counts["clips_kept"] += len(clip_records)
+            if str(rec.get("lyrics", "") or "").strip():
+                counts["tracks_with_lyrics"] += 1
+                counts["clips_with_lyrics"] += len(clip_records)
+            elif str(rec.get("lyrics_status", "") or "").strip():
+                counts[f"tracks_lyrics_status_{str(rec.get('lyrics_status', '') or '').strip()}"] += 1
             if len(clip_records) > 1:
                 counts["multi_caption_tracks"] += 1
             if every_n > 0 and i % every_n == 0:
@@ -489,6 +500,12 @@ def run_ingest(cfg: DictConfig) -> Dict[str, Any]:
         "license_url",
         "vocals",
         "speed",
+        "lyrics",
+        "lyrics_language",
+        "lyrics_segments_json",
+        "lyrics_status",
+        "lyrics_source",
+        "lyrics_error",
     ]
     with manifest_path.open("w", encoding="utf-8", newline="") as manifest_f:
         writer = csv.DictWriter(manifest_f, fieldnames=fieldnames)
@@ -521,6 +538,12 @@ def run_ingest(cfg: DictConfig) -> Dict[str, Any]:
                         "license_url": rec["license_url"],
                         "vocals": rec["vocals"],
                         "speed": rec["speed"],
+                        "lyrics": rec["lyrics"],
+                        "lyrics_language": rec["lyrics_language"],
+                        "lyrics_segments_json": rec["lyrics_segments_json"],
+                        "lyrics_status": rec["lyrics_status"],
+                        "lyrics_source": rec["lyrics_source"],
+                        "lyrics_error": rec["lyrics_error"],
                     }
                     writer.writerow(row)
                     counts["kept"] += 1
@@ -559,6 +582,11 @@ def run_ingest(cfg: DictConfig) -> Dict[str, Any]:
             "dropped_missing_tags": counts["dropped_missing_tags"],
             "dropped_audio_missing": counts["dropped_audio_missing"],
             "tracks_with_multiple_captions": counts["multi_caption_tracks"],
+            "tracks_with_lyrics": counts["tracks_with_lyrics"],
+            "clips_with_lyrics": counts["clips_with_lyrics"],
+            "tracks_lyrics_status_empty": counts["tracks_lyrics_status_empty"],
+            "tracks_lyrics_status_missing": counts["tracks_lyrics_status_missing"],
+            "tracks_lyrics_status_failed": counts["tracks_lyrics_status_failed"],
         },
         "split_counts": dict(split_counts),
         "caption_stats": caption_stats,

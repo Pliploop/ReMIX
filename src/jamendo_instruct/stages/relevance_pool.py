@@ -9,7 +9,15 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence, Tuple
 
-from jamendo_instruct.llm_backends import build_openai_chat_client, decode_openai_chat_completion, load_chat_processor_and_model
+from jamendo_instruct.llm_backends import (
+    OPENAI_COMPAT_BACKENDS,
+    build_openai_chat_client,
+    build_vllm_offline_chat_model,
+    decode_openai_chat_completion,
+    decode_vllm_chat_completion,
+    load_chat_processor_and_model,
+    resolve_backend_name,
+)
 from jamendo_instruct.progress import StageTracker, rich_tqdm
 from jamendo_instruct.semantic_delta import build_typed_semantic_delta, typed_item_texts
 
@@ -174,8 +182,20 @@ def _encode_texts(texts: List[str], cfg: DictConfig, ctx: Any) -> Any:
 
 
 def _build_llm_judge(cfg: DictConfig):
-    backend = str(getattr(cfg.stage.runtime, "backend", "transformers"))
     model_id = str(getattr(cfg.stage.models, "judge_model_id", cfg.stage.models.text_model_id))
+    resolved = resolve_backend_name(
+        configured_backend=str(getattr(cfg.stage.runtime, "backend", "transformers")),
+        model_id=model_id,
+        model_params_b=getattr(cfg.stage.models, "judge_params_b", getattr(cfg.stage.models, "params_b", None)),
+        allow_sglang=bool(getattr(cfg.stage.runtime, "auto_allow_sglang", False)),
+    )
+    backend = str(resolved["backend"])
+    if str(getattr(cfg.stage.runtime, "backend", "transformers")) == "auto":
+        _log(
+            cfg,
+            "Auto-selected LLM backend "
+            f"{backend} ({resolved.get('reason', 'unknown')}; GPUs={resolved.get('gpu_names', [])})",
+        )
     if backend == "vllm_local":
         _log(cfg, f"Using OpenAI-compatible vLLM relevance-pool judge {model_id}")
         return build_openai_chat_client(
@@ -183,8 +203,42 @@ def _build_llm_judge(cfg: DictConfig):
             host=str(getattr(cfg.stage.runtime, "vllm_host", "127.0.0.1")),
             port=int(getattr(cfg.stage.runtime, "vllm_port", 8000)),
             api_key=str(getattr(cfg.stage.runtime, "vllm_api_key", "EMPTY")),
+            backend="vllm_local",
         )
-    if backend != "transformers":
+    if backend == "sglang_local":
+        _log(cfg, f"Using OpenAI-compatible SGLang relevance-pool judge {model_id}")
+        return build_openai_chat_client(
+            model_id=model_id,
+            host=str(getattr(cfg.stage.runtime, "sglang_host", getattr(cfg.stage.runtime, "vllm_host", "127.0.0.1"))),
+            port=int(getattr(cfg.stage.runtime, "sglang_port", getattr(cfg.stage.runtime, "vllm_port", 8000))),
+            api_key=str(getattr(cfg.stage.runtime, "sglang_api_key", getattr(cfg.stage.runtime, "vllm_api_key", "EMPTY"))),
+            backend="sglang_local",
+        )
+    if backend == "vllm":
+        tensor_parallel_size = int(getattr(cfg.stage.runtime, "vllm_tensor_parallel_size", 0) or 0)
+        if tensor_parallel_size <= 0:
+            tensor_parallel_size = int(resolved.get("tensor_parallel_size", 1) or 1)
+        quantization = getattr(cfg.stage.runtime, "vllm_quantization", None)
+        if quantization is None:
+            quantization = resolved.get("quantization")
+        kv_cache_dtype = str(getattr(cfg.stage.runtime, "vllm_kv_cache_dtype", resolved.get("kv_cache_dtype", "auto")))
+        _log(
+            cfg,
+            f"Loading offline vLLM relevance-pool judge {model_id} "
+            f"(tp={tensor_parallel_size}, quantization={quantization}, kv_cache_dtype={kv_cache_dtype})",
+        )
+        return build_vllm_offline_chat_model(
+            model_id=model_id,
+            tensor_parallel_size=tensor_parallel_size,
+            dtype=str(getattr(cfg.stage.runtime, "vllm_dtype", "auto")),
+            quantization=quantization,
+            kv_cache_dtype=kv_cache_dtype,
+            gpu_memory_utilization=float(getattr(cfg.stage.runtime, "vllm_gpu_memory_utilization", 0.9)),
+            max_model_len=int(getattr(cfg.stage.runtime, "vllm_max_model_len", 0) or 0),
+            trust_remote_code=bool(getattr(cfg.stage.runtime, "vllm_trust_remote_code", False)),
+            enforce_eager=bool(getattr(cfg.stage.runtime, "vllm_enforce_eager", False)),
+        )
+    if backend not in {"transformers", "transformers_bnb"}:
         raise ValueError(f"Unsupported stage.runtime.backend: {backend}")
 
     runtime = _resolve_torch_device(cfg)
@@ -192,24 +246,36 @@ def _build_llm_judge(cfg: DictConfig):
     device = runtime.device
     token_env = str(getattr(cfg.stage.auth, "hf_token_env", "HF_TOKEN"))
     token = os.environ.get(token_env, "").strip() or None
-    _log(cfg, f"Loading relevance-pool judge model {model_id} on {device}")
+    quantization = "nf4" if backend == "transformers_bnb" else None
+    _log(cfg, f"Loading relevance-pool judge model {model_id} on {device} with backend={backend}")
     processor, model, model_family = load_chat_processor_and_model(
         model_id=model_id,
         token=token,
         device=device,
         model_family=str(getattr(cfg.stage.runtime, "llm_model_family", "auto")),
+        quantization=quantization,
     )
-    return SimpleNamespace(model=model, processor=processor, torch=torch, device=device, model_family=model_family)
+    return SimpleNamespace(model=model, processor=processor, torch=torch, device=device, backend=backend, model_family=model_family)
 
 
 def _decode_judge_response(ctx: Any, cfg: DictConfig, messages: List[Dict[str, str]]) -> str:
-    if str(getattr(ctx, "backend", "transformers")) == "vllm_local":
+    backend = str(getattr(ctx, "backend", "transformers"))
+    if backend in OPENAI_COMPAT_BACKENDS:
         return decode_openai_chat_completion(
             ctx,
             messages=messages,
             max_tokens=int(getattr(cfg.stage.judge, "max_new_tokens", 256)),
             temperature=float(getattr(cfg.stage.judge, "temperature", 0.0)),
             top_p=float(getattr(cfg.stage.judge, "top_p", 1.0)),
+        )
+    if backend == "vllm":
+        return decode_vllm_chat_completion(
+            ctx,
+            messages=messages,
+            max_tokens=int(getattr(cfg.stage.judge, "max_new_tokens", 256)),
+            temperature=float(getattr(cfg.stage.judge, "temperature", 0.0)),
+            top_p=float(getattr(cfg.stage.judge, "top_p", 1.0)),
+            enable_thinking=bool(getattr(cfg.stage.runtime, "enable_thinking", False)),
         )
 
     processor = ctx.processor
@@ -644,9 +710,9 @@ def _candidate_llm_judge_prompt(
         "1. Use the semantic deltas and the candidate content as the source of truth. Heuristic metadata is advisory only.\n"
         "2. Choose exactly one pool type from: Type_TARGET, Type_STRONG, Type_H, Type_T, Type_PARTIAL, Type_HARD_NEG.\n"
         "3. Type_TARGET is only for the exact target.\n"
-        "4. Type_STRONG means the candidate satisfies the requested verbalized semantics and preserves the needed prior intent.\n"
-        "5. Type_H means it fits the latest edit but violates earlier preserved intent, i.e. a history shortcut.\n"
-        "6. Type_T means deterministic or tag-level constraints mostly fit, but caption semantics miss.\n"
+        "4. Type_STRONG means the candidate satisfies the requested verbalized semantics, obeys explicit preservation clauses, and has reasonable source affinity.\n"
+        "5. Type_H means it fits the latest edit but violates an explicit history-dependent preservation or callback.\n"
+        "6. Type_T means explicit tag/vocal/speed constraints mostly fit, but caption semantics miss.\n"
         "7. Type_PARTIAL means the candidate is close but misses part of the requested semantics.\n"
         "8. Type_HARD_NEG means it is clearly wrong overall.\n"
         "9. Provide the grade that matches your pool type and concise satisfied/failed constraint lists.\n\n"
@@ -767,9 +833,13 @@ def _constructive_candidate_metadata(
 
     full_components = _constraint_component_scores(candidate_row, full_required, full_removed, full_persistent)
     verbalized_components = _constraint_component_scores(candidate_row, verbalized_required, verbalized_removed, verbalized_persistent)
+    verbalized_change_components = _constraint_component_scores(candidate_row, verbalized_required, verbalized_removed, [])
+    explicit_preservation_components = _constraint_component_scores(candidate_row, [], [], verbalized_persistent)
     seed_components = _constraint_component_scores(candidate_row, seed_required, seed_removed, seed_persistent)
     full_satisfied, full_failed = _constraint_status_lists(candidate_row, full_required, full_removed, full_persistent)
     verbalized_satisfied, verbalized_failed = _constraint_status_lists(candidate_row, verbalized_required, verbalized_removed, verbalized_persistent)
+    verbalized_change_satisfied, verbalized_change_failed = _constraint_status_lists(candidate_row, verbalized_required, verbalized_removed, [])
+    explicit_preservation_satisfied, explicit_preservation_failed = _constraint_status_lists(candidate_row, [], [], verbalized_persistent)
     seed_satisfied, seed_failed = _constraint_status_lists(candidate_row, seed_required, seed_removed, seed_persistent)
     full_caption_required = typed_item_texts(semantic_full_typed, source="caption", buckets=("new_items",)) + typed_item_texts(semantic_full_typed, source="lyrics", buckets=("new_items",))
     full_caption_removed = typed_item_texts(semantic_full_typed, source="caption", buckets=("lost_items",)) + typed_item_texts(semantic_full_typed, source="lyrics", buckets=("lost_items",))
@@ -779,8 +849,12 @@ def _constructive_candidate_metadata(
     verbalized_caption_persistent = typed_item_texts(semantic_verbalized_typed, source="caption", buckets=("preserved_items",)) + typed_item_texts(semantic_verbalized_typed, source="lyrics", buckets=("preserved_items",))
     full_caption_components = _caption_constraint_component_scores(candidate_row, full_caption_required, full_caption_removed, full_caption_persistent)
     verbalized_caption_components = _caption_constraint_component_scores(candidate_row, verbalized_caption_required, verbalized_caption_removed, verbalized_caption_persistent)
+    verbalized_caption_change_components = _caption_constraint_component_scores(candidate_row, verbalized_caption_required, verbalized_caption_removed, [])
+    explicit_caption_preservation_components = _caption_constraint_component_scores(candidate_row, [], [], verbalized_caption_persistent)
     full_caption_satisfied, full_caption_failed = _caption_constraint_status_lists(candidate_row, full_caption_required, full_caption_removed, full_caption_persistent)
     verbalized_caption_satisfied, verbalized_caption_failed = _caption_constraint_status_lists(candidate_row, verbalized_caption_required, verbalized_caption_removed, verbalized_caption_persistent)
+    verbalized_caption_change_satisfied, verbalized_caption_change_failed = _caption_constraint_status_lists(candidate_row, verbalized_caption_required, verbalized_caption_removed, [])
+    explicit_caption_preservation_satisfied, explicit_caption_preservation_failed = _caption_constraint_status_lists(candidate_row, [], [], verbalized_caption_persistent)
 
     tag_overlap = _tag_overlap(candidate_row, target_row)
     tag_precision = _tag_precision(candidate_row, target_row)
@@ -790,8 +864,20 @@ def _constructive_candidate_metadata(
     caption_sim_to_source = _caption_similarity(candidate_row, source_row)
     caption_embedding_sim_to_target = _embedding_similarity(candidate_text_embedding, target_text_embedding)
     semantic_score = max(float(cand.get("rerank_score", 0.0)), float(cand.get("text_similarity", 0.0)))
+    source_affinity_score = max(
+        float(cand.get("audio_sim_to_source", 0.0) or 0.0),
+        float(cand.get("audio_sim_to_seed", 0.0) or 0.0),
+        float(caption_sim_to_source),
+    )
+    explicit_preservation_score = min(
+        float(explicit_preservation_components["preserve_score"]),
+        float(explicit_caption_preservation_components["preserve_score"]),
+    )
+    source_affinity_weight = float(getattr(cfg.stage.pool, "source_affinity_weight", 0.15))
+    explicit_preservation_weight = float(getattr(cfg.stage.pool, "explicit_preservation_weight", 0.25))
     weight_total = (
-        float(cfg.stage.pool.seed_constraint_weight)
+        source_affinity_weight
+        + explicit_preservation_weight
         + float(cfg.stage.pool.prev_constraint_weight)
         + float(cfg.stage.pool.target_tag_recall_weight)
         + float(cfg.stage.pool.target_tag_precision_weight)
@@ -800,7 +886,8 @@ def _constructive_candidate_metadata(
         + float(cfg.stage.pool.semantic_score_weight)
     )
     final_score = (
-        float(cfg.stage.pool.seed_constraint_weight) * seed_components["mean_score"]
+        source_affinity_weight * source_affinity_score
+        + explicit_preservation_weight * explicit_preservation_score
         + float(cfg.stage.pool.prev_constraint_weight) * verbalized_components["mean_score"]
         + float(cfg.stage.pool.target_tag_recall_weight) * tag_overlap
         + float(cfg.stage.pool.target_tag_precision_weight) * tag_precision
@@ -809,7 +896,11 @@ def _constructive_candidate_metadata(
         + float(cfg.stage.pool.semantic_score_weight) * semantic_score
     ) / max(weight_total, 1e-12)
 
-    satisfies_new_edit = len(verbalized_failed) == 0
+    requested_change_failed = _dedupe_list(list(verbalized_change_failed) + list(verbalized_caption_change_failed))
+    explicit_failed = _dedupe_list(list(explicit_preservation_failed) + list(explicit_caption_preservation_failed))
+    satisfies_requested_change = len(requested_change_failed) == 0
+    satisfies_explicit_preservation = len(explicit_failed) == 0
+    satisfies_verbalized_constraints = satisfies_requested_change and satisfies_explicit_preservation
     preserves_accumulated_tags = len(seed_failed) == 0
     preserves_accumulated_caption_constraints = True
     if full_caption_persistent:
@@ -829,15 +920,15 @@ def _constructive_candidate_metadata(
     cand_speed = str(candidate_row.get("speed", "") or "").strip().lower()
     satisfies_vocal_status = True if not target_vocals else cand_vocals == target_vocals
     satisfies_speed_constraint = True if not target_speed else cand_speed == target_speed
-    history_shortcut_detected = bool(satisfies_new_edit and not preserves_accumulated_tags)
-    missing_count = len(verbalized_failed)
+    history_shortcut_detected = bool(satisfies_requested_change and not satisfies_explicit_preservation)
+    missing_count = len(_dedupe_list(list(requested_change_failed) + list(explicit_failed)))
     is_exact_target = bool(cand.get("is_exact_target", False))
 
     pool_type = "Type_HARD_NEG"
     grade = 0
     failure_category = "hard_negative"
-    failed_constraints = list(verbalized_failed)
-    satisfied_constraints = _dedupe_list(verbalized_satisfied)
+    failed_constraints = _dedupe_list(list(requested_change_failed) + list(explicit_failed))
+    satisfied_constraints = _dedupe_list(list(verbalized_change_satisfied) + list(explicit_preservation_satisfied))
     if not failed_constraints and not matches_target_caption_semantics:
         failed_constraints.append("target caption semantics")
 
@@ -850,12 +941,13 @@ def _constructive_candidate_metadata(
         pool_type = "Type_H"
         grade = 1
         failure_category = "history_shortcut"
-    elif preserves_accumulated_tags and satisfies_new_edit and satisfies_vocal_status and satisfies_speed_constraint and caption_alignment >= float(getattr(cfg.stage.pool, "caption_moderate_threshold", 0.35)):
+        failed_constraints = explicit_failed or failed_constraints
+    elif satisfies_verbalized_constraints and caption_alignment >= float(getattr(cfg.stage.pool, "caption_moderate_threshold", 0.35)):
         pool_type = "Type_STRONG"
         grade = 4 if matches_target_caption_semantics else 3
         failure_category = "strong_positive"
         failed_constraints = [] if grade >= 4 else ["moderate caption alignment"]
-    elif preserves_accumulated_tags and satisfies_new_edit and caption_alignment < float(getattr(cfg.stage.pool, "caption_miss_threshold", 0.2)):
+    elif satisfies_verbalized_constraints and caption_alignment < float(getattr(cfg.stage.pool, "caption_miss_threshold", 0.2)):
         pool_type = "Type_T"
         grade = 2
         failure_category = "caption_miss"
@@ -864,7 +956,7 @@ def _constructive_candidate_metadata(
         pool_type = "Type_PARTIAL"
         grade = 1
         failure_category = "partial_constraint_miss"
-    elif preserves_accumulated_tags and satisfies_new_edit and not matches_target_caption_semantics:
+    elif satisfies_verbalized_constraints and not matches_target_caption_semantics:
         pool_type = "Type_PARTIAL"
         grade = 2
         failure_category = "soft_semantic_partial"
@@ -877,7 +969,9 @@ def _constructive_candidate_metadata(
         "failed_constraints": failed_constraints,
         "satisfied_constraints": satisfied_constraints,
         "constraint_satisfaction": {
-            "satisfies_new_edit": bool(satisfies_new_edit),
+            "satisfies_new_edit": bool(satisfies_verbalized_constraints),
+            "satisfies_requested_change": bool(satisfies_requested_change),
+            "satisfies_explicit_preservation": bool(satisfies_explicit_preservation),
             "preserves_accumulated_tags": bool(preserves_accumulated_tags),
             "preserves_accumulated_caption_constraints": bool(preserves_accumulated_caption_constraints),
             "matches_target_caption_semantics": bool(matches_target_caption_semantics),
@@ -889,6 +983,22 @@ def _constructive_candidate_metadata(
             "satisfied": _dedupe_list(verbalized_satisfied),
             "failed": _dedupe_list(verbalized_failed),
             "score": round(float(verbalized_components["mean_score"]), 6),
+        },
+        "requested_change_satisfaction": {
+            "satisfied": _dedupe_list(verbalized_change_satisfied),
+            "failed": _dedupe_list(verbalized_change_failed),
+            "caption_satisfied": _dedupe_list(verbalized_caption_change_satisfied),
+            "caption_failed": _dedupe_list(verbalized_caption_change_failed),
+            "score": round(float(verbalized_change_components["mean_score"]), 6),
+            "caption_score": round(float(verbalized_caption_change_components["mean_score"]), 6),
+        },
+        "explicit_preservation_satisfaction": {
+            "satisfied": _dedupe_list(explicit_preservation_satisfied),
+            "failed": _dedupe_list(explicit_preservation_failed),
+            "caption_satisfied": _dedupe_list(explicit_caption_preservation_satisfied),
+            "caption_failed": _dedupe_list(explicit_caption_preservation_failed),
+            "score": round(float(explicit_preservation_components["preserve_score"]), 6),
+            "caption_score": round(float(explicit_caption_preservation_components["preserve_score"]), 6),
         },
         "full_constraint_satisfaction": {
             "satisfied": _dedupe_list(full_satisfied),
@@ -915,6 +1025,8 @@ def _constructive_candidate_metadata(
         "caption_embedding_sim_to_target": round(float(caption_embedding_sim_to_target), 6),
         "caption_alignment_score": round(float(caption_alignment), 6),
         "caption_sim_to_source": round(float(caption_sim_to_source), 6),
+        "source_affinity_score": round(float(source_affinity_score), 6),
+        "explicit_preservation_score": round(float(explicit_preservation_score), 6),
         "semantic_score": round(float(semantic_score), 6),
         "final_score": round(float(final_score), 6),
         "history_shortcut": bool(history_shortcut_detected),

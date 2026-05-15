@@ -24,7 +24,19 @@ asr = [
   "transformers>=4.46.0"
 ]
 demo = [
-  "gradio>=5.0.0"
+  "streamlit>=1.36.0"
+]
+llm = [
+  "accelerate>=0.34.0",
+  "bitsandbytes>=0.43.0",
+  "fastokens>=0.1.1",
+  "httpx>=0.27.0",
+  "transformers>=4.46.0",
+  "vllm>=0.6.0"
+]
+sglang = [
+  "httpx>=0.27.0",
+  "sglang>=0.4.0"
 ]
 
 [project.scripts]

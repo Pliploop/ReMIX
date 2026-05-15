@@ -476,14 +476,28 @@ Useful options:
 - `stage.behavior.write_prepared_records=true|false`
 - `stage.verification.enabled=true|false`
 - `stage.models.model_id=<hf_model>`
+- `stage.models.params_b=<B>` to help `stage.runtime.backend=auto` estimate model memory
 - `stage.runtime.device=auto|cuda|cpu`
+- `stage.runtime.backend=auto|vllm|vllm_local|sglang_local|transformers|transformers_bnb`
+- Auto backend policy:
+  - direct `vllm` BF16 when the model appears to fit on one visible GPU
+  - direct `vllm` tensor parallelism when BF16 fits across visible GPUs
+  - direct `vllm` FP8 plus FP8 KV cache on H100/H200/B200-style allocations when BF16 is tight
+  - `transformers_bnb` NF4 as the low-memory A100/compatibility fallback
+  - `sglang_local` only when explicitly selected, or when `stage.runtime.auto_allow_sglang=true` and auto selects it for Qwen/MoE-style experiments
+- Direct offline vLLM backend:
+  `stage.runtime.backend=vllm stage.runtime.vllm_tensor_parallel_size=0 stage.runtime.vllm_dtype=bfloat16`
+- Transformers NF4 fallback:
+  `stage.runtime.backend=transformers_bnb stage.runtime.torch_dtype=bfloat16`
+- SGLang OpenAI-compatible endpoint:
+  `stage.runtime.backend=sglang_local stage.runtime.sglang_host=<host> stage.runtime.sglang_port=<port>`
 - Qwen3.6 normal Transformers backend:
   `stage.models.model_id=Qwen/Qwen3.6-35B-A3B stage.runtime.llm_model_family=qwen3_6`
 - Qwen3.6 local vLLM backend:
   `stage.models.model_id=Qwen/Qwen3.6-35B-A3B stage.runtime.backend=vllm_local stage.runtime.vllm_dtype=bfloat16`
 - Qwen3.6 FP8 local vLLM backend:
   `stage.models.model_id=Qwen/Qwen3.6-35B-A3B-FP8 stage.runtime.backend=vllm_local stage.runtime.vllm_dtype=auto`
-  The instruction stage launches the local vLLM server; downstream judge stages can also use an OpenAI-compatible vLLM endpoint via `stage.runtime.backend=vllm_local`.
+  The `vllm_local` mode launches a local vLLM server for the instruction stage; downstream judge stages can also use an OpenAI-compatible vLLM endpoint via `stage.runtime.backend=vllm_local`. Prefer direct `stage.runtime.backend=vllm` for single-process Slurm preprocessing.
 
 ### `validation`
 

@@ -29,18 +29,31 @@ behavior:
 models:
   text_model_id: google/embeddinggemma-300m
   judge_model_id: google/gemma-4-31B-it
+  judge_params_b: 31
 
 auth:
   hf_token_env: HF_TOKEN
 
 runtime:
-  backend: transformers   # transformers | vllm_local
+  backend: transformers   # auto | vllm | vllm_local | sglang_local | transformers | transformers_bnb
   device: auto
   llm_model_family: auto   # auto | causal_lm | qwen3_6
   enable_thinking: false
+  auto_allow_sglang: false
   vllm_host: 127.0.0.1
   vllm_port: 8000
   vllm_api_key: EMPTY
+  vllm_tensor_parallel_size: 0   # 0 = auto from visible GPUs
+  vllm_dtype: auto
+  vllm_quantization: null
+  vllm_kv_cache_dtype: auto
+  vllm_trust_remote_code: false
+  vllm_enforce_eager: false
+  vllm_gpu_memory_utilization: 0.9
+  vllm_max_model_len: 32768
+  sglang_host: 127.0.0.1
+  sglang_port: 30000
+  sglang_api_key: EMPTY
 
 text:
   max_length: 512
@@ -73,7 +86,9 @@ pool:
   target_tag_precision_weight: 0.05
   target_caption_recall_weight: 0.1
   target_caption_precision_weight: 0.05
-  seed_constraint_weight: 0.35
+  seed_constraint_weight: 0.35   # retained as diagnostic/backward-compatible config; no longer a hard strong-match gate
+  source_affinity_weight: 0.15
+  explicit_preservation_weight: 0.25
   prev_constraint_weight: 0.2
   semantic_score_weight: 0.1
 

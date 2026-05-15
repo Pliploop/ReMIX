@@ -1,5 +1,15 @@
 [console_scripts]
+jamendo-chains = jamendo_instruct.stages.chains:main
+jamendo-chains-demo = jamendo_instruct.demo.chains_demo:main
 jamendo-embeddings = jamendo_instruct.stages.embeddings:main
+jamendo-graph = jamendo_instruct.stages.graph:main
 jamendo-ingest = jamendo_instruct.stages.ingest:main
+jamendo-instructions = jamendo_instruct.stages.instructions:main
+jamendo-lyrics = jamendo_instruct.stages.lyrics:main
+jamendo-maxcaps-catalog = jamendo_instruct.demo.maxcaps_catalog:main
+jamendo-neighborhood = jamendo_instruct.stages.neighborhood:main
+jamendo-pipeline = jamendo_instruct.pipeline:main
+jamendo-relevance-pool = jamendo_instruct.stages.relevance_pool:main
 jamendo-run = jamendo_instruct.run:main
 jamendo-structured-view = jamendo_instruct.stages.structured_view:main
+jamendo-validation = jamendo_instruct.stages.validation:main

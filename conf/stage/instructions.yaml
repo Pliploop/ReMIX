@@ -11,28 +11,39 @@ io:
 
 models:
   model_id: google/gemma-4-31B-it
+  params_b: 31
 
 auth:
   hf_token_env: HF_TOKEN
 
 runtime:
-  backend: transformers   # transformers | vllm_local
+  backend: transformers   # auto | vllm | vllm_local | sglang_local | transformers | transformers_bnb
   device: auto   # auto | cuda | cpu
   torch_dtype: auto   # auto | bfloat16 | float16 | float32
   llm_model_family: auto   # auto | causal_lm | qwen3_6
   enable_thinking: false
   generation_batch_size: 4
+  auto_allow_sglang: false
   vllm_host: 127.0.0.1
   vllm_port: 8000
   vllm_api_key: EMPTY
-  vllm_tensor_parallel_size: 1
+  vllm_tensor_parallel_size: 0   # 0 = auto from visible GPUs
   vllm_dtype: auto
   vllm_quantization: null   # e.g. modelopt, modelopt_fp4
+  vllm_kv_cache_dtype: auto
+  vllm_tokenizer_mode: null   # e.g. fastokens when installed, otherwise leave null
+  vllm_max_num_sqtokens: 0   # 0 = vLLM default
+  vllm_max_num_seqs: 0   # 0 = vLLM default
+  vllm_enable_prefix_caching: null   # null = vLLM default
+  vllm_gdn_prefill_backend: null   # flashinfer | triton
   vllm_trust_remote_code: false
   vllm_enforce_eager: false
   vllm_gpu_memory_utilization: 0.9
   vllm_max_model_len: 32768
   vllm_health_timeout_sec: 600
+  sglang_host: 127.0.0.1
+  sglang_port: 30000
+  sglang_api_key: EMPTY
 
 behavior:
   max_chains: null
@@ -51,19 +62,38 @@ caption:
   max_terms_per_list: 8
   max_phrases_per_list: 6
 
+lyrics:
+  max_chars_per_view: 1800   # cap lyric text included in prompt views; 0 = no cap
+  max_chars_for_diff: 2400   # cap lyric text used for fuzzy/raw lyric differences; 0 = no cap
+  refresh_delta_from_manifest: true   # prefer current structured manifest lyrics over stale chain deltas
+
 generation:
   temperature: 0.8
   top_p: 0.95
   max_new_tokens: 512
-  short_probability: 0.34
-  medium_probability: 0.33
-  long_probability: 0.33
+  short_probability: 0.62
+  medium_probability: 0.28
+  long_probability: 0.10
+
+clause_budget:
+  enabled: true
+  zero_probability: 0.72
+  one_probability: 0.22
+  two_probability: 0.055
+  three_probability: 0.005
+  max_total_clauses: 4
 
 verification:
   enabled: false
   temperature: 0.0
   top_p: 1.0
   max_new_tokens: 384
+
+axis_guidance:
+  enabled: false
+  state_path: ${stage.io.output_dir}/axis_guidance_state.json
+  include_preservation_guidance: true
+  update_after_accept: true
 
 progress:
   enabled: true

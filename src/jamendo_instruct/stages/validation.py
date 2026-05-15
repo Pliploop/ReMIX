@@ -7,7 +7,15 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Tuple
 
-from jamendo_instruct.llm_backends import build_openai_chat_client, decode_openai_chat_completion, load_chat_processor_and_model
+from jamendo_instruct.llm_backends import (
+    OPENAI_COMPAT_BACKENDS,
+    build_openai_chat_client,
+    build_vllm_offline_chat_model,
+    decode_openai_chat_completion,
+    decode_vllm_chat_completion,
+    load_chat_processor_and_model,
+    resolve_backend_name,
+)
 from jamendo_instruct.progress import StageTracker, rich_tqdm
 from jamendo_instruct.semantic_delta import build_typed_semantic_delta, typed_item_texts
 
@@ -298,7 +306,8 @@ def _validate_variant(cfg: DictConfig, payload: Dict[str, Any], record: Dict[str
     plan_change_terms = _plan_evidence_terms(plan, "selected_changes")
     plan_preservation_terms = _plan_evidence_terms(plan, "selected_preservations")
     genuine_change_terms = plan_change_terms or _dedupe_list(list(semantic_verbalized.get("new", [])) + list(semantic_verbalized.get("lost", [])))
-    preserved_terms = plan_preservation_terms or _dedupe_list(list(semantic_full.get("preserved", [])))
+    explicit_preserved_terms = plan_preservation_terms or _dedupe_list(list(semantic_verbalized.get("preserved", [])))
+    full_preserved_terms = _dedupe_list(list(semantic_full.get("preserved", [])))
     caption_semantic_terms = typed_item_texts(
         semantic_verbalized_typed if bool(semantic_full.get("caption_only_change", False)) else semantic_full_typed,
         source="caption",
@@ -356,7 +365,9 @@ def _validate_variant(cfg: DictConfig, payload: Dict[str, Any], record: Dict[str
         "instruction_plan_used": plan or None,
         "caption_semantic_hits": caption_semantic_hits,
         "lyric_semantic_hits": lyric_semantic_hits,
-        "preserved_term_count": len(preserved_terms),
+        "preserved_term_count": len(explicit_preserved_terms),
+        "explicit_preservation_term_count": len(explicit_preserved_terms),
+        "full_preservation_term_count": len(full_preserved_terms),
     }
 
 
@@ -379,17 +390,18 @@ def _judge_prompt(payload: Dict[str, Any], record: Dict[str, Any], heuristic: Di
         "1. Each instruction must be relative rather than fully self-contained.\n"
         "2. PASS if the instruction reflects at least one genuine change from `semantic_delta_verbalized.new` or `semantic_delta_verbalized.lost`.\n"
         f'   FAIL label: "{_FAIL_NO_GENUINE_CHANGE}"\n'
-        "3. PASS if the instruction does not contradict preserved constraints from `semantic_delta_full`.\n"
+        "3. PASS if the instruction does not contradict explicit preservation constraints from `instruction_plan.selected_preservations` or `semantic_delta_verbalized.preserved`.\n"
         f'   FAIL label: "{_FAIL_CONTRADICTION}"\n'
-        "4. PASS if the instruction does not invent unsupported metadata.\n"
+        "4. Treat `semantic_delta_full.preserved` as diagnostic source-affinity context, not as hidden hard conservation requirements.\n"
+        "5. PASS if the instruction does not invent unsupported metadata.\n"
         f'   FAIL label: "{_FAIL_METADATA_INVENTION}"\n'
-        "5. For caption-only turns, PASS only if the instruction uses caption-derived and/or lyric-derived semantic content.\n"
+        "6. For caption-only turns, PASS only if the instruction uses caption-derived and/or lyric-derived semantic content.\n"
         f'   FAIL label: "{_FAIL_CAPTION_ONLY}"\n'
-        "6. `history_unaware` must be understandable from the seed plus the current request.\n"
+        "7. `history_unaware` must be understandable from the seed plus the current request.\n"
         f'   FAIL label: "{_FAIL_REQUIRES_HISTORY}"\n'
-        "7. `history_aware` may use broader chain history and should remain coherent if it references earlier turns.\n"
+        "8. `history_aware` may use broader chain history and should remain coherent if it references earlier turns.\n"
         f'   FAIL label: "{_FAIL_HISTORY_INCOHERENT}"\n'
-        "8. Treat the heuristic precheck as advisory, not authoritative.\n\n"
+        "9. Treat the heuristic precheck as advisory, not authoritative.\n\n"
         "Output format:\n"
         "{"
         '"accepted": true, '
@@ -435,17 +447,63 @@ def _resolve_torch_dtype(cfg: DictConfig, torch_module: Any) -> Any:
 
 
 def _build_judge(cfg: DictConfig) -> Any:
-    backend = str(getattr(cfg.stage.runtime, "backend", "transformers"))
+    model_id = str(cfg.stage.models.model_id)
+    resolved = resolve_backend_name(
+        configured_backend=str(getattr(cfg.stage.runtime, "backend", "transformers")),
+        model_id=model_id,
+        model_params_b=getattr(cfg.stage.models, "params_b", None),
+        allow_sglang=bool(getattr(cfg.stage.runtime, "auto_allow_sglang", False)),
+    )
+    backend = str(resolved["backend"])
+    if str(getattr(cfg.stage.runtime, "backend", "transformers")) == "auto":
+        _log(
+            cfg,
+            "Auto-selected LLM backend "
+            f"{backend} ({resolved.get('reason', 'unknown')}; GPUs={resolved.get('gpu_names', [])})",
+        )
     if backend == "vllm_local":
-        model_id = str(cfg.stage.models.model_id)
         _log(cfg, f"Using OpenAI-compatible vLLM validation judge {model_id}")
         return build_openai_chat_client(
             model_id=model_id,
             host=str(getattr(cfg.stage.runtime, "vllm_host", "127.0.0.1")),
             port=int(getattr(cfg.stage.runtime, "vllm_port", 8000)),
             api_key=str(getattr(cfg.stage.runtime, "vllm_api_key", "EMPTY")),
+            backend="vllm_local",
         )
-    if backend != "transformers":
+    if backend == "sglang_local":
+        _log(cfg, f"Using OpenAI-compatible SGLang validation judge {model_id}")
+        return build_openai_chat_client(
+            model_id=model_id,
+            host=str(getattr(cfg.stage.runtime, "sglang_host", getattr(cfg.stage.runtime, "vllm_host", "127.0.0.1"))),
+            port=int(getattr(cfg.stage.runtime, "sglang_port", getattr(cfg.stage.runtime, "vllm_port", 8000))),
+            api_key=str(getattr(cfg.stage.runtime, "sglang_api_key", getattr(cfg.stage.runtime, "vllm_api_key", "EMPTY"))),
+            backend="sglang_local",
+        )
+    if backend == "vllm":
+        tensor_parallel_size = int(getattr(cfg.stage.runtime, "vllm_tensor_parallel_size", 0) or 0)
+        if tensor_parallel_size <= 0:
+            tensor_parallel_size = int(resolved.get("tensor_parallel_size", 1) or 1)
+        quantization = getattr(cfg.stage.runtime, "vllm_quantization", None)
+        if quantization is None:
+            quantization = resolved.get("quantization")
+        kv_cache_dtype = str(getattr(cfg.stage.runtime, "vllm_kv_cache_dtype", resolved.get("kv_cache_dtype", "auto")))
+        _log(
+            cfg,
+            f"Loading offline vLLM validation model {model_id} "
+            f"(tp={tensor_parallel_size}, quantization={quantization}, kv_cache_dtype={kv_cache_dtype})",
+        )
+        return build_vllm_offline_chat_model(
+            model_id=model_id,
+            tensor_parallel_size=tensor_parallel_size,
+            dtype=str(getattr(cfg.stage.runtime, "vllm_dtype", "auto")),
+            quantization=quantization,
+            kv_cache_dtype=kv_cache_dtype,
+            gpu_memory_utilization=float(getattr(cfg.stage.runtime, "vllm_gpu_memory_utilization", 0.9)),
+            max_model_len=int(getattr(cfg.stage.runtime, "vllm_max_model_len", 0) or 0),
+            trust_remote_code=bool(getattr(cfg.stage.runtime, "vllm_trust_remote_code", False)),
+            enforce_eager=bool(getattr(cfg.stage.runtime, "vllm_enforce_eager", False)),
+        )
+    if backend not in {"transformers", "transformers_bnb"}:
         raise ValueError(f"Unsupported stage.runtime.backend: {backend}")
 
     runtime = _resolve_torch_device(cfg)
@@ -455,27 +513,38 @@ def _build_judge(cfg: DictConfig) -> Any:
     token = os.environ.get(token_env, "").strip() or None
     if token is None:
         _log(cfg, f"No Hugging Face token found in ${token_env}; gated model downloads may fail.")
-    model_id = str(cfg.stage.models.model_id)
     dtype = _resolve_torch_dtype(cfg, torch)
-    _log(cfg, f"Loading validation model {model_id} on {device}")
+    quantization = "nf4" if backend == "transformers_bnb" else None
+    _log(cfg, f"Loading validation model {model_id} on {device} with backend={backend}")
     processor, model, model_family = load_chat_processor_and_model(
         model_id=model_id,
         token=token,
         torch_dtype=dtype,
         device=device,
         model_family=str(getattr(cfg.stage.runtime, "llm_model_family", "auto")),
+        quantization=quantization,
     )
-    return SimpleNamespace(model=model, processor=processor, torch=torch, device=device, model_family=model_family)
+    return SimpleNamespace(model=model, processor=processor, torch=torch, device=device, backend=backend, model_family=model_family)
 
 
 def _decode_response_text(ctx: Any, messages: List[Dict[str, str]], cfg: DictConfig) -> str:
-    if str(getattr(ctx, "backend", "transformers")) == "vllm_local":
+    backend = str(getattr(ctx, "backend", "transformers"))
+    if backend in OPENAI_COMPAT_BACKENDS:
         return decode_openai_chat_completion(
             ctx,
             messages=messages,
             max_tokens=int(cfg.stage.judge.max_new_tokens),
             temperature=float(cfg.stage.judge.temperature),
             top_p=float(cfg.stage.judge.top_p),
+        )
+    if backend == "vllm":
+        return decode_vllm_chat_completion(
+            ctx,
+            messages=messages,
+            max_tokens=int(cfg.stage.judge.max_new_tokens),
+            temperature=float(cfg.stage.judge.temperature),
+            top_p=float(cfg.stage.judge.top_p),
+            enable_thinking=bool(getattr(cfg.stage.runtime, "enable_thinking", False)),
         )
 
     processor = ctx.processor
