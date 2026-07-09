@@ -69,6 +69,40 @@ def _write_csv_rows(path: Path, fieldnames: List[str], rows: List[Dict[str, Any]
     tmp_path.replace(path)
 
 
+def _audio_identifier(row: Dict[str, Any]) -> str:
+    for key in ("file_path", "audio_path", "audio_download_url", "source_audio", "audio_url"):
+        value = str(row.get(key, "") or "").strip()
+        if value:
+            return value
+    return str(row.get("clip_id", "") or row.get("track_id", "") or "").strip()
+
+
+def _detected_lyrics_entries(rows: List[Dict[str, Any]]) -> List[str]:
+    entries: List[str] = []
+    for row in rows:
+        if str(row.get("lyrics_status", "") or "").strip().lower() != "ok":
+            continue
+        identifier = _audio_identifier(row)
+        clip_id = str(row.get("clip_id", "") or "").strip()
+        track_id = str(row.get("track_id", "") or "").strip()
+        language = str(row.get("lyrics_language", "") or "").strip()
+        parts = [identifier]
+        metadata = [part for part in (clip_id, track_id, language) if part]
+        if metadata:
+            parts.append(f"({', '.join(metadata)})")
+        entries.append(" ".join(parts).strip())
+    return entries
+
+
+def _write_detected_lyrics_file(path: Path, entries: List[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    with tmp_path.open("w", encoding="utf-8") as f:
+        for entry in entries:
+            f.write(f"{entry}\n")
+    tmp_path.replace(path)
+
+
 def _checkpoint_dir(output_dir: Path) -> Path:
     return output_dir / "lyrics_checkpoints"
 
@@ -573,6 +607,7 @@ def run_lyrics(cfg: DictConfig) -> Dict[str, object]:
     out_dir = Path(str(cfg.stage.io.output_dir))
     out_dir.mkdir(parents=True, exist_ok=True)
     output_csv = out_dir / str(cfg.stage.io.output_manifest_csv)
+    detected_lyrics_path = out_dir / str(getattr(cfg.stage.io, "output_detected_lyrics_file", "detected_lyrics_files.txt"))
     report_path = out_dir / str(cfg.stage.io.report_file)
     checkpoint_dir = _checkpoint_dir(out_dir)
     tracker = StageTracker(
@@ -644,6 +679,8 @@ def run_lyrics(cfg: DictConfig) -> Dict[str, object]:
 
     tracker.step("Write lyrics manifest", detail=output_csv.name)
     _write_csv_rows(output_csv, fieldnames, rows)
+    detected_lyrics_entries = _detected_lyrics_entries(rows)
+    _write_detected_lyrics_file(detected_lyrics_path, detected_lyrics_entries)
     if bool(getattr(cfg.stage.behavior, "cleanup_checkpoints_after_success", True)) and checkpoint_dir.exists():
         shutil.rmtree(checkpoint_dir)
 
@@ -662,6 +699,7 @@ def run_lyrics(cfg: DictConfig) -> Dict[str, object]:
         },
         "outputs": {
             "output_manifest_csv": str(output_csv),
+            "detected_lyrics_file": str(detected_lyrics_path),
             "report": str(report_path),
             "checkpoint_dir": str(checkpoint_dir),
         },
@@ -677,6 +715,13 @@ def run_lyrics(cfg: DictConfig) -> Dict[str, object]:
         cfg,
         f"Lyrics stage complete. ok={counts['rows_ok']:,}, empty={counts['rows_empty']:,}, failed={counts['rows_failed']:,}",
     )
+    preview_limit = max(0, int(getattr(cfg.stage.behavior, "detected_lyrics_preview_limit", 25) or 0))
+    _log(cfg, f"Detected lyrics file list: {detected_lyrics_path} ({len(detected_lyrics_entries):,} files)")
+    for entry in detected_lyrics_entries[:preview_limit]:
+        _log(cfg, f"Detected lyrics: {entry}")
+    remaining = len(detected_lyrics_entries) - preview_limit
+    if remaining > 0:
+        _log(cfg, f"... {remaining:,} more files with detected lyrics listed in {detected_lyrics_path}")
     return report
 
 

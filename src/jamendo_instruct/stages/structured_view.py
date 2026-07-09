@@ -50,6 +50,15 @@ def _caption_word_len(text: str) -> int:
     return len(re.findall(r"\b\w+\b", text))
 
 
+def _resolve_vocals(row: Dict[str, str], normalized_lyrics: str) -> tuple[str, bool]:
+    vocals = str(row.get("vocals", "") or "").strip()
+    if vocals:
+        return vocals, False
+    if normalized_lyrics.strip():
+        return "vocal", True
+    return "", False
+
+
 def _parse_tag_list(row: Dict[str, str]) -> List[str]:
     tags_json = _parse_json_list(row.get("normalized_tags_json", ""))
     if tags_json:
@@ -96,6 +105,7 @@ def _build_output_row(row: Dict[str, str], cfg: DictConfig, tag_vocabulary: Set[
     normalized_track_primary_caption = _normalize_caption_text(track_primary_caption, cfg)
     lyrics = str(row.get("lyrics", "") or "").strip()
     normalized_lyrics = _normalize_caption_text(lyrics, cfg) if lyrics else ""
+    vocals, vocals_inferred_from_lyrics = _resolve_vocals(row, normalized_lyrics)
 
     return {
         "clip_id": clip_id,
@@ -132,7 +142,8 @@ def _build_output_row(row: Dict[str, str], cfg: DictConfig, tag_vocabulary: Set[
         "audio_url": str(row.get("audio_url", "") or ""),
         "audio_download_url": str(row.get("audio_download_url", "") or ""),
         "license_url": str(row.get("license_url", "") or ""),
-        "vocals": str(row.get("vocals", "") or ""),
+        "vocals": vocals,
+        "vocals_inferred_from_lyrics": int(vocals_inferred_from_lyrics),
         "speed": str(row.get("speed", "") or ""),
     }
 
@@ -198,6 +209,7 @@ def run_structured_view(cfg: DictConfig) -> Dict[str, object]:
         "audio_download_url",
         "license_url",
         "vocals",
+        "vocals_inferred_from_lyrics",
         "speed",
     ]
 
@@ -212,6 +224,9 @@ def run_structured_view(cfg: DictConfig) -> Dict[str, object]:
         "rows_with_lyrics": 0,
         "rows_without_lyrics": 0,
         "lyrics_status_counts": {},
+        "rows_with_vocals": 0,
+        "rows_without_vocals": 0,
+        "rows_vocals_inferred_from_lyrics": 0,
         "tag_vocabulary_size": 0,
         "top_n_tags": None,
     }
@@ -247,6 +262,12 @@ def run_structured_view(cfg: DictConfig) -> Dict[str, object]:
                 lyric_status = str(out_row.get("lyrics_status", "") or "").strip() or "unset"
                 status_counts = counts["lyrics_status_counts"]
                 status_counts[lyric_status] = status_counts.get(lyric_status, 0) + 1
+                if str(out_row.get("vocals", "") or "").strip():
+                    counts["rows_with_vocals"] += 1
+                else:
+                    counts["rows_without_vocals"] += 1
+                if int(out_row.get("vocals_inferred_from_lyrics", 0) or 0):
+                    counts["rows_vocals_inferred_from_lyrics"] += 1
                 if every_n > 0 and i % every_n == 0:
                     _log(cfg, f"Rows processed: {i:,}")
                 progress.update(1)

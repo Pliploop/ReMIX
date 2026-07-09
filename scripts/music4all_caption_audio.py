@@ -269,12 +269,39 @@ def _model_device(model: Any) -> Any:
 
 def _load_audio_array(audio_path: Path, *, sampling_rate: int, clip_seconds: float) -> Any:
     import numpy as np
-    from transformers.audio_utils import load_audio
+    import soundfile as sf
+    import torchaudio
 
-    audio = load_audio(str(audio_path), sampling_rate=sampling_rate)
+    audio = None
+    src_sr = None
+    target_duration = max(0.0, float(clip_seconds))
+    try:
+        with sf.SoundFile(str(audio_path)) as f:
+            src_sr = int(f.samplerate)
+            frames = max(1, int(round(target_duration * src_sr))) if target_duration > 0 else -1
+            audio = f.read(frames=frames, dtype="float32", always_2d=True)
+            audio = audio.mean(axis=1)
+    except Exception:
+        audio = None
+
+    if audio is None:
+        info = torchaudio.info(str(audio_path))
+        src_sr = int(info.sample_rate)
+        num_frames = max(1, int(round(target_duration * src_sr))) if target_duration > 0 else -1
+        loaded, src_sr = torchaudio.load(str(audio_path), num_frames=num_frames)
+        audio = loaded.mean(dim=0).detach().cpu().numpy().astype(np.float32, copy=False)
+
     audio = np.asarray(audio, dtype=np.float32)
+    if audio.ndim == 0:
+        audio = audio.reshape(1)
     if audio.ndim > 1:
         audio = np.mean(audio, axis=-1)
+    if src_sr is not None and int(src_sr) != int(sampling_rate):
+        import torch
+
+        audio_tensor = torch.from_numpy(audio).float()
+        audio_tensor = torchaudio.functional.resample(audio_tensor, int(src_sr), int(sampling_rate))
+        audio = audio_tensor.detach().cpu().numpy().astype(np.float32, copy=False)
 
     target_samples = max(1, int(round(float(clip_seconds) * int(sampling_rate))))
     if audio.shape[0] > target_samples:
@@ -395,7 +422,7 @@ def _is_fatal_cuda_error(exc: BaseException) -> bool:
 
 def _write_report(path: Path, report: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     tmp.write_text(json.dumps(report, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
     tmp.replace(path)
 
@@ -431,7 +458,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--torch-dtype", choices=["auto", "bfloat16", "float16", "float32"], default="auto")
     parser.add_argument("--device-map", default="auto")
     parser.add_argument("--trust-remote-code", action="store_true")
-    parser.add_argument("--max-new-tokens", type=int, default=128)
+    parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--repetition-penalty", type=float, default=1.15)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top-p", type=float, default=0.95)

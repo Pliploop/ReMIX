@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=ji_ngrok_demo
+#SBATCH --job-name=ji_localtunnel_demo
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -12,25 +12,28 @@ set -euo pipefail
 cd /data/home/acw749/Jamendo-Instruct
 
 export PYTHONPATH=src
-export PATH="/gpfs/scratch/acw749/tools/ngrok:${PATH}"
+export PATH="/data/home/acw749/conda-envs/instruct_embed/bin:/gpfs/scratch/acw749/tools/localtunnel/bin:${PATH}"
+export STREAMLIT_SERVER_ENABLE_CORS=false
+export STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
 
 RUN_ROOT="${RUN_ROOT:-/gpfs/scratch/acw749/datasets/music4all_instruct/music4all_v1}"
 LOG_DIR="${LOG_DIR:-${RUN_ROOT}/demo/logs}"
 PORT="${PORT:-7860}"
 MAX_CHAINS="${MAX_CHAINS:-0}"
 INSTRUCTIONS_JSONL="${INSTRUCTIONS_JSONL:-}"
+LOCALTUNNEL_SUBDOMAIN="${LOCALTUNNEL_SUBDOMAIN:-}"
 
 mkdir -p "${LOG_DIR}"
 
 JOB_ID="${SLURM_JOB_ID:-manual_$(date +%Y%m%d_%H%M%S)_$$}"
-URL_FILE="${LOG_DIR}/ngrok_${JOB_ID}.url"
+URL_FILE="${LOG_DIR}/localtunnel_${JOB_ID}.url"
 APP_LOG="${LOG_DIR}/streamlit_inner_${JOB_ID}.log"
-NGROK_LOG="${LOG_DIR}/ngrok_${JOB_ID}.log"
+LOCALTUNNEL_LOG="${LOG_DIR}/localtunnel_${JOB_ID}.log"
 rm -f "${URL_FILE}"
 
 cleanup() {
-  if [[ -n "${NGROK_PID:-}" ]]; then
-    kill "${NGROK_PID}" 2>/dev/null || true
+  if [[ -n "${LOCALTUNNEL_PID:-}" ]]; then
+    kill "${LOCALTUNNEL_PID}" 2>/dev/null || true
   fi
   if [[ -n "${APP_PID:-}" ]]; then
     kill "${APP_PID}" 2>/dev/null || true
@@ -62,23 +65,23 @@ for _ in $(seq 1 180); do
   sleep 2
 done
 
-NGROK_CMD=(
-  ngrok http "http://127.0.0.1:${PORT}"
-  --log stdout
-  --log-format logfmt
+LOCALTUNNEL_CMD=(
+  lt
+  --port "${PORT}"
+  --local-host 127.0.0.1
 )
-if [[ -n "${NGROK_AUTHTOKEN:-}" ]]; then
-  NGROK_CMD+=(--authtoken "${NGROK_AUTHTOKEN}")
+if [[ -n "${LOCALTUNNEL_SUBDOMAIN}" ]]; then
+  LOCALTUNNEL_CMD+=(--subdomain "${LOCALTUNNEL_SUBDOMAIN}")
 fi
-"${NGROK_CMD[@]}" >"${NGROK_LOG}" 2>&1 &
-NGROK_PID=$!
+"${LOCALTUNNEL_CMD[@]}" >"${LOCALTUNNEL_LOG}" 2>&1 &
+LOCALTUNNEL_PID=$!
 
 for _ in $(seq 1 120); do
-  if ! kill -0 "${NGROK_PID}" 2>/dev/null; then
-    echo "ngrok exited before publishing a tunnel; see ${NGROK_LOG}" >&2
+  if ! kill -0 "${LOCALTUNNEL_PID}" 2>/dev/null; then
+    echo "localtunnel exited before publishing a tunnel; see ${LOCALTUNNEL_LOG}" >&2
     exit 1
   fi
-  URL=$(/data/home/acw749/conda-envs/instruct_embed/bin/python - "${NGROK_LOG}" <<'PY' || true
+  URL=$(/data/home/acw749/conda-envs/instruct_embed/bin/python - "${LOCALTUNNEL_LOG}" <<'PY' || true
 import re
 import sys
 
@@ -88,7 +91,7 @@ try:
 except OSError:
     raise SystemExit(1)
 
-matches = re.findall(r"https://[a-zA-Z0-9.-]+\.ngrok(?:-free)?\.(?:app|dev)", text)
+matches = re.findall(r"https://[a-zA-Z0-9-]+\.loca\.lt", text)
 if matches:
     print(matches[-1])
 PY
@@ -101,8 +104,8 @@ PY
 done
 
 if [[ ! -s "${URL_FILE}" ]]; then
-  echo "ngrok did not publish a public URL; see ${NGROK_LOG}" >&2
+  echo "localtunnel did not publish a public URL; see ${LOCALTUNNEL_LOG}" >&2
   exit 1
 fi
 
-wait "${NGROK_PID}"
+wait "${LOCALTUNNEL_PID}"

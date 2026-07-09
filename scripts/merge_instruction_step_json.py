@@ -17,14 +17,18 @@ def _iter_records(input_dirs: Sequence[Path]) -> Iterable[Dict[str, Any]]:
             yield data
 
 
-def _record_key(record: Dict[str, Any]) -> Tuple[str, int]:
-    return str(record.get("chain_id", "")), int(record.get("turn_index", 0) or 0)
+def _record_key(record: Dict[str, Any]) -> Tuple[str, int, int]:
+    return (
+        str(record.get("chain_id", "")),
+        int(record.get("turn_index", 0) or 0),
+        int(record.get("variant_index", 0) or 0),
+    )
 
 
 def merge_step_json(input_dirs: Sequence[Path], output_jsonl: Path, *, overwrite: bool = False) -> Dict[str, int]:
     if output_jsonl.exists() and not overwrite:
         raise FileExistsError(f"Output already exists: {output_jsonl}")
-    records_by_key: Dict[Tuple[str, int], Dict[str, Any]] = {}
+    records_by_key: Dict[Tuple[str, int, int], Dict[str, Any]] = {}
     duplicate_count = 0
     for record in _iter_records(input_dirs):
         key = _record_key(record)

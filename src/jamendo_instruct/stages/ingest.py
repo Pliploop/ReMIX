@@ -280,9 +280,12 @@ def _extract_track_base(row: Dict[str, Any], cfg: DictConfig) -> Dict[str, Any]:
     }
 
 
-def _resolve_audio_path(track_id: str, cfg: DictConfig) -> str:
+def _resolve_audio_path(rec: Dict[str, Any], cfg: DictConfig) -> str:
+    track_id = str(rec.get("track_id", "") or "")
     root = Path(cfg.stage.audio.root)
     mode = str(cfg.stage.audio.path_mode)
+    if mode == "audio_download_url":
+        return str(rec.get("audio_download_url", "") or "")
     if mode == "track_id_mp3" or mode == "track_id_wav":
         return str(root / cfg.stage.audio.file_template.format(track_id=track_id))
     if mode == "track_id_suffix_dir":
@@ -439,7 +442,7 @@ def run_ingest(cfg: DictConfig) -> Dict[str, Any]:
                 progress.update(1)
                 continue
 
-            file_path = _resolve_audio_path(track_id, cfg)
+            file_path = _resolve_audio_path(rec, cfg)
             if cfg.stage.audio.verify_exists and not Path(file_path).exists():
                 if cfg.stage.filters.drop_unavailable_audio:
                     dropped_rows.append({"track_id": track_id, "reason": "audio_not_found"})

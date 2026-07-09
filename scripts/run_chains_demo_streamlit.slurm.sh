@@ -13,19 +13,25 @@ cd /data/home/acw749/Jamendo-Instruct
 
 export PYTHONPATH=src
 
-RUN_ROOT="${RUN_ROOT:-/gpfs/scratch/acw749/datasets/music4all_instruct/music4all_v1}"
+DATASET_NAME="${DATASET_NAME:-music4all_v1}"
+INSTRUCTION_NAME="${INSTRUCTION_NAME:-instructions_axis_focused_5}"
+DATASET_BASE="${DATASET_BASE:-/gpfs/scratch/acw749/datasets/music4all_instruct}"
+RUN_ROOT="${RUN_ROOT:-${DATASET_BASE}/${DATASET_NAME}}"
 LOG_DIR="${LOG_DIR:-${RUN_ROOT}/demo/logs}"
 PORT="${PORT:-7860}"
 MAX_CHAINS="${MAX_CHAINS:-0}"
+INSTRUCTIONS_JSONL="${INSTRUCTIONS_JSONL:-${RUN_ROOT}/${INSTRUCTION_NAME}/chain_step_instructions.jsonl}"
 
 mkdir -p "${LOG_DIR}"
 
-APP_LOG="${LOG_DIR}/streamlit_direct_${SLURM_JOB_ID}.log"
-URL_FILE="${LOG_DIR}/streamlit_direct_${SLURM_JOB_ID}.url"
+JOB_ID="${SLURM_JOB_ID:-manual_$(date +%Y%m%d_%H%M%S)_$$}"
+APP_LOG="${LOG_DIR}/streamlit_direct_${JOB_ID}.log"
+URL_FILE="${LOG_DIR}/streamlit_direct_${JOB_ID}.url"
 rm -f "${URL_FILE}"
 
 /data/home/acw749/conda-envs/instruct_embed/bin/python -m jamendo_instruct.demo.chains_demo \
   --run-root "${RUN_ROOT}" \
+  --instructions-jsonl "${INSTRUCTIONS_JSONL}" \
   --max-chains "${MAX_CHAINS}" \
   --host 0.0.0.0 \
   --port "${PORT}" \

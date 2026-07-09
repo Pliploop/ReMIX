@@ -1,0 +1,14 @@
+Metric,Value
+Chains,2186.0
+Steps,5373.0
+Instruction variants,26737.0
+Unique clips,6777.0
+Unique tracks,6777.0
+Unique artists,1908.0
+Audio hours (referenced),56.5
+Total instruction words,213692.0
+Mean steps / chain,2.46
+Mean variants / step,4.98
+Steps (Test),1089.0
+Steps (Train),3159.0
+Steps (Val),1125.0

@@ -4,6 +4,7 @@ io:
   input_manifest_csv: ${runtime.output_root}/${runtime.run_name}/ingest/normalized_track_manifest.csv
   output_dir: ${runtime.output_root}/${runtime.run_name}/lyrics
   output_manifest_csv: normalized_track_manifest_with_lyrics.csv
+  output_detected_lyrics_file: detected_lyrics_files.txt
   report_file: lyrics_report.json
 
 models:
@@ -22,6 +23,7 @@ behavior:
   reuse_output_manifest: true
   checkpoint_every_n_batches: 500
   cleanup_checkpoints_after_success: true
+  detected_lyrics_preview_limit: 25
   verbose_errors: false
   max_logged_errors: 25
 
@@ -40,7 +42,7 @@ transcription:
   language: null
   chunk_length_s: 30
   return_timestamps: true
-  max_new_tokens: 256
+  max_new_tokens: 400
   num_beams: 1
   condition_on_prev_tokens: false
   compression_ratio_threshold: 1.35

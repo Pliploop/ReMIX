@@ -32,7 +32,7 @@ runtime:
   vllm_quantization: null   # e.g. modelopt, modelopt_fp4
   vllm_kv_cache_dtype: auto
   vllm_tokenizer_mode: null   # e.g. fastokens when installed, otherwise leave null
-  vllm_max_num_sqtokens: 0   # 0 = vLLM default
+  vllm_max_num_batched_tokens: 0   # 0 = vLLM default
   vllm_max_num_seqs: 0   # 0 = vLLM default
   vllm_enable_prefix_caching: null   # null = vLLM default
   vllm_gdn_prefill_backend: null   # flashinfer | triton
@@ -48,6 +48,7 @@ runtime:
 behavior:
   max_chains: null
   max_steps: null
+  variants_per_step: 5   # set to 1 for legacy single-instruction behavior
   random_seed: ${runtime.seed}
   overwrite_existing: false
   discard_failed: true
@@ -71,16 +72,17 @@ generation:
   temperature: 0.8
   top_p: 0.95
   max_new_tokens: 512
-  short_probability: 0.62
-  medium_probability: 0.28
-  long_probability: 0.10
+  short_probability: 0.4
+  medium_probability: 0.3
+  long_probability: 0.3
 
 clause_budget:
   enabled: true
-  zero_probability: 0.72
-  one_probability: 0.22
-  two_probability: 0.055
-  three_probability: 0.005
+  one_probability: 0.50
+  two_probability: 0.30
+  three_probability: 0.15
+  four_probability: 0.05
+  extra_change_probability: 0.67
   max_total_clauses: 4
 
 verification:
@@ -92,6 +94,9 @@ verification:
 axis_guidance:
   enabled: false
   state_path: ${stage.io.output_dir}/axis_guidance_state.json
+  guidance_mechanism: sampled_focus   # soft | sampled_focus | hybrid
+  sampled_focus_probability: 0.5   # used only by hybrid
+  genre_style_sample_weight: 0.5   # lower values make sampled focus prefer non-genre axes
   include_preservation_guidance: true
   update_after_accept: true
 

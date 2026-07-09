@@ -5,13 +5,27 @@ import csv
 import hashlib
 import html
 import json
+import os
 import re
 import sys
 import tempfile
+import time
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence
+
+
+FAVICON_PATH = Path(__file__).resolve().parents[3] / "assets" / "favicon.png"
+
+
+_LOAD_LOG_INTERVAL_SEC = 10.0
+
+
+def _load_log(message: str) -> None:
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{timestamp} [chains_demo] {message}", file=sys.stderr, flush=True)
 
 
 @dataclass(frozen=True)
@@ -33,6 +47,7 @@ class StepView:
     structured_delta: Dict[str, Any]
     accumulated_intent_state: Dict[str, Any]
     instruction_record: Dict[str, Any] | None
+    instruction_records: Sequence[Dict[str, Any]] = ()
 
 
 @dataclass(frozen=True)
@@ -55,6 +70,46 @@ class DemoDataset:
     summary: Dict[str, Any]
 
 
+_VALIDATION_QUESTIONS: Sequence[tuple[str, str]] = (
+    (
+        "target_satisfies_change",
+        "Does the target music satisfy the change requested by the instruction relative to the source?",
+    ),
+    (
+        "no_contradiction",
+        "Does the instruction avoid contradicting the metadata or clearly audible musical content?",
+    ),
+    (
+        "no_unsupported_invention",
+        "Does the instruction avoid introducing unsupported musical attributes or metadata?",
+    ),
+    (
+        "genuine_edit",
+        "Does the instruction describe a genuine change rather than a vague target description or a property already present in the source?",
+    ),
+    (
+        "soft_semantic_grounding",
+        "When the change relies on captions or lyrics rather than discrete tags, is it grounded in a supported audible difference?",
+    ),
+    (
+        "history_unaware_solvable",
+        "Can the history-unaware instruction be interpreted correctly using only the seed item and the instruction itself?",
+    ),
+    (
+        "history_aware_requires_context",
+        "Does the history-aware instruction require earlier chain context to be interpreted as intended?",
+    ),
+    (
+        "history_reference_coherent",
+        "If the history-aware instruction refers to prior turns, is that reference consistent with the actual chain history?",
+    ),
+    (
+        "variant_semantic_equivalence",
+        "Do the history-aware and history-unaware variants request the same underlying musical change?",
+    ),
+)
+
+
 def _iter_jsonl(path: Path) -> Iterable[Dict[str, Any]]:
     with path.open("r", encoding="utf-8") as f:
         for line_no, line in enumerate(f, start=1):
@@ -67,7 +122,7 @@ def _iter_jsonl(path: Path) -> Iterable[Dict[str, Any]]:
                 raise ValueError(f"Malformed JSONL at {path}:{line_no}") from exc
 
 
-def _instruction_record_key(record: Dict[str, Any]) -> tuple[str, int] | None:
+def _instruction_record_key(record: Dict[str, Any]) -> tuple[str, int, int] | None:
     chain_id = str(record.get("chain_id", "") or "").strip()
     if not chain_id:
         return None
@@ -75,17 +130,25 @@ def _instruction_record_key(record: Dict[str, Any]) -> tuple[str, int] | None:
         turn_index = int(record.get("turn_index", 0) or 0)
     except (TypeError, ValueError):
         return None
-    return chain_id, turn_index
+    try:
+        variant_index = int(record.get("variant_index", 0) or 0)
+    except (TypeError, ValueError):
+        variant_index = 0
+    return chain_id, turn_index, variant_index
 
 
-def _instruction_path_key(path: Path) -> tuple[str, int] | None:
+def _instruction_path_key(path: Path) -> tuple[str, int, int] | None:
     stem = path.stem
     if "__turn_" not in stem:
         return None
     chain_id, tail = stem.split("__turn_", 1)
     turn_text = tail.split("__", 1)[0]
+    variant_index = 0
+    variant_match = re.search(r"__variant_(\d+)", stem)
+    if variant_match:
+        variant_index = int(variant_match.group(1))
     try:
-        return chain_id, int(turn_text)
+        return chain_id, int(turn_text), variant_index
     except ValueError:
         return None
 
@@ -93,7 +156,7 @@ def _instruction_path_key(path: Path) -> tuple[str, int] | None:
 def _iter_instruction_records(path: Path | None) -> Iterable[Dict[str, Any]]:
     if path is None:
         return
-    seen: set[tuple[str, int]] = set()
+    seen: set[tuple[str, int, int]] = set()
     if path.exists():
         for record in _iter_jsonl(path):
             key = _instruction_record_key(record)
@@ -118,6 +181,38 @@ def _iter_instruction_records(path: Path | None) -> Iterable[Dict[str, Any]]:
             continue
         seen.add(key)
         yield record
+
+
+def _validation_jsonl_path(instructions_jsonl: Path | None) -> Path | None:
+    if instructions_jsonl is None:
+        return None
+    return instructions_jsonl.parent / "validation" / "human_validation.jsonl"
+
+
+def _validation_record_key(record: Dict[str, Any]) -> tuple[str, int, int] | None:
+    chain_id = str(record.get("chain_id", "") or "").strip()
+    if not chain_id:
+        return None
+    try:
+        turn_index = int(record.get("turn_index", 0) or 0)
+        variant_index = int(record.get("variant_index", 0) or 0)
+    except (TypeError, ValueError):
+        return None
+    return chain_id, turn_index, variant_index
+
+
+def _matching_validation_records(path: Path | None, *, chain_id: str, turn_index: int, variant_index: int) -> List[Dict[str, Any]]:
+    if path is None or not path.exists():
+        return []
+    key = (chain_id, turn_index, variant_index)
+    return [record for record in _iter_jsonl(path) if _validation_record_key(record) == key]
+
+
+def _append_validation_record(path: Path, record: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=True, sort_keys=True))
+        f.write("\n")
 
 
 def _parse_json_list(raw: str) -> List[str]:
@@ -177,7 +272,8 @@ def _instruction_folder_options(run_root: str | None) -> List[Path]:
     if not root.exists():
         return []
     options: List[Path] = []
-    for child in sorted(root.iterdir()):
+    preferred = str(os.environ.get("INSTRUCTION_NAME", "instructions_axis_focused_5") or "instructions_axis_focused_5")
+    for child in sorted(root.iterdir(), key=lambda path: (path.name != preferred, path.name)):
         if not child.is_dir():
             continue
         instructions_jsonl = child / "chain_step_instructions.jsonl"
@@ -188,13 +284,19 @@ def _instruction_folder_options(run_root: str | None) -> List[Path]:
 
 def _load_instruction_chain_ids(path: Path | None) -> tuple[List[str], int]:
     if path is None:
+        _load_log("No instruction artifact configured; skipping instruction chain discovery")
         return [], 0
+    start = time.perf_counter()
+    _load_log(f"Discovering instructed chains from {path}")
     ordered: List[str] = []
     seen_chains: set[str] = set()
-    seen_steps: set[tuple[str, int]] = set()
+    seen_steps: set[tuple[str, int, int]] = set()
     count = 0
     if path.exists():
+        jsonl_count = 0
+        last_log = start
         for record in _iter_jsonl(path):
+            jsonl_count += 1
             key = _instruction_record_key(record)
             if key is None or key in seen_steps:
                 continue
@@ -204,10 +306,28 @@ def _load_instruction_chain_ids(path: Path | None) -> tuple[List[str], int]:
             if chain_id not in seen_chains:
                 ordered.append(chain_id)
                 seen_chains.add(chain_id)
+            now = time.perf_counter()
+            if now - last_log >= _LOAD_LOG_INTERVAL_SEC:
+                _load_log(
+                    "Instruction JSONL discovery progress: "
+                    f"read={jsonl_count:,}, unique_steps={count:,}, unique_chains={len(ordered):,}"
+                )
+                last_log = now
+        _load_log(
+            "Instruction JSONL discovery complete: "
+            f"read={jsonl_count:,}, unique_steps={count:,}, unique_chains={len(ordered):,}"
+        )
+    else:
+        _load_log(f"Instruction JSONL not present at {path}; checking sidecar step_json")
 
     sidecar_dir = path.parent / "step_json"
     if sidecar_dir.exists():
+        sidecar_count = 0
+        sidecar_start = time.perf_counter()
+        last_log = sidecar_start
+        _load_log(f"Scanning instruction sidecars under {sidecar_dir}")
         for json_path in sorted(sidecar_dir.glob("*.json")):
+            sidecar_count += 1
             key = _instruction_path_key(json_path)
             if key is None or key in seen_steps:
                 continue
@@ -217,6 +337,22 @@ def _load_instruction_chain_ids(path: Path | None) -> tuple[List[str], int]:
             if chain_id not in seen_chains:
                 ordered.append(chain_id)
                 seen_chains.add(chain_id)
+            now = time.perf_counter()
+            if sidecar_count % 10000 == 0 or now - last_log >= _LOAD_LOG_INTERVAL_SEC:
+                _load_log(
+                    "Instruction sidecar discovery progress: "
+                    f"files_seen={sidecar_count:,}, unique_steps={count:,}, unique_chains={len(ordered):,}"
+                )
+                last_log = now
+        _load_log(
+            "Instruction sidecar discovery complete: "
+            f"files_seen={sidecar_count:,}, unique_steps={count:,}, unique_chains={len(ordered):,}, "
+            f"elapsed={time.perf_counter() - sidecar_start:.1f}s"
+        )
+    _load_log(
+        "Instruction discovery complete: "
+        f"unique_steps={count:,}, unique_chains={len(ordered):,}, elapsed={time.perf_counter() - start:.1f}s"
+    )
     return ordered, count
 
 
@@ -227,38 +363,66 @@ def _load_chain_records(
     max_chains: int | None,
     preferred_chain_ids: Sequence[str] | None = None,
 ) -> List[Dict[str, Any]]:
+    start = time.perf_counter()
     if preferred_chain_ids:
         selected_ids = list(preferred_chain_ids[chain_offset:])
         if max_chains is not None:
             selected_ids = selected_ids[:max_chains]
+        _load_log(
+            "Loading preferred chain records: "
+            f"selected={len(selected_ids):,}, chain_offset={chain_offset:,}, "
+            f"max_chains={max_chains if max_chains is not None else 'all'}, path={path}"
+        )
         selected = set(selected_ids)
         found: Dict[str, Dict[str, Any]] = {}
-        for record in _iter_jsonl(path):
+        last_log = start
+        for scanned, record in enumerate(_iter_jsonl(path), start=1):
             chain_id = str(record.get("chain_id", "") or "").strip()
             if chain_id in selected:
                 found[chain_id] = record
                 if len(found) >= len(selected):
                     break
+            now = time.perf_counter()
+            if scanned % 100000 == 0 or now - last_log >= _LOAD_LOG_INTERVAL_SEC:
+                _load_log(
+                    "Preferred chain scan progress: "
+                    f"scanned={scanned:,}, found={len(found):,}/{len(selected):,}"
+                )
+                last_log = now
         records = [found[chain_id] for chain_id in selected_ids if chain_id in found]
         if not records:
             raise ValueError(
                 f"No preferred instructed chains were loaded from {path}. "
                 f"Check that instruction chain IDs are present in the chain artifact."
             )
+        _load_log(
+            "Preferred chain records loaded: "
+            f"records={len(records):,}, elapsed={time.perf_counter() - start:.1f}s"
+        )
         return records
 
+    _load_log(
+        "Loading chain records sequentially: "
+        f"chain_offset={chain_offset:,}, max_chains={max_chains if max_chains is not None else 'all'}, path={path}"
+    )
     records: List[Dict[str, Any]] = []
+    last_log = start
     for idx, record in enumerate(_iter_jsonl(path)):
         if idx < chain_offset:
             continue
         records.append(record)
         if max_chains is not None and len(records) >= max_chains:
             break
+        now = time.perf_counter()
+        if len(records) % 100000 == 0 or now - last_log >= _LOAD_LOG_INTERVAL_SEC:
+            _load_log(f"Sequential chain load progress: scanned={idx + 1:,}, loaded={len(records):,}")
+            last_log = now
     if not records:
         raise ValueError(
             f"No chains were loaded from {path}. "
             f"Check --chain-offset/--max-chains or confirm the artifact is populated."
         )
+    _load_log(f"Chain records loaded: records={len(records):,}, elapsed={time.perf_counter() - start:.1f}s")
     return records
 
 
@@ -280,33 +444,68 @@ def _referenced_clip_ids(chains: Sequence[Dict[str, Any]]) -> set[str]:
 def _load_manifest_rows(path: Path, keep_clip_ids: set[str]) -> Dict[str, Dict[str, str]]:
     out: Dict[str, Dict[str, str]] = {}
     if not keep_clip_ids:
+        _load_log("No clip ids requested from manifest; skipping manifest load")
         return out
+    start = time.perf_counter()
+    _load_log(f"Loading manifest rows: requested_clip_ids={len(keep_clip_ids):,}, path={path}")
+    last_log = start
     with path.open("r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
-        for row in reader:
+        for scanned, row in enumerate(reader, start=1):
             clip_id = str(row.get("clip_id", "") or "").strip()
             if clip_id and clip_id in keep_clip_ids:
                 out[clip_id] = row
                 if len(out) >= len(keep_clip_ids):
                     break
+            now = time.perf_counter()
+            if scanned % 100000 == 0 or now - last_log >= _LOAD_LOG_INTERVAL_SEC:
+                _load_log(
+                    "Manifest load progress: "
+                    f"scanned={scanned:,}, matched={len(out):,}/{len(keep_clip_ids):,}"
+                )
+                last_log = now
+    _load_log(
+        "Manifest rows loaded: "
+        f"matched={len(out):,}/{len(keep_clip_ids):,}, elapsed={time.perf_counter() - start:.1f}s"
+    )
     return out
 
 
-def _load_instruction_index(path: Path | None, keep_chain_ids: set[str]) -> Dict[tuple[str, int], Dict[str, Any]]:
+def _load_instruction_index(path: Path | None, keep_chain_ids: set[str]) -> Dict[tuple[str, int, int], Dict[str, Any]]:
     if path is None:
+        _load_log("No instruction artifact configured; skipping instruction index load")
         return {}
-    out: Dict[tuple[str, int], Dict[str, Any]] = {}
+    start = time.perf_counter()
+    _load_log(f"Loading instruction index: keep_chain_ids={len(keep_chain_ids):,}, path={path}")
+    out: Dict[tuple[str, int, int], Dict[str, Any]] = {}
     if path.exists():
+        jsonl_count = 0
+        last_log = start
         for record in _iter_jsonl(path):
+            jsonl_count += 1
             key = _instruction_record_key(record)
             if key is None or key[0] not in keep_chain_ids:
                 continue
             out[key] = record
+            now = time.perf_counter()
+            if now - last_log >= _LOAD_LOG_INTERVAL_SEC:
+                _load_log(
+                    "Instruction JSONL index progress: "
+                    f"read={jsonl_count:,}, indexed={len(out):,}"
+                )
+                last_log = now
+        _load_log(f"Instruction JSONL index complete: read={jsonl_count:,}, indexed={len(out):,}")
 
     sidecar_dir = path.parent / "step_json"
     if not sidecar_dir.exists():
+        _load_log(f"Instruction index loaded: records={len(out):,}, elapsed={time.perf_counter() - start:.1f}s")
         return out
+    sidecar_count = 0
+    sidecar_start = time.perf_counter()
+    last_log = sidecar_start
+    _load_log(f"Loading instruction sidecar index from {sidecar_dir}")
     for json_path in sorted(sidecar_dir.glob("*.json")):
+        sidecar_count += 1
         key = _instruction_path_key(json_path)
         if key is None or key[0] not in keep_chain_ids or key in out:
             continue
@@ -317,6 +516,18 @@ def _load_instruction_index(path: Path | None, keep_chain_ids: set[str]) -> Dict
             raise ValueError(f"Malformed instruction JSON at {json_path}") from exc
         if isinstance(record, dict):
             out[key] = record
+        now = time.perf_counter()
+        if sidecar_count % 10000 == 0 or now - last_log >= _LOAD_LOG_INTERVAL_SEC:
+            _load_log(
+                "Instruction sidecar index progress: "
+                f"files_seen={sidecar_count:,}, indexed={len(out):,}"
+            )
+            last_log = now
+    _load_log(
+        "Instruction sidecar index complete: "
+        f"files_seen={sidecar_count:,}, indexed={len(out):,}, elapsed={time.perf_counter() - sidecar_start:.1f}s"
+    )
+    _load_log(f"Instruction index loaded: records={len(out):,}, elapsed={time.perf_counter() - start:.1f}s")
     return out
 
 
@@ -346,16 +557,22 @@ def _load_dataset_from_instruction_records(
     instructed_chain_ids: Sequence[str],
     total_instruction_records: int,
 ) -> DemoDataset:
+    start = time.perf_counter()
     selected_chain_ids = list(instructed_chain_ids[chain_offset:])
     if max_chains is not None:
         selected_chain_ids = selected_chain_ids[:max_chains]
     if not selected_chain_ids:
         raise ValueError("No instructed chains were selected. Check --chain-offset/--max-chains.")
+    _load_log(
+        "Assembling dataset from instruction records: "
+        f"selected_chains={len(selected_chain_ids):,}, total_instruction_chains={len(instructed_chain_ids):,}, "
+        f"total_instruction_records={total_instruction_records:,}"
+    )
 
     instruction_index = _load_instruction_index(paths.instructions_jsonl, set(selected_chain_ids))
     records_by_chain: Dict[str, List[Dict[str, Any]]] = {chain_id: [] for chain_id in selected_chain_ids}
     clip_ids: set[str] = set()
-    for (chain_id, _turn_index), record in instruction_index.items():
+    for (chain_id, _turn_index, _variant_index), record in instruction_index.items():
         records_by_chain.setdefault(chain_id, []).append(record)
         for key in ("seed_clip_id", "source_clip_id", "target_clip_id"):
             clip_id = str(record.get(key, "") or "").strip()
@@ -368,7 +585,10 @@ def _load_dataset_from_instruction_records(
     missing_manifest_rows = 0
 
     for chain_id in selected_chain_ids:
-        records = sorted(records_by_chain.get(chain_id, []), key=lambda record: int(record.get("turn_index", 0) or 0))
+        records = sorted(
+            records_by_chain.get(chain_id, []),
+            key=lambda record: (int(record.get("turn_index", 0) or 0), int(record.get("variant_index", 0) or 0)),
+        )
         if not records:
             continue
         first = records[0]
@@ -378,7 +598,12 @@ def _load_dataset_from_instruction_records(
             missing_manifest_rows += 1
 
         steps: List[StepView] = []
+        records_by_turn: Dict[int, List[Dict[str, Any]]] = {}
         for record in records:
+            records_by_turn.setdefault(int(record.get("turn_index", 0) or 0), []).append(record)
+        for turn_index in sorted(records_by_turn):
+            variants = sorted(records_by_turn[turn_index], key=lambda record: int(record.get("variant_index", 0) or 0))
+            record = variants[0]
             source_clip_id = str(record.get("source_clip_id", "") or "").strip()
             target_clip_id = str(record.get("target_clip_id", "") or "").strip()
             source_row = manifest_by_clip.get(source_clip_id, {})
@@ -387,10 +612,10 @@ def _load_dataset_from_instruction_records(
                 missing_manifest_rows += 1
             if target_clip_id and target_clip_id not in manifest_by_clip:
                 missing_manifest_rows += 1
-            instructions_found += 1
+            instructions_found += len(variants)
             steps.append(
                 StepView(
-                    turn_index=int(record.get("turn_index", 0) or 0),
+                    turn_index=turn_index,
                     source_clip_id=source_clip_id,
                     target_clip_id=target_clip_id,
                     split=str(record.get("split", "") or ""),
@@ -399,6 +624,7 @@ def _load_dataset_from_instruction_records(
                     structured_delta=_structured_delta_from_rows(source_row, target_row),
                     accumulated_intent_state={},
                     instruction_record=record,
+                    instruction_records=variants,
                 )
             )
 
@@ -431,6 +657,12 @@ def _load_dataset_from_instruction_records(
         "max_chains": max_chains,
         "load_mode": "instruction_records",
     }
+    _load_log(
+        "Dataset assembly from instruction records complete: "
+        f"chains={len(chains):,}, instructions={instructions_found:,}, "
+        f"clips={len(clip_ids):,}, missing_manifest_refs={missing_manifest_rows:,}, "
+        f"elapsed={time.perf_counter() - start:.1f}s"
+    )
     return DemoDataset(
         paths=paths,
         chains=chains,
@@ -441,15 +673,24 @@ def _load_dataset_from_instruction_records(
 
 
 def _load_dataset(paths: ArtifactPaths, *, chain_offset: int, max_chains: int | None) -> DemoDataset:
+    start = time.perf_counter()
+    _load_log(
+        "Starting dataset load: "
+        f"run_root={paths.run_root}, manifest={paths.manifest_csv}, chains={paths.chains_jsonl}, "
+        f"instructions={paths.instructions_jsonl}, chain_offset={chain_offset:,}, "
+        f"max_chains={max_chains if max_chains is not None else 'all'}"
+    )
     instructed_chain_ids, total_instruction_records = _load_instruction_chain_ids(paths.instructions_jsonl)
     if paths.instructions_jsonl is not None and instructed_chain_ids:
-        return _load_dataset_from_instruction_records(
+        dataset = _load_dataset_from_instruction_records(
             paths,
             chain_offset=chain_offset,
             max_chains=max_chains,
             instructed_chain_ids=instructed_chain_ids,
             total_instruction_records=total_instruction_records,
         )
+        _load_log(f"Dataset load finished via instruction_records in {time.perf_counter() - start:.1f}s")
+        return dataset
 
     raw_chains = _load_chain_records(
         paths.chains_jsonl,
@@ -460,6 +701,11 @@ def _load_dataset(paths: ArtifactPaths, *, chain_offset: int, max_chains: int | 
     clip_ids = _referenced_clip_ids(raw_chains)
     manifest_by_clip = _load_manifest_rows(paths.manifest_csv, clip_ids)
     instruction_index = _load_instruction_index(paths.instructions_jsonl, set(chain_ids))
+    instruction_variants_by_step: Dict[tuple[str, int], List[Dict[str, Any]]] = {}
+    for (record_chain_id, record_turn_index, _variant_index), record in instruction_index.items():
+        instruction_variants_by_step.setdefault((record_chain_id, record_turn_index), []).append(record)
+    for variants in instruction_variants_by_step.values():
+        variants.sort(key=lambda record: int(record.get("variant_index", 0) or 0))
 
     chains: List[ChainView] = []
     instructions_found = 0
@@ -476,16 +722,17 @@ def _load_dataset(paths: ArtifactPaths, *, chain_offset: int, max_chains: int | 
         for raw_step in raw_chain.get("steps", []) or []:
             source_clip_id = str(raw_step.get("source_clip_id", "") or "").strip()
             target_clip_id = str(raw_step.get("target_clip_id", "") or "").strip()
-            instruction_record = instruction_index.get((chain_id, int(raw_step.get("turn_index", 0) or 0)))
-            if instruction_record is not None:
-                instructions_found += 1
+            turn_index = int(raw_step.get("turn_index", 0) or 0)
+            instruction_records = instruction_variants_by_step.get((chain_id, turn_index), [])
+            instruction_record = instruction_records[0] if instruction_records else None
+            instructions_found += len(instruction_records)
             if source_clip_id not in manifest_by_clip:
                 missing_manifest_rows += 1
             if target_clip_id not in manifest_by_clip:
                 missing_manifest_rows += 1
             steps.append(
                 StepView(
-                    turn_index=int(raw_step.get("turn_index", 0) or 0),
+                    turn_index=turn_index,
                     source_clip_id=source_clip_id,
                     target_clip_id=target_clip_id,
                     split=str(raw_step.get("split", "") or ""),
@@ -494,6 +741,7 @@ def _load_dataset(paths: ArtifactPaths, *, chain_offset: int, max_chains: int | 
                     structured_delta=dict(raw_step.get("structured_delta", {}) or {}),
                     accumulated_intent_state=dict(raw_step.get("accumulated_intent_state", {}) or {}),
                     instruction_record=instruction_record,
+                    instruction_records=instruction_records,
                 )
             )
 
@@ -522,6 +770,12 @@ def _load_dataset(paths: ArtifactPaths, *, chain_offset: int, max_chains: int | 
         "max_chains": max_chains,
         "load_mode": "chains_jsonl",
     }
+    _load_log(
+        "Dataset load finished via chains_jsonl: "
+        f"chains={len(chains):,}, instructions={instructions_found:,}, "
+        f"clips={len(clip_ids):,}, missing_manifest_refs={missing_manifest_rows:,}, "
+        f"elapsed={time.perf_counter() - start:.1f}s"
+    )
     return DemoDataset(
         paths=paths,
         chains=chains,
@@ -733,6 +987,10 @@ def _metric_card(label: str, value: Any, detail: str = "") -> str:
     )
 
 
+def _nav_position_html(text: str) -> str:
+    return f'<div class="ji-nav-position">{_html(text)}</div>'
+
+
 def _app_summary_html(dataset: DemoDataset) -> str:
     run_root = str(dataset.paths.run_root) if dataset.paths.run_root else "custom paths"
     instructions_src = dataset.summary["instructions_source"] or "not provided"
@@ -749,15 +1007,15 @@ def _app_summary_html(dataset: DemoDataset) -> str:
         ]
     )
     return (
-        '<section class="ji-hero">'
+        '<section class="ji-hero ji-hero-compact">'
         '<div>'
         '<div class="ji-eyebrow">Jamendo-Instruct</div>'
         '<h1>Chain Explorer</h1>'
-        '<p>Browse multi-turn music edits, inspect the requested semantic delta, and listen to source and target clips side by side.</p>'
+        '<p>Browse multi-turn music edits and instruction variants.</p>'
         f'<div class="ji-path"><strong>Run:</strong> {_html(run_root)}</div>'
         f'<div class="ji-path"><strong>Instructions:</strong> {_html(instructions_src)}</div>'
         '</div>'
-        f'<div class="ji-metrics">{metrics}</div>'
+        f'<div class="ji-metrics ji-metrics-compact">{metrics}</div>'
         '</section>'
     )
 
@@ -910,6 +1168,21 @@ def _streamlit_css() -> str:
       padding: 22px;
       margin-bottom: 14px;
     }
+    .ji-hero-compact {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+    }
+    .ji-hero-compact h1 {
+      font-size: 1.35rem;
+    }
+    .ji-hero-compact p {
+      margin: 4px 0 6px;
+    }
+    .ji-metrics-compact {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
     .ji-card {
       padding: 16px;
       margin-bottom: 12px;
@@ -996,6 +1269,32 @@ def _streamlit_css() -> str:
       margin-top: 2px;
       color: var(--ji-muted);
       font-size: 0.78rem;
+    }
+    .ji-page-title {
+      margin: 0 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--ji-line);
+    }
+    .ji-page-title h1 {
+      margin: 0;
+      color: var(--ji-text);
+      font-size: 1.35rem;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    .ji-page-title p {
+      margin: 4px 0 0;
+      color: var(--ji-muted);
+      font-size: 0.9rem;
+    }
+    .ji-nav-position {
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ji-text);
+      font-size: 0.95rem;
+      font-weight: 700;
     }
     .ji-pill-row {
       display: flex;
@@ -1237,18 +1536,20 @@ def _analysis_step_rows(chains: Sequence[ChainView], dataset: DemoDataset) -> Li
     rows: List[Dict[str, Any]] = []
     for chain in chains:
         for step in chain.steps:
-            record = step.instruction_record
-            axes = _instruction_axes(record)
-            preservations = _preservation_axes(record)
-            source_row = dataset.manifest_by_clip.get(step.source_clip_id, {})
-            target_row = dataset.manifest_by_clip.get(step.target_clip_id, {})
-            unaware = _instruction_text(record, "history_unaware_instruction") if record else ""
-            aware = _instruction_text(record, "history_aware_instruction") if record else ""
-            structured = step.structured_delta or {}
-            rows.append(
-                {
+            records = list(step.instruction_records) or ([step.instruction_record] if step.instruction_record else [None])
+            for record in records:
+                axes = _instruction_axes(record)
+                preservations = _preservation_axes(record)
+                source_row = dataset.manifest_by_clip.get(step.source_clip_id, {})
+                target_row = dataset.manifest_by_clip.get(step.target_clip_id, {})
+                unaware = _instruction_text(record, "history_unaware_instruction") if record else ""
+                aware = _instruction_text(record, "history_aware_instruction") if record else ""
+                structured = step.structured_delta or {}
+                rows.append(
+                    {
                     "chain_id": chain.chain_id,
                     "turn_index": step.turn_index,
+                    "variant_index": int((record or {}).get("variant_index", 0) or 0),
                     "split": step.split or chain.split or "unknown",
                     "hardness": step.hardness or "unknown",
                     "transition_score": step.transition_score,
@@ -1274,8 +1575,8 @@ def _analysis_step_rows(chains: Sequence[ChainView], dataset: DemoDataset) -> Li
                     "primary_edit": _step_primary_edit(step),
                     "history_unaware_words": len(re.findall(r"[A-Za-z0-9']+", unaware)),
                     "history_aware_words": len(re.findall(r"[A-Za-z0-9']+", aware)),
-                }
-            )
+                    }
+                )
     return rows
 
 
@@ -1511,6 +1812,104 @@ def _render_analysis_tab(st: Any, dataset: DemoDataset, visible_chains: Sequence
         st.dataframe(pd.DataFrame(selected_rows)[columns] if selected_rows else pd.DataFrame(columns=columns), width="stretch", hide_index=True)
 
 
+def _render_validation_tab(
+    st: Any,
+    dataset: DemoDataset,
+    chain: ChainView,
+    step: StepView,
+    record: Dict[str, Any] | None,
+    *,
+    cache_dir: Path,
+) -> None:
+    if record is None:
+        st.info("No instruction record is available for this step.")
+        return
+
+    validation_path = _validation_jsonl_path(dataset.paths.instructions_jsonl)
+    if validation_path is None:
+        st.info("Load an instruction artifact to record validation responses.")
+        return
+
+    variant_index = int(record.get("variant_index", 0) or 0)
+    prior_records = _matching_validation_records(
+        validation_path,
+        chain_id=chain.chain_id,
+        turn_index=step.turn_index,
+        variant_index=variant_index,
+    )
+
+    st.subheader("Validation")
+    st.caption(
+        f"Responses are appended to `{validation_path}`. "
+        f"{len(prior_records):,} existing response(s) for this chain step and variant."
+    )
+
+    instruction_left, instruction_right = st.columns(2, gap="large")
+    with instruction_left:
+        st.markdown(
+            _instruction_html("History-Unaware Instruction", _instruction_text(record, "history_unaware_instruction")),
+            unsafe_allow_html=True,
+        )
+    with instruction_right:
+        st.markdown(
+            _instruction_html("History-Aware Instruction", _instruction_text(record, "history_aware_instruction")),
+            unsafe_allow_html=True,
+        )
+
+    source_col, target_col = st.columns(2, gap="large")
+    with source_col:
+        _render_clip_panel(st, "Source Clip", dataset.manifest_by_clip.get(step.source_clip_id), cache_dir=cache_dir)
+    with target_col:
+        _render_clip_panel(st, "Target Clip", dataset.manifest_by_clip.get(step.target_clip_id), cache_dir=cache_dir)
+
+    form_key = f"validation_form_{chain.chain_id}_{step.turn_index}_{variant_index}"
+    with st.form(form_key):
+        annotator_id = st.text_input(
+            "Annotator ID",
+            value=str(st.session_state.get("validation_annotator_id", "") or ""),
+            help="Optional, but useful when multiple people are contributing labels.",
+        )
+        answers: Dict[str, str | None] = {}
+        for question_id, prompt in _VALIDATION_QUESTIONS:
+            answers[question_id] = st.radio(
+                prompt,
+                options=["Yes", "No", "Unclear"],
+                index=None,
+                horizontal=True,
+                key=f"{form_key}_{question_id}",
+            )
+        notes = st.text_area("Notes", placeholder="Optional notes about ambiguity or evidence.")
+        submitted = st.form_submit_button("Save Validation", use_container_width=True)
+
+    if not submitted:
+        return
+
+    missing = [question_id for question_id, answer in answers.items() if not answer]
+    if missing:
+        st.error("Answer every validation question before saving.")
+        return
+
+    st.session_state.validation_annotator_id = annotator_id
+    _append_validation_record(
+        validation_path,
+        {
+            "annotated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "annotator_id": annotator_id.strip(),
+            "chain_id": chain.chain_id,
+            "turn_index": step.turn_index,
+            "variant_index": variant_index,
+            "split": step.split,
+            "source_clip_id": step.source_clip_id,
+            "target_clip_id": step.target_clip_id,
+            "history_unaware_instruction": _instruction_text(record, "history_unaware_instruction"),
+            "history_aware_instruction": _instruction_text(record, "history_aware_instruction"),
+            "answers": dict(answers),
+            "notes": notes.strip(),
+        },
+    )
+    st.success("Validation saved.")
+
+
 def _streamlit_runtime_active() -> bool:
     try:
         from streamlit.runtime.scriptrunner import get_script_run_ctx
@@ -1527,6 +1926,12 @@ def _load_dataset_for_streamlit(
     chain_offset: int,
     max_chains: int | None,
 ) -> DemoDataset:
+    _load_log(
+        "Streamlit requested dataset: "
+        f"run_root={run_root}, manifest_csv={manifest_csv}, chains_jsonl={chains_jsonl}, "
+        f"instructions_jsonl={instructions_jsonl}, chain_offset={chain_offset:,}, "
+        f"max_chains={max_chains if max_chains is not None else 'all'}"
+    )
     args = argparse.Namespace(
         run_root=run_root,
         manifest_csv=manifest_csv,
@@ -1534,6 +1939,10 @@ def _load_dataset_for_streamlit(
         instructions_jsonl=instructions_jsonl,
     )
     paths = _resolve_paths(args)
+    _load_log(
+        "Resolved dataset paths: "
+        f"manifest={paths.manifest_csv}, chains={paths.chains_jsonl}, instructions={paths.instructions_jsonl}"
+    )
     return _load_dataset(paths, chain_offset=chain_offset, max_chains=max_chains)
 
 
@@ -1554,7 +1963,7 @@ def _render_streamlit_app(args: argparse.Namespace) -> None:
             "or add `streamlit` to the current environment."
         ) from exc
 
-    st.set_page_config(page_title="Jamendo-Instruct Chain Explorer", layout="wide")
+    st.set_page_config(page_title="Jamendo-Instruct Chain Explorer", page_icon=str(FAVICON_PATH), layout="wide")
     st.markdown(_streamlit_css(), unsafe_allow_html=True)
 
     max_chains = None if args.max_chains is not None and args.max_chains <= 0 else args.max_chains
@@ -1567,7 +1976,7 @@ def _render_streamlit_app(args: argparse.Namespace) -> None:
     if "active_instruction_folder" not in st.session_state:
         st.session_state.active_instruction_folder = ""
 
-    @st.cache_data(show_spinner="Loading active instruction chains into memory...")
+    @st.cache_resource(show_spinner="Loading active instruction chains into memory...")
     def _cached_dataset(
         run_root: str | None,
         manifest_csv: str | None,
@@ -1597,13 +2006,22 @@ def _render_streamlit_app(args: argparse.Namespace) -> None:
         if load_requested:
             st.session_state.active_run_root = str(st.session_state.run_root_input or "").strip()
             st.session_state.active_instruction_folder = ""
+            _cached_dataset.clear()
+
+        if st.button("Reload Data", use_container_width=True):
+            _cached_dataset.clear()
+            st.rerun()
 
         active_run_root = str(st.session_state.active_run_root or "").strip() or None
         instruction_folders = _instruction_folder_options(active_run_root)
         instruction_folder_names = [folder.name for folder in instruction_folders]
         if instruction_folder_names:
             if st.session_state.active_instruction_folder not in instruction_folder_names:
-                default_folder = "instructions" if "instructions" in instruction_folder_names else instruction_folder_names[0]
+                default_folder = (
+                    "instructions_axis_focused_5"
+                    if "instructions_axis_focused_5" in instruction_folder_names
+                    else ("instructions" if "instructions" in instruction_folder_names else instruction_folder_names[0])
+                )
                 st.session_state.active_instruction_folder = default_folder
             selected_instruction_folder = st.selectbox(
                 "Instruction folder",
@@ -1733,12 +2151,69 @@ def _render_streamlit_app(args: argparse.Namespace) -> None:
     step_count = len(visible_steps)
     st.session_state.step_pos = max(1, min(st.session_state.step_pos, step_count))
     step = visible_steps[st.session_state.step_pos - 1]
-    record = step.instruction_record
+    variants = list(step.instruction_records) or ([step.instruction_record] if step.instruction_record else [])
+    if variants:
+        variant_options = [int(record.get("variant_index", 0) or 0) for record in variants]
+        variant_state_key = f"variant_{chain.chain_id}_{step.turn_index}"
+        if st.session_state.get(variant_state_key) not in variant_options:
+            st.session_state[variant_state_key] = variant_options[0]
+        current_variant_pos = variant_options.index(st.session_state[variant_state_key])
+        record = variants[current_variant_pos]
+    else:
+        variant_options = []
+        variant_state_key = ""
+        current_variant_pos = 0
+        record = None
 
-    st.markdown(_app_summary_html(dataset), unsafe_allow_html=True)
+    st.markdown(
+        (
+            '<div class="ji-page-title">'
+            "<h1>Chain Explorer</h1>"
+            f"<p>Chain {current_chain_pos:,}/{len(visible_chains):,} · original turn {step.turn_index:,}</p>"
+            "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+
     explorer_tab, analysis_tab = st.tabs(["Explorer", "Analysis"])
 
     with explorer_tab:
+
+        step_prev, step_mid, step_next = st.columns([1, 1.2, 1])
+        if step_prev.button("Previous Step", width="stretch"):
+            st.session_state.step_pos = max(1, st.session_state.step_pos - 1)
+            st.rerun()
+        step_mid.markdown(
+            _nav_position_html(f"Step {st.session_state.step_pos:,}/{step_count:,}"),
+            unsafe_allow_html=True,
+        )
+        if step_next.button("Next Step", width="stretch"):
+            st.session_state.step_pos = min(step_count, st.session_state.step_pos + 1)
+            st.rerun()
+
+        if variants:
+            variant_prev, variant_mid, variant_next = st.columns([1, 1.2, 1])
+            if variant_prev.button(
+                "Previous Variant",
+                width="stretch",
+                disabled=current_variant_pos <= 0,
+                key=f"{variant_state_key}_prev",
+            ):
+                st.session_state[variant_state_key] = variant_options[current_variant_pos - 1]
+                st.rerun()
+            variant_mid.markdown(
+                _nav_position_html(f"Variant {current_variant_pos + 1:,}/{len(variant_options):,}"),
+                unsafe_allow_html=True,
+            )
+            if variant_next.button(
+                "Next Variant",
+                width="stretch",
+                disabled=current_variant_pos >= len(variant_options) - 1,
+                key=f"{variant_state_key}_next",
+            ):
+                st.session_state[variant_state_key] = variant_options[current_variant_pos + 1]
+                st.rerun()
+
         instruction_left, instruction_right = st.columns(2, gap="large")
         with instruction_left:
             st.markdown(
@@ -1757,23 +2232,7 @@ def _render_streamlit_app(args: argparse.Namespace) -> None:
         with target_col:
             _render_clip_panel(st, "Target Clip", dataset.manifest_by_clip.get(step.target_clip_id), cache_dir=cache_dir)
 
-        step_prev, step_mid, step_next = st.columns([1, 1.4, 1])
-        if step_prev.button("Previous Step", width="stretch"):
-            st.session_state.step_pos = max(1, st.session_state.step_pos - 1)
-            st.rerun()
         visible_label = "instructed step" if instructions_only else "step"
-        step_mid.markdown(
-            _metric_card(
-                "Step",
-                f"{st.session_state.step_pos:,} / {step_count:,}",
-                f"{visible_label}; original turn {step.turn_index}",
-            ),
-            unsafe_allow_html=True,
-        )
-        if step_next.button("Next Step", width="stretch"):
-            st.session_state.step_pos = min(step_count, st.session_state.step_pos + 1)
-            st.rerun()
-
         chain_prev, chain_next = st.columns(2)
         if chain_prev.button("Previous Chain", width="stretch"):
             previous_pos = max(1, current_chain_pos - 1)
@@ -1817,6 +2276,7 @@ def _render_streamlit_app(args: argparse.Namespace) -> None:
                 st.json(dict(step.accumulated_intent_state or {}))
 
     with analysis_tab:
+        st.markdown(_app_summary_html(dataset), unsafe_allow_html=True)
         _render_analysis_tab(st, dataset, visible_chains)
 
 
