@@ -253,20 +253,15 @@ export default function Rate() {
     }
 
     try {
-      if (API) {
-        const res = await fetch(`${API}/ratings`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      } else {
-        // No backend (static build): keep the rating locally so nothing is lost.
-        const key = 'remix-pending-ratings'
-        const prev = JSON.parse(localStorage.getItem(key) || '[]')
-        prev.push(payload)
-        localStorage.setItem(key, JSON.stringify(prev))
-      }
+      // No localStorage fallback: this route only exists when a backend is
+      // configured (see main.jsx). A "saved" rating that never leaves the
+      // browser is indistinguishable from a real one until the data is missing.
+      const res = await fetch(`${API}/ratings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       markDone(item.assignment_id)
       reset()
       setIdx((i) => Math.min(i + 1, items.length - 1))
@@ -458,11 +453,6 @@ export default function Rate() {
         </motion.div>
       </AnimatePresence>
 
-      {!API && (
-        <p className="mt-4 text-center text-[11px] text-neutral-400">
-          Demo mode: no backend configured, ratings are kept in this browser only.
-        </p>
-      )}
     </Shell>
   )
 }

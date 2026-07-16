@@ -13,7 +13,12 @@ COPY website/package.json website/package-lock.json ./
 RUN npm ci
 
 COPY website/ ./
+# The rating workload lives outside public/ so it never ships to GitHub Pages;
+# the Space is the only place it belongs, so it is copied in here.
+RUN mkdir -p public/data && cp space-data/validation_tasks.json public/data/
+
 # Served from the Space root, not /ReMIX/, and the API is same-origin.
+# VITE_API_BASE is also what enables the /rate route at all.
 ENV VITE_API_BASE=/api
 RUN npx vite build --base=/
 

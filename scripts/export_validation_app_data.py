@@ -208,7 +208,11 @@ def export_sidecar(key: str, path: Path, jamendo, m4a, seen: set) -> List[Dict[s
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", default="website/public/data", help="Output dir (relative to repo root).")
+    # Not website/public: everything under public/ is copied into the GitHub
+    # Pages build, and the rating workload (7 MB) has no business on the public
+    # site. The Space's Dockerfile copies this in before it builds.
+    ap.add_argument("--out", default="website/space-data",
+                    help="Output dir (relative to repo root).")
     args = ap.parse_args()
 
     jamendo = load_jamendo_licenses(MTG_RAW / "audio_licenses.txt")
