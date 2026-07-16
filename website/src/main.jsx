@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import Home from './pages/Home.jsx'
 import Explore from './pages/Explore.jsx'
+import Rate from './pages/Rate.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './index.css'
 
@@ -15,6 +16,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/rate" element={<Rate />} />
         </Routes>
       </HashRouter>
     </ErrorBoundary>
