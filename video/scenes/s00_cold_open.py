@@ -10,7 +10,8 @@ from __future__ import annotations
 from manim import *
 
 from remix_video.chain import steps, tracks
-from remix_video.components import InstructionBubble, Logo, TrackCard, title_card, txt
+from remix_video.facts import FIGURES
+from remix_video.components import InstructionBubble,  TrackCard, title_card, txt
 from remix_video.theme import (
     CHAIN, FAINT, INK, INSTRUCT, MUTED, NEIGHBOUR, PAPER, T_BODY, T_SMALL, VALIDATE, arrow,
 )
@@ -130,25 +131,27 @@ class ColdOpen(Scene):
         instrs = VGroup()
         self.wait(0.4)
 
-        # --- 6. name it ------------------------------------------------------ #
+        # --- 6. name the problem, not the project --------------------------- #
+        # No logo here, by design: the mark lands at the very end, once the
+        # pipeline has earned it.
         claim = title_card("Finding music is a conversation.", VALIDATE, 0.5).move_to(DOWN * 1.4)
         self.play(FadeIn(claim, shift=UP * 0.2), run_time=0.7)
-        self.wait(1.0)
+        self.wait(1.4)
 
+        # Hand off to stage 1 with the question the pipeline answers.
+        ask = txt(f"So where do {_n(FIGURES['chains'])} of these come from?", 0.44, INK, BOLD)
+        ask.move_to(DOWN * 1.4)
         self.play(
             FadeOut(VGroup(row, links, turn_marks), shift=UP * 0.4),
-            FadeOut(claim),
-            run_time=0.7,
+            ReplacementTransform(claim, ask),
+            run_time=0.9,
         )
+        self.wait(1.3)
+        self.play(FadeOut(ask), run_time=0.5)
 
-        logo = Logo(scale_factor=1.5).move_to(UP * 0.55)
-        name = txt("ReMIX", 0.86, INK, BOLD).next_to(logo, DOWN, buff=0.42)
-        sub = txt("Multi-turn, compositional music retrieval", T_SMALL, MUTED).next_to(name, DOWN, buff=0.2)
-        self.play(FadeIn(logo, scale=0.9), run_time=0.8)
-        self.play(Write(name), run_time=0.6)
-        self.play(FadeIn(sub, shift=UP * 0.12), run_time=0.5)
-        self.wait(1.2)
-        self.play(FadeOut(VGroup(logo, name, sub)), run_time=0.6)
+
+def _n(v: int) -> str:
+    return f"{v:,}"
 
 
 def _short(s: str, n: int = 38) -> str:
