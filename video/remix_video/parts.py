@@ -21,58 +21,104 @@ QWEN_LOGO = ASSETS / "qwen-icon-logo-png_seeklogo-669128 (1).png"
 GEMMA_LOGO = ASSETS / "gemma-color.png"
 
 
-def music_note(color: str, scale: float = 1.0) -> VGroup:
-    """A quaver. Says 'this cylinder is full of music', which the bare cylinder did not."""
-    stem = Line(ORIGIN, UP * 0.34, color=color, stroke_width=2.6)
-    head = Ellipse(width=0.16, height=0.12, fill_color=color, fill_opacity=1,
-                   stroke_width=0).rotate(-0.35).move_to(stem.get_start() + LEFT * 0.055)
-    flag = ArcBetweenPoints(
-        stem.get_end(), stem.get_end() + RIGHT * 0.12 + DOWN * 0.17,
-        angle=-TAU / 6, color=color, stroke_width=2.4,
+ICONS = Path(__file__).resolve().parents[1] / "assets" / "icons"
+
+
+def svg_icon(name: str, color: str, height: float = 0.4) -> VMobject:
+    """A real icon from an SVG path, not hand-drawn strokes."""
+    m = SVGMobject(str(ICONS / f"{name}.svg"))
+    m.set_fill(color, opacity=1).set_stroke(width=0)
+    m.height = height
+    return m
+
+
+def music_note(color: str, height: float = 0.5) -> VMobject:
+    return svg_icon("music_note", color, height)
+
+
+def person(color: str, height: float = 0.5) -> VMobject:
+    return svg_icon("person", color, height)
+
+
+def cylinder(color: str, w: float = 1.5, h: float = 1.15, ry: float = 0.19) -> VGroup:
+    """An actual cylinder.
+
+    The previous one stretched an Arc, which left the bottom curve out of line
+    with the sides and a white gap between them. Built here as one closed
+    silhouette -- down the left side, round the front of the base as a true
+    half-ellipse, up the right side -- so the outline meets exactly.
+    """
+    hw = w / 2
+
+    def base_pt(t: float) -> np.ndarray:
+        return np.array([hw * np.cos(t), -h / 2 + ry * np.sin(t), 0.0])
+
+    # Sample the ellipse explicitly. ParametricFunction.points are bezier control
+    # points, not samples -- feeding them to set_points_as_corners mangles the
+    # outline, which is where the white gap under the body came from.
+    front_pts = [base_pt(t) for t in np.linspace(PI, TAU, 48)]
+    back_pts = [base_pt(t) for t in np.linspace(0, PI, 48)]
+
+    # Closed body: down the left wall, round the front of the base, up the right.
+    silhouette = VMobject(
+        fill_color=tint(color, 0.1), fill_opacity=1,
+        stroke_color=color, stroke_width=2,
     )
-    return VGroup(stem, head, flag).scale(scale)
+    silhouette.set_points_as_corners(
+        [np.array([-hw, h / 2, 0.0])] + front_pts + [np.array([hw, h / 2, 0.0])]
+    )
+
+    # The base's back half, drawn faint, is what makes it read as 3D.
+    back = VMobject(stroke_color=color, stroke_width=1.2, stroke_opacity=0.35)
+    back.set_points_as_corners(back_pts)
+
+    top = Ellipse(width=w, height=ry * 2, fill_color=tint(color, 0.26), fill_opacity=1,
+                  stroke_color=color, stroke_width=2)
+    top.move_to(np.array([0.0, h / 2, 0.0]))
+
+    return VGroup(silhouette, back, top)
 
 
-def catalogue(label: str, count: str, color: str, w: float = 1.5, h: float = 1.3) -> VGroup:
+def catalogue(label: str, count: str, color: str, w: float = 1.5, h: float = 1.15) -> VGroup:
     """A cylinder that is visibly a music catalogue."""
-    body = Rectangle(width=w, height=h, fill_color=tint(color, 0.1), fill_opacity=1, stroke_width=0)
-    bot = Arc(radius=w / 2, start_angle=PI, angle=PI, color=color, stroke_width=2)
-    bot.stretch(0.3, 1).move_to(body.get_bottom())
-    left = Line(body.get_corner(UL), body.get_corner(DL), color=color, stroke_width=2)
-    right = Line(body.get_corner(UR), body.get_corner(DR), color=color, stroke_width=2)
-    top = Ellipse(width=w, height=w * 0.3, fill_color=tint(color, 0.24), fill_opacity=1,
-                  stroke_color=color, stroke_width=2).move_to(body.get_top())
+    shell = cylinder(color, w, h)
+    note = music_note(color, 0.52).move_to(np.array([0.0, -0.08, 0.0]))
+    body = VGroup(shell, note)
 
-    note = music_note(color, 1.05).move_to(body.get_center() + DOWN * 0.04)
-    shell = VGroup(body, left, right, bot, top, note)
-
-    name = txt(label, T_TINY, INK, BOLD).next_to(shell, DOWN, buff=0.14)
+    name = txt(label, T_TINY, INK, BOLD).next_to(body, DOWN, buff=0.16)
     n = txt(count, T_TINY * 0.95, color, BOLD).next_to(name, DOWN, buff=0.05)
-    return VGroup(shell, name, n)
+    return VGroup(body, name, n)
 
 
-def latent_backdrop(width: float = 8.4, height: float = 4.0, color: str = "#2E6FD6") -> VGroup:
-    """A soft field behind the graph, so it reads as a latent space and not a
-    flowchart floating on paper."""
-    field = RoundedRectangle(
-        width=width, height=height, corner_radius=0.3,
-        fill_color=tint(color, 0.05), fill_opacity=1,
-        stroke_color=color, stroke_width=1.2, stroke_opacity=0.25,
-    )
-    rng = random.Random(11)
-    dust = VGroup(*[
-        Dot(
-            np.array([rng.uniform(-width / 2 + 0.3, width / 2 - 0.3),
-                      rng.uniform(-height / 2 + 0.3, height / 2 - 0.3), 0]),
-            radius=rng.uniform(0.012, 0.028),
-            color=color,
-            fill_opacity=rng.uniform(0.12, 0.3),
-        )
-        for _ in range(70)
-    ])
-    label = txt("latent space", T_TINY * 0.8, color).set_opacity(0.5)
-    label.move_to(field.get_corner(DL) + RIGHT * 0.75 + UP * 0.22)
-    return VGroup(field, dust, label)
+def latent_grid(width: float = 9.6, height: float = 3.9, color: str = "#2E6FD6",
+                spacing: float = 0.62) -> VGroup:
+    """A grid that fades out at the edges: a coordinate space, not a rectangle
+    with dust in it. The fade is per-line opacity keyed to distance from centre,
+    so the field has no hard border to bump against."""
+    lines = VGroup()
+    hw, hh = width / 2, height / 2
+
+    n_v = int(hw / spacing)
+    for i in range(-n_v, n_v + 1):
+        x = i * spacing
+        fade = max(0.0, 1.0 - (abs(x) / hw) ** 1.7)
+        if fade <= 0.02:
+            continue
+        lines.add(Line([x, -hh, 0], [x, hh, 0], color=color,
+                       stroke_width=1.0, stroke_opacity=0.3 * fade))
+
+    n_h = int(hh / spacing)
+    for j in range(-n_h, n_h + 1):
+        y = j * spacing
+        fade = max(0.0, 1.0 - (abs(y) / hh) ** 1.7)
+        if fade <= 0.02:
+            continue
+        lines.add(Line([-hw, y, 0], [hw, y, 0], color=color,
+                       stroke_width=1.0, stroke_opacity=0.3 * fade))
+
+    label = txt("latent space", T_TINY * 0.8, color).set_opacity(0.45)
+    label.move_to(np.array([-hw + 0.85, -hh + 0.3, 0.0]))
+    return VGroup(lines, label)
 
 
 # --- the graph shared by stages 2 and 3 ------------------------------------ #

@@ -10,7 +10,7 @@ from __future__ import annotations
 from manim import *
 
 from remix_video.facts import CATALOGUE_TOTAL, FIGURES, M4A_CATALOGUE, MTG_CATALOGUE, thousands
-from remix_video.glass import elbow_link
+from remix_video.glass import _tip_dir, elbow_link, fork_link
 from remix_video.parts import catalogue
 from remix_video.stagebase import StageScene, explain, stat_row
 from remix_video.theme import ENRICH, INK, MUTED, PAPER, T_TINY, card, tint, txt
@@ -76,14 +76,19 @@ class Enrich(StageScene):
         whisper = proc_box("Whisper", "lyrics", ENRICH).move_to(LEFT * 1.5 + DOWN * 0.7)
         table = manifest_table().move_to(RIGHT * 3.1 + UP * 0.1)
 
-        feeds = VGroup(
-            elbow_link(cats.get_right() + RIGHT * 0.05, afnext.get_left() + LEFT * 0.03, ENRICH, 2.2),
-            elbow_link(cats.get_right() + RIGHT * 0.05, whisper.get_left() + LEFT * 0.03, ENRICH, 2.2),
+        # One bus out, one bus in. Independent elbows would share the trunk and
+        # the turn, and their fillets would overlap into a bubble.
+        feeds = fork_link(
+            cats.get_right() + RIGHT * 0.05,
+            [afnext.get_left() + LEFT * 0.03, whisper.get_left() + LEFT * 0.03],
+            ENRICH, 2.2, mid=0.42,
         )
-        joins = VGroup(
-            elbow_link(afnext.get_right() + RIGHT * 0.03, table.get_left() + LEFT * 0.03, ENRICH, 2.2),
-            elbow_link(whisper.get_right() + RIGHT * 0.03, table.get_left() + LEFT * 0.03, ENRICH, 2.2),
+        joins = fork_link(
+            table.get_left() + LEFT * 0.03,
+            [afnext.get_right() + RIGHT * 0.03, whisper.get_right() + RIGHT * 0.03],
+            ENRICH, 2.2, mid=0.42, tip=False,
         )
+        joins.add(_tip_dir(table.get_left() + LEFT * 0.03, RIGHT, ENRICH))
         content.add(cats, afnext, whisper, table, feeds, joins)
 
         line = explain("Open catalogues in — a caption and a transcript for every clip.")

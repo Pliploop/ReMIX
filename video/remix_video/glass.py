@@ -135,13 +135,18 @@ def elbow_link(
     hdir = np.sign(dx) or 1.0
     vdir = np.sign(dy)
 
+    # Arc sweep signs: the fillet must curve *into* the corner, centred on the
+    # inside of the turn. With the signs inverted the arc bulges outward, adding
+    # a visible kink at each end so a 3-segment elbow reads as 5 with hard
+    # corners. Going right-then-up, the first fillet is centred at (mx-r, ay+r),
+    # so it sweeps counter-clockwise: +PI/2.
     path = VMobject(color=color, stroke_width=width)
     path.set_points_as_corners([a, c1 - np.array([hdir * r, 0, 0])])
     path.append_points(
         ArcBetweenPoints(
             c1 - np.array([hdir * r, 0, 0]),
             c1 + np.array([0, vdir * r, 0]),
-            angle=-PI / 2 * hdir * vdir,
+            angle=PI / 2 * hdir * vdir,
         ).points
     )
     path.add_points_as_corners([c2 - np.array([0, vdir * r, 0])])
@@ -149,7 +154,7 @@ def elbow_link(
         ArcBetweenPoints(
             c2 - np.array([0, vdir * r, 0]),
             c2 + np.array([hdir * r, 0, 0]),
-            angle=PI / 2 * hdir * vdir,
+            angle=-PI / 2 * hdir * vdir,
         ).points
     )
     path.add_points_as_corners([b])
@@ -168,6 +173,58 @@ def _tip_dir(at, direction, color: str, size: float = 0.13) -> Triangle:
         .rotate(angle - PI / 2)
         .move_to(at)
     )
+
+
+def fork_link(
+    source,
+    targets,
+    color: str = INSTRUCT,
+    width: float = 2.2,
+    radius: float = 0.14,
+    mid: float = 0.45,
+    tip: bool = True,
+    reverse: bool = False,
+) -> VGroup:
+    """One source fanning to several targets (or several sources merging to one).
+
+    A bus: a trunk out to a shared x, a spine down that x, and a spur into each
+    target. Drawing N independent elbows instead makes them share the trunk and
+    the turn, and their mirrored fillets overlap into a lens -- which is what
+    looked like a bubble at every junction.
+
+    reverse=True merges `targets` into `source` instead of fanning out.
+    """
+    source = np.array(source, dtype=float)
+    targets = [np.array(t, dtype=float) for t in targets]
+
+    mx = source[0] + (targets[0][0] - source[0]) * mid
+    hdir = np.sign(targets[0][0] - source[0]) or 1.0
+
+    g = VGroup()
+    g.add(Line(source, np.array([mx, source[1], 0.0]), color=color, stroke_width=width))
+
+    ys = [t[1] for t in targets] + [source[1]]
+    g.add(Line(np.array([mx, min(ys), 0.0]), np.array([mx, max(ys), 0.0]),
+               color=color, stroke_width=width))
+
+    for t in targets:
+        r = min(radius, abs(t[0] - mx) * 0.9, max(abs(t[1] - source[1]) / 2, 1e-3))
+        vdir = np.sign(t[1] - source[1])
+        if abs(t[1] - source[1]) < 1e-3 or r < 1e-3:
+            g.add(Line(np.array([mx, t[1], 0.0]), t, color=color, stroke_width=width))
+        else:
+            corner = np.array([mx, t[1], 0.0])
+            arc = ArcBetweenPoints(
+                corner - np.array([0, vdir * r, 0]),
+                corner + np.array([hdir * r, 0, 0]),
+                angle=-PI / 2 * hdir * vdir,
+            )
+            arc.set_stroke(color, width)
+            g.add(arc)
+            g.add(Line(corner + np.array([hdir * r, 0, 0]), t, color=color, stroke_width=width))
+        if tip:
+            g.add(_tip_dir(t, np.array([hdir if not reverse else -hdir, 0.0, 0.0]), color))
+    return g
 
 
 def organic_link(
