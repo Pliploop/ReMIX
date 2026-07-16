@@ -1,0 +1,18 @@
+{
+ "datasets": [
+  {
+   "key": "mtg_jamendo",
+   "label": "MTG-Jamendo",
+   "tracks": 6777,
+   "chains": 2186,
+   "method": "umap"
+  },
+  {
+   "key": "music4all",
+   "label": "Music4All",
+   "tracks": 22329,
+   "chains": 7554,
+   "method": "umap"
+  }
+ ]
+}

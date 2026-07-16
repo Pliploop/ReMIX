@@ -1,0 +1,3710 @@
+{
+ "generated_by": "scripts/export_website_data.py",
+ "instructions_folder": "instructions_axis_focused_5",
+ "datasets": [
+  {
+   "key": "mtg_jamendo",
+   "label": "MTG-Jamendo",
+   "chains": [
+    {
+     "chain_id": "chain_00000057",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "track_0177826::0-30::1",
+        "track_id": "track_0177826",
+        "tags": [
+         "easylistening",
+         "instrumentalpop"
+        ],
+        "caption": "This instrumental piece is a smooth blend of chillout and easy‑listening styles, featuring gentle acoustic guitar arpeggios that weave through warm synth pads and subtle electronic percussion. The relaxed groove creates a calm, reflective atmosphere ideal for unwinding or background listening.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Wood train",
+        "artist": "Philippe Mayné",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=177826&format=mp31",
+         "page": "https://www.jamendo.com/track/177826",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_1321273::0-30::1",
+        "track_id": "track_1321273",
+        "tags": [
+         "chillout",
+         "lounge"
+        ],
+        "caption": "This instrumental piece is a minimalist electronic‑ambient work that blends subtle glitch textures with a steady, mid‑tempo pulse. It features sparse synth pads, delicate arpeggiated figures, and occasional metallic percussive clicks, creating a calm yet slightly unsettling atmosphere. The production emphasizes spaciousness through generous reverb and delay, allowing each element to breathe within a wide stereo field while maintaining a clean, high‑fidelity mix. No vocal lines are present, so there are no lyrical themes or melodic hooks to describe. Overall, the track evokes a contemplative, introspective mood suitable for background listening or focused study environments.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Slow Down",
+        "artist": "JuanGa",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1321273&format=mp31",
+         "page": "https://www.jamendo.com/track/1321273",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "instruction": "Shift to a steady mid-tempo lounge beat with glitchy textures.",
+       "instruction_contextual": "Shift to a steady mid-tempo lounge beat with glitchy textures.",
+       "hardness": "hard",
+       "transition_score": 0.6714,
+       "change_axes": [
+        "speed",
+        "texture_production"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from smooth acoustic easy-listening to a minimalist, glitchy lounge ambient track with a steady mid-tempo pulse.",
+       "lost": [
+        "easylistening genre",
+        "instrumentalpop genre",
+        "acoustic guitar",
+        "smooth blend",
+        "relaxed groove",
+        "vocal presence",
+        "lyrics"
+       ],
+       "new": [
+        "lounge genre",
+        "chillout genre",
+        "minimalist ambient style",
+        "glitch textures",
+        "metallic percussion",
+        "mid-tempo pulse",
+        "spacious reverb",
+        "unsettling mood"
+       ],
+       "preserved": [
+        "instrumental",
+        "calm atmosphere",
+        "synth pads",
+        "electronic elements"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "track_1321273::0-30::1",
+        "track_id": "track_1321273",
+        "tags": [
+         "chillout",
+         "lounge"
+        ],
+        "caption": "This instrumental piece is a minimalist electronic‑ambient work that blends subtle glitch textures with a steady, mid‑tempo pulse. It features sparse synth pads, delicate arpeggiated figures, and occasional metallic percussive clicks, creating a calm yet slightly unsettling atmosphere. The production emphasizes spaciousness through generous reverb and delay, allowing each element to breathe within a wide stereo field while maintaining a clean, high‑fidelity mix. No vocal lines are present, so there are no lyrical themes or melodic hooks to describe. Overall, the track evokes a contemplative, introspective mood suitable for background listening or focused study environments.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Slow Down",
+        "artist": "JuanGa",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1321273&format=mp31",
+         "page": "https://www.jamendo.com/track/1321273",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0287769::0-30::1",
+        "track_id": "track_0287769",
+        "tags": [
+         "alternative"
+        ],
+        "caption": "This piece is an experimental electronic instrumental that blends glitch‑hop textures with abstract noise aesthetics. It runs at approximately 81 BPM (no fixed time signature) and is centered in C major according to the supplied metadata.\nInstrumentation & production: The arrangement relies on heavily processed synthesizers generating distorted drones, metallic percussive hits, and granular sound‑design elements. A deep sub‑bass underpins the low end while sparse, high‑frequency clicks punctuate the surface. The mix emphasizes extreme stereo panning and spatial movement, creating a disorienting sense of depth. Compression is aggressive, yielding consistently loud dynamics, and extensive distortion, reverb, and delay shape every element into a harsh yet immersive wall of sound.\nVocals: None – the track contains no vocal performance.\nLyrical themes: Not applicable.\nStructure & harmonic flow: The composition unfolds as a continuous loop rather than conventional verse‑chorus form. Harmonic material cycles through a sequence that includes “N” (silence), Dm7♭5/C → Am → Gmaj7 → F♯aug → Emaj7 → Bbmaj7 → Abmaj7 → E♭dim → C6 → N. This progression moves from minor",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "DreamTOXIC",
+        "artist": "Guy Berrier",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=287769&format=mp31",
+         "page": "https://www.jamendo.com/track/287769",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/2.0/fr/"
+        }
+       },
+       "instruction": "swap steady pulse for glitch-hop rhythm",
+       "instruction_contextual": "swap steady pulse for glitch-hop rhythm",
+       "hardness": "medium",
+       "transition_score": 0.7393,
+       "change_axes": [
+        "rhythm"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from steady lounge pulse to irregular glitch-hop rhythm.",
+       "lost": [
+        "chillout genre",
+        "lounge genre",
+        "easylistening genre",
+        "instrumentalpop genre",
+        "steady mid-tempo pulse",
+        "minimalist ambient style",
+        "lyrics: i'm sorry"
+       ],
+       "new": [
+        "alternative genre",
+        "glitch-hop rhythm",
+        "no fixed time signature",
+        "81 bpm",
+        "abstract noise aesthetics",
+        "lyrics: dream toxic"
+       ],
+       "preserved": [
+        "vocals:vocal",
+        "electronic instrumentation"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "track_0287769::0-30::1",
+        "track_id": "track_0287769",
+        "tags": [
+         "alternative"
+        ],
+        "caption": "This piece is an experimental electronic instrumental that blends glitch‑hop textures with abstract noise aesthetics. It runs at approximately 81 BPM (no fixed time signature) and is centered in C major according to the supplied metadata.\nInstrumentation & production: The arrangement relies on heavily processed synthesizers generating distorted drones, metallic percussive hits, and granular sound‑design elements. A deep sub‑bass underpins the low end while sparse, high‑frequency clicks punctuate the surface. The mix emphasizes extreme stereo panning and spatial movement, creating a disorienting sense of depth. Compression is aggressive, yielding consistently loud dynamics, and extensive distortion, reverb, and delay shape every element into a harsh yet immersive wall of sound.\nVocals: None – the track contains no vocal performance.\nLyrical themes: Not applicable.\nStructure & harmonic flow: The composition unfolds as a continuous loop rather than conventional verse‑chorus form. Harmonic material cycles through a sequence that includes “N” (silence), Dm7♭5/C → Am → Gmaj7 → F♯aug → Emaj7 → Bbmaj7 → Abmaj7 → E♭dim → C6 → N. This progression moves from minor",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "DreamTOXIC",
+        "artist": "Guy Berrier",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=287769&format=mp31",
+         "page": "https://www.jamendo.com/track/287769",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/2.0/fr/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0097150::0-30::1",
+        "track_id": "track_0097150",
+        "tags": [
+         "alternative",
+         "pop"
+        ],
+        "caption": "This instrumental piece is a dark‑ambient / industrial electronic composition that blends brooding synth textures with harsh mechanical percussion. It runs at ≈ 76.9 BPM (no fixed time signature) and is rooted in C major according to the supplied key information.\nThe arrangement relies on deep, sustained synthesizer pads that create an ominous atmosphere, layered over gritty, metallic percussive hits that function as rhythmic punctuation rather than a conventional drum groove. The chord progression cycles through simple tonal centers—C → Fmaj7 → G → Am → Em—with occasional “N” (silence) moments that heighten tension before returning to the tonic. Production emphasizes heavy distortion, cavernous reverb, and wide stereo imaging, giving the mix a dense, immersive feel while keeping dynamics relatively flat but intensifying toward the climax.\nThere are no vocal parts; the track is purely instrumental.\nLyrically there is nothing to report, so thematic focus rests entirely on the sonic narrative: the evolving layers evoke feelings of dread, isolation, and relentless forward motion, fitting within the broader context of early‑2020s experimental electronic works that merge ambient ambience with industrial aggression.\nOverall, the track delivers a bleak yet compelling soundscape that",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "The Crow Song",
+        "artist": "Botany Bay",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=97150&format=mp31",
+         "page": "https://www.jamendo.com/track/97150",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "instruction": "slow it down, darker industrial vibe",
+       "instruction_contextual": "slow it down, darker industrial vibe",
+       "hardness": "easy",
+       "transition_score": 0.8354,
+       "change_axes": [
+        "speed"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Slow the track down and shift the style to dark industrial ambient.",
+       "lost": [
+        "glitch-hop textures",
+        "abstract noise",
+        "faster tempo (~81 bpm)",
+        "vocal lyrics",
+        "dream toxic theme"
+       ],
+       "new": [
+        "slower tempo (~77 bpm)",
+        "dark-ambient style",
+        "industrial style",
+        "pop tag",
+        "brooding atmosphere",
+        "harsh mechanical percussion"
+       ],
+       "preserved": [
+        "instrumental",
+        "electronic",
+        "alternative tag",
+        "synth textures",
+        "percussion"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000116",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "track_1297148::0-30::1",
+        "track_id": "track_1297148",
+        "tags": [
+         "ambient",
+         "atmospheric",
+         "newage"
+        ],
+        "caption": "This instrumental piece is a serene Ambient / New Age composition that blends ethereal synth pads with delicate bell‑like tones and subtle arpeggiated textures. The slow, steady pulse creates a calm, meditative atmosphere ideal for relaxation or introspection.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "An Astral Lagoon: immersive, atmospheric, ambient, texture (3:00)",
+        "artist": "Kranto studijos",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1297148&format=mp31",
+         "page": "https://www.jamendo.com/track/1297148",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_1347806::0-30::1",
+        "track_id": "track_1347806",
+        "tags": [
+         "ambient",
+         "atmospheric",
+         "newage",
+         "calm"
+        ],
+        "caption": "This piece is an Ambient / Drone composition that blends ethereal synth pads with deep sub‑bass drones, creating a spacious, meditative soundscape. The texture is built from slowly evolving analog‑style synths and low‑frequency rumblings, layered with subtle high‑frequency shimmering tones that give the track its luminous quality. No percussion or rhythmic elements appear, allowing the listener to focus on the continuous harmonic flow. Production emphasizes wide stereo imaging, gentle compression, and generous reverb/delay to enhance depth and immersion. The overall mood is calm, introspective, and slightly mysterious, suitable for relaxation, meditation, or background ambience. It could serve as a backdrop for visual media seeking a serene, otherworldly atmosphere.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Sparkles from the Outside",
+        "artist": "Massimo Bosco",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1347806&format=mp31",
+         "page": "https://www.jamendo.com/track/1347806",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "instruction": "swap bells for deep drones",
+       "instruction_contextual": "swap bells for deep drones",
+       "hardness": "easy",
+       "transition_score": 0.8873,
+       "change_axes": [
+        "texture_production",
+        "instrumentation"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from rhythmic, bell-like ambient to spacious, bass-heavy drone with no percussion.",
+       "lost": [
+        "delicate bell-like tones",
+        "subtle arpeggiated textures",
+        "slow steady pulse",
+        "rhythmic elements"
+       ],
+       "new": [
+        "drone",
+        "deep sub-bass",
+        "spacious soundscape",
+        "analog-style synths",
+        "low-frequency rumblings",
+        "no percussion",
+        "wide stereo imaging",
+        "generous reverb",
+        "calm tag"
+       ],
+       "preserved": [
+        "ambient",
+        "atmospheric",
+        "newage",
+        "vocal",
+        "ethereal synth pads",
+        "meditative mood"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "track_1347806::0-30::1",
+        "track_id": "track_1347806",
+        "tags": [
+         "ambient",
+         "atmospheric",
+         "newage",
+         "calm"
+        ],
+        "caption": "This piece is an Ambient / Drone composition that blends ethereal synth pads with deep sub‑bass drones, creating a spacious, meditative soundscape. The texture is built from slowly evolving analog‑style synths and low‑frequency rumblings, layered with subtle high‑frequency shimmering tones that give the track its luminous quality. No percussion or rhythmic elements appear, allowing the listener to focus on the continuous harmonic flow. Production emphasizes wide stereo imaging, gentle compression, and generous reverb/delay to enhance depth and immersion. The overall mood is calm, introspective, and slightly mysterious, suitable for relaxation, meditation, or background ambience. It could serve as a backdrop for visual media seeking a serene, otherworldly atmosphere.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Sparkles from the Outside",
+        "artist": "Massimo Bosco",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1347806&format=mp31",
+         "page": "https://www.jamendo.com/track/1347806",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0979853::0-30::1",
+        "track_id": "track_0979853",
+        "tags": [
+         "ambient",
+         "synthesizer",
+         "calm",
+         "relaxing"
+        ],
+        "caption": "This is an Ambient Electronic piece that blends Drone and Cinematic textures into a spacious, meditative soundscape. The core instrumentation consists of lush synth pads and deep sub‑bass drones, layered over subtle electronic percussion elements such as soft clicks and shakers. Production emphasizes high‑fidelity reverb and delay, creating a wide stereo field where sounds slowly evolve and move across the left‑right spectrum. There are no vocal parts, so the focus remains entirely on instrumental timbre and spatial depth. The overall mood is ethereal, contemplative, and immersive, suitable for relaxation, meditation, or atmospheric background scoring.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Garnet",
+        "artist": "Ken Elkinson",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=979853&format=mp31",
+         "page": "https://www.jamendo.com/track/979853",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "instruction": "add cinematic synth textures and soft clicks",
+       "instruction_contextual": "add cinematic synth textures and soft clicks",
+       "hardness": "hard",
+       "transition_score": 0.774,
+       "change_axes": [
+        "texture_production"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from atmospheric newage to a more cinematic, synthesizer-driven ambient sound with subtle electronic percussion.",
+       "lost": [
+        "atmospheric",
+        "newage",
+        "analog-style synths",
+        "low-frequency rumblings",
+        "high-frequency shimmering tones"
+       ],
+       "new": [
+        "relaxing",
+        "synthesizer focus",
+        "cinematic textures",
+        "electronic percussion (soft clicks/shakers)",
+        "lush pads",
+        "high-fidelity reverb/delay"
+       ],
+       "preserved": [
+        "ambient",
+        "calm",
+        "meditative mood",
+        "synth pads",
+        "sub-bass drones",
+        "spacious soundscape",
+        "vocal metadata"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "track_0979853::0-30::1",
+        "track_id": "track_0979853",
+        "tags": [
+         "ambient",
+         "synthesizer",
+         "calm",
+         "relaxing"
+        ],
+        "caption": "This is an Ambient Electronic piece that blends Drone and Cinematic textures into a spacious, meditative soundscape. The core instrumentation consists of lush synth pads and deep sub‑bass drones, layered over subtle electronic percussion elements such as soft clicks and shakers. Production emphasizes high‑fidelity reverb and delay, creating a wide stereo field where sounds slowly evolve and move across the left‑right spectrum. There are no vocal parts, so the focus remains entirely on instrumental timbre and spatial depth. The overall mood is ethereal, contemplative, and immersive, suitable for relaxation, meditation, or atmospheric background scoring.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Garnet",
+        "artist": "Ken Elkinson",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=979853&format=mp31",
+         "page": "https://www.jamendo.com/track/979853",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_1296150::0-30::1",
+        "track_id": "track_1296150",
+        "tags": [
+         "electronic",
+         "poprock"
+        ],
+        "caption": "This instrumental piece is a Dark Ambient / Drone composition that blends deep sub‑bass drones with slowly evolving synth pads to create an immersive, meditative soundscape. The texture is built from richly layered analog‑style synths and low‑frequency rumblings, processed with extensive reverb and delay to produce a spacious, cavernous ambience. No percussion or rhythmic elements are present, allowing the sustained tones to dominate the mix. The overall mood is ethereal yet ominous, evoking vastness and introspection while maintaining a subtle sense of unease through its dissonant harmonic overtones. This track would fit seamlessly into cinematic scores that require a contemplative, otherworldly backdrop, such as documentaries exploring science fiction or abstract visual art installations.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "THE PLANETS ( Rock Version )",
+        "artist": "JGR MARCUS",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1296150&format=mp31",
+         "page": "https://www.jamendo.com/track/1296150",
+         "license": "Creative Commons Attribution-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nd/3.0/"
+        }
+       },
+       "instruction": "make it darker and heavier with ominous drones",
+       "instruction_contextual": "make it darker and heavier with ominous drones",
+       "hardness": "hard",
+       "transition_score": 0.7386,
+       "change_axes": [
+        "energy"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from serene newage to dark, ominous drone with deep bass.",
+       "lost": [
+        "serene",
+        "newage",
+        "calm",
+        "relaxing",
+        "bell-like tones",
+        "arpeggiated textures",
+        "steady pulse"
+       ],
+       "new": [
+        "dark ambient",
+        "drone",
+        "deep sub-bass",
+        "ominous mood",
+        "electronic",
+        "poprock",
+        "cavernous ambience"
+       ],
+       "preserved": [
+        "vocal",
+        "instrumental",
+        "synth pads",
+        "meditative atmosphere"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000230",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "track_1245177::0-30::1",
+        "track_id": "track_1245177",
+        "tags": [
+         "classical",
+         "easylistening",
+         "piano",
+         "drama",
+         "emotional",
+         "inspiring"
+        ],
+        "caption": "This instrumental piece is a gentle Classical piano solo that blends Romantic-era lyricism with modern high‑fidelity recording techniques. The sole instrument is a grand piano played softly with expressive dynamics, delivering a flowing melody over rich, resonant chords. Production emphasizes natural acoustic ambience, wide stereo imaging, and subtle reverb that lets every nuance—from delicate arpeggios to warm bass notes—ring clearly without compression artifacts. No vocals appear, so the focus remains entirely on the piano’s timbre and phrasing. The overall mood is calm, reflective, and slightly nostalgic, evoking quiet contemplation suitable for study, relaxation, or background listening.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Classical",
+        "artist": "Matti Paalanen",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1245177&format=mp31",
+         "page": "https://www.jamendo.com/track/1245177",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0150835::0-30::1",
+        "track_id": "track_0150835",
+        "tags": [
+         "classical",
+         "piano"
+        ],
+        "caption": "This instrumental piece is a contemporary classical work that blends minimalist piano textures with subtle electronic ambience. The composition features a solo grand piano playing arpeggiated chords and melodic fragments over sustained synth pads, creating a calm yet emotionally resonant atmosphere. Production emphasizes high-fidelity recording, wide stereo imaging, and gentle compression that lets the piano’s natural resonance sit alongside the warm, spacious pad layers without competing for space. No vocals appear, so the focus remains entirely on the evolving harmonic landscape. Structurally, the track unfolds as a continuous development: an opening piano motif introduces the tonal center, followed by gradual layering of additional harmonies and rhythmic pulses from the synths, leading to a middle section where tension builds through denser chord voicings before gently receding back toward the initial material for a reflective finale. Overall, the mood is introspective and serene, evoking quiet contemplation suitable for study, meditation, or cinematic underscoring.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Avenew",
+        "artist": "Torley on Piano",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=150835&format=mp31",
+         "page": "https://www.jamendo.com/track/150835",
+         "license": "Creative Commons Attribution-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+        }
+       },
+       "instruction": "lower energy, add subtle electronics",
+       "instruction_contextual": "lower energy, add subtle electronics",
+       "hardness": "hard",
+       "transition_score": 0.7733,
+       "change_axes": [
+        "energy"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from dramatic, inspiring classical piano to a calmer, minimalist contemporary style with subtle electronic textures.",
+       "lost": [
+        "drama",
+        "easylistening",
+        "emotional",
+        "inspiring",
+        "romantic-era lyricism",
+        "high energy"
+       ],
+       "new": [
+        "electronic ambience",
+        "synth pads",
+        "minimalist textures",
+        "contemporary classical",
+        "lower energy"
+       ],
+       "preserved": [
+        "classical",
+        "piano",
+        "instrumental",
+        "calm mood",
+        "no vocals"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "track_0150835::0-30::1",
+        "track_id": "track_0150835",
+        "tags": [
+         "classical",
+         "piano"
+        ],
+        "caption": "This instrumental piece is a contemporary classical work that blends minimalist piano textures with subtle electronic ambience. The composition features a solo grand piano playing arpeggiated chords and melodic fragments over sustained synth pads, creating a calm yet emotionally resonant atmosphere. Production emphasizes high-fidelity recording, wide stereo imaging, and gentle compression that lets the piano’s natural resonance sit alongside the warm, spacious pad layers without competing for space. No vocals appear, so the focus remains entirely on the evolving harmonic landscape. Structurally, the track unfolds as a continuous development: an opening piano motif introduces the tonal center, followed by gradual layering of additional harmonies and rhythmic pulses from the synths, leading to a middle section where tension builds through denser chord voicings before gently receding back toward the initial material for a reflective finale. Overall, the mood is introspective and serene, evoking quiet contemplation suitable for study, meditation, or cinematic underscoring.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Avenew",
+        "artist": "Torley on Piano",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=150835&format=mp31",
+         "page": "https://www.jamendo.com/track/150835",
+         "license": "Creative Commons Attribution-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0151133::0-30::1",
+        "track_id": "track_0151133",
+        "tags": [
+         "classical",
+         "piano"
+        ],
+        "caption": "This instrumental piece is a solo piano work that blends classical technique with contemporary sensibility, creating a reflective yet uplifting atmosphere. The performance features expressive dynamics, nuanced phrasing, and a warm acoustic ambience typical of modern solo‑piano recordings. No vocal line is present, allowing the instrument’s timbre to carry the emotional narrative. The composition unfolds through recurring melodic motifs that evolve gently over time, evoking introspection while maintaining forward momentum. Its overall character can be described as contemplative, hopeful, and serene, making it suitable for moments of quiet reflection or background listening in calm settings.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "More of the same",
+        "artist": "Torley on Piano",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=151133&format=mp31",
+         "page": "https://www.jamendo.com/track/151133",
+         "license": "Creative Commons Attribution-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+        }
+       },
+       "instruction": "strip the synths and add forward momentum to the piano",
+       "instruction_contextual": "drop the electronic pads and give the piano more drive",
+       "hardness": "easy",
+       "transition_score": 0.9448,
+       "change_axes": [
+        "rhythm"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from a minimalist, electronic-infused classical piano piece to a more uplifting, contemporary solo piano work with forward momentum and warm acoustic ambience.",
+       "lost": [
+        "drama",
+        "easylistening",
+        "emotional",
+        "inspiring",
+        "electronic ambience",
+        "synth pads",
+        "minimalist textures",
+        "arpeggiated chords",
+        "romantic-era lyricism"
+       ],
+       "new": [
+        "uplifting atmosphere",
+        "forward momentum",
+        "contemporary sensibility",
+        "nuanced phrasing",
+        "warm acoustic ambience"
+       ],
+       "preserved": [
+        "classical",
+        "piano",
+        "instrumental",
+        "vocal metadata tag",
+        "reflective mood",
+        "serene atmosphere"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "track_0151133::0-30::1",
+        "track_id": "track_0151133",
+        "tags": [
+         "classical",
+         "piano"
+        ],
+        "caption": "This instrumental piece is a solo piano work that blends classical technique with contemporary sensibility, creating a reflective yet uplifting atmosphere. The performance features expressive dynamics, nuanced phrasing, and a warm acoustic ambience typical of modern solo‑piano recordings. No vocal line is present, allowing the instrument’s timbre to carry the emotional narrative. The composition unfolds through recurring melodic motifs that evolve gently over time, evoking introspection while maintaining forward momentum. Its overall character can be described as contemplative, hopeful, and serene, making it suitable for moments of quiet reflection or background listening in calm settings.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "More of the same",
+        "artist": "Torley on Piano",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=151133&format=mp31",
+         "page": "https://www.jamendo.com/track/151133",
+         "license": "Creative Commons Attribution-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0151106::0-30::1",
+        "track_id": "track_0151106",
+        "tags": [
+         "classical",
+         "piano"
+        ],
+        "caption": "This instrumental piece is a contemporary classical work that blends minimalist textures with subtle electronic ambience. It features sparse piano chords layered over sustained synth pads, creating a calm yet slightly unsettling atmosphere. The slow tempo and spacious arrangement evoke introspection and quiet tension, suitable as background music for contemplative scenes or reflective moments.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Shrubbery",
+        "artist": "Torley on Piano",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=151106&format=mp31",
+         "page": "https://www.jamendo.com/track/151106",
+         "license": "Creative Commons Attribution-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+        }
+       },
+       "instruction": "Slow the tempo down and add minimalist electronic textures, but keep the piano.",
+       "instruction_contextual": "Slow it down and add minimalist electronic textures, keeping the piano from before.",
+       "hardness": "easy",
+       "transition_score": 0.9288,
+       "change_axes": [
+        "speed",
+        "texture_production"
+       ],
+       "preserve_axes": [
+        "instrumentation"
+       ],
+       "primary_edit": "Slow down the tempo and add minimalist electronic textures while keeping the piano.",
+       "lost": [
+        "romantic-era lyricism",
+        "expressive dynamics",
+        "uplifting mood",
+        "warm acoustic ambience",
+        "flowing melody",
+        "rich resonant chords"
+       ],
+       "new": [
+        "slower tempo",
+        "minimalist texture",
+        "electronic ambience",
+        "sustained synth pads",
+        "sparse chords",
+        "unsettling atmosphere"
+       ],
+       "preserved": [
+        "classical genre",
+        "piano instrumentation",
+        "instrumental (no vocals)",
+        "calm mood",
+        "introspective theme"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 4,
+       "source": {
+        "clip_id": "track_0151106::0-30::1",
+        "track_id": "track_0151106",
+        "tags": [
+         "classical",
+         "piano"
+        ],
+        "caption": "This instrumental piece is a contemporary classical work that blends minimalist textures with subtle electronic ambience. It features sparse piano chords layered over sustained synth pads, creating a calm yet slightly unsettling atmosphere. The slow tempo and spacious arrangement evoke introspection and quiet tension, suitable as background music for contemplative scenes or reflective moments.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Shrubbery",
+        "artist": "Torley on Piano",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=151106&format=mp31",
+         "page": "https://www.jamendo.com/track/151106",
+         "license": "Creative Commons Attribution-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0151026::0-30::1",
+        "track_id": "track_0151026",
+        "tags": [
+         "classical",
+         "piano"
+        ],
+        "caption": "This instrumental piece is a minimalist electronic composition blending ambient textures with subtle IDM influences, featuring sparse synth pads that create a spacious, contemplative atmosphere. The slow tempo (≈60 BPM) and steady pulse give the track a calm yet forward‑moving feel, while gentle arpeggiated synths add delicate melodic movement over a deep sub‑bass foundation. Production emphasizes high‑fidelity clarity, wide stereo imaging, and smooth dynamic shifts that enhance its introspective, slightly melancholic mood.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Trail of Sevens",
+        "artist": "Torley on Piano",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=151026&format=mp31",
+         "page": "https://www.jamendo.com/track/151026",
+         "license": "Creative Commons Attribution-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+        }
+       },
+       "instruction": "Shift theme to minimalist electronic ambient with IDM textures, keeping classical piano tags.",
+       "instruction_contextual": "Evolve the classical piano theme into minimalist electronic ambient with IDM textures.",
+       "hardness": "easy",
+       "transition_score": 0.9335,
+       "change_axes": [
+        "theme_or_language",
+        "texture_production"
+       ],
+       "preserve_axes": [
+        "genre_style"
+       ],
+       "primary_edit": "Shift from romantic classical piano solo to minimalist electronic ambient with IDM influences and synth pads.",
+       "lost": [
+        "romantic-era lyricism",
+        "grand piano solo",
+        "expressive dynamics",
+        "resonant chords",
+        "natural acoustic ambience",
+        "nostalgic mood",
+        "easylistening",
+        "emotional",
+        "inspiring",
+        "drama"
+       ],
+       "new": [
+        "minimalist electronic composition",
+        "ambient textures",
+        "idm influences",
+        "sparse synth pads",
+        "steady pulse",
+        "arpeggiated synths",
+        "deep sub-bass",
+        "melancholic mood"
+       ],
+       "preserved": [
+        "classical tag",
+        "piano tag",
+        "instrumental",
+        "slow tempo",
+        "calm mood",
+        "contemplative atmosphere"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000316",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "track_0186304::0-30::1",
+        "track_id": "track_0186304",
+        "tags": [
+         "electronic"
+        ],
+        "caption": "This piece is a high‑energy instrumental that blends classic rockabilly swing with big‑band jazz sensibilities, creating a retro yet lively stylistic hybrid. The arrangement centers on a bright brass section (trumpets, trombones) delivering punchy melodic lines, supported by a walking upright bass, crisp ride cymbal patterns, and occasional piano comping that adds harmonic color. Production is clean and vintage‑inspired: drums sit front‑and‑center with tight compression, brass is spread wide across the stereo field, and the overall mix emphasizes clarity and separation so each instrument cuts through without clutter.\nVocals consist solely of brief spoken interjections from male voices. One voice delivers a formal address—“You’re the gentleman that vexed him”—with a slightly nasal timbre and natural room reverb, while another responds promptly with “Yes, sir.” These snippets function as narrative punctuation rather than lyrical verses, adding a conversational, theatrical touch typical of early‑20th‑century vaudeville performances.\nLyrically there is no sung material; the only vocal content is the short dialogue above, which reinforces the playful, nostalgic atmosphere.\nStructurally, the track opens with a brisk drum intro that establishes the swing groove, followed",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Jazz Begin",
+        "artist": "Bielebny",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=186304&format=mp31",
+         "page": "https://www.jamendo.com/track/186304",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_1052560::0-30::1",
+        "track_id": "track_1052560",
+        "tags": [
+         "hiphop",
+         "jazz",
+         "acousticguitar",
+         "clarinet",
+         "synthesizer"
+        ],
+        "caption": "This piece is a dark‑toned French hip‑hop/trap instrumental that blends gritty street rap rhythms with moody electronic textures. It sits firmly in the trap sub‑genre while borrowing atmospheric synth pads from contemporary French urban music, creating a stylistic hybrid of hard‑hitting beats and brooding ambience.\n\nThe duration of the piece is 30.05 seconds.\nTempo & Meter – The track runs at ≈ 96.8 BPM in 4/4 time, giving it a laid‑back yet driving pulse that underpins the lyrical flow.\nKey & Harmony – Centered on A minor, the harmonic backdrop cycles through simple minor‑key progressions such as Am → Dm7♭5/C → Fmaj7 → C♯dim, punctuated by occasional major chords (A major, Bb) and dominant sevenths (E7/G#). This mixture of diatonic minor movement and chromatic color adds tension before resolving back to the tonic, reinforcing the track’s introspective vibe.\nInstrumentation & Production – The beat is built around punchy electronic drums: crisp hi‑hats, rapid snare rolls, and a deep, resonant 808 kick",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Petite Secrétaire",
+        "artist": "Damaged Gull",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1052560&format=mp31",
+         "page": "https://www.jamendo.com/track/1052560",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "instruction": "slow it down, dark hip-hop",
+       "instruction_contextual": "slow it down, dark hip-hop",
+       "hardness": "hard",
+       "transition_score": 0.5979,
+       "change_axes": [
+        "speed"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from high-energy rockabilly swing to a slower, dark French hip-hop trap beat.",
+       "lost": [
+        "high energy",
+        "rockabilly swing",
+        "big-band jazz",
+        "brass section",
+        "upright bass",
+        "vaudeville spoken dialogue"
+       ],
+       "new": [
+        "slower tempo",
+        "french hip-hop style",
+        "dark moody atmosphere",
+        "trap beats",
+        "synthesizer textures"
+       ],
+       "preserved": [
+        "vocal presence",
+        "instrumental backing"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "track_1052560::0-30::1",
+        "track_id": "track_1052560",
+        "tags": [
+         "hiphop",
+         "jazz",
+         "acousticguitar",
+         "clarinet",
+         "synthesizer"
+        ],
+        "caption": "This piece is a dark‑toned French hip‑hop/trap instrumental that blends gritty street rap rhythms with moody electronic textures. It sits firmly in the trap sub‑genre while borrowing atmospheric synth pads from contemporary French urban music, creating a stylistic hybrid of hard‑hitting beats and brooding ambience.\n\nThe duration of the piece is 30.05 seconds.\nTempo & Meter – The track runs at ≈ 96.8 BPM in 4/4 time, giving it a laid‑back yet driving pulse that underpins the lyrical flow.\nKey & Harmony – Centered on A minor, the harmonic backdrop cycles through simple minor‑key progressions such as Am → Dm7♭5/C → Fmaj7 → C♯dim, punctuated by occasional major chords (A major, Bb) and dominant sevenths (E7/G#). This mixture of diatonic minor movement and chromatic color adds tension before resolving back to the tonic, reinforcing the track’s introspective vibe.\nInstrumentation & Production – The beat is built around punchy electronic drums: crisp hi‑hats, rapid snare rolls, and a deep, resonant 808 kick",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Petite Secrétaire",
+        "artist": "Damaged Gull",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1052560&format=mp31",
+         "page": "https://www.jamendo.com/track/1052560",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_1414208::0-30::1",
+        "track_id": "track_1414208",
+        "tags": [
+         "hiphop",
+         "rap"
+        ],
+        "caption": "This piece is a dark‑ambient / industrial‑drone composition that blends brooding atmospheric textures with harsh mechanical percussion. It unfolds as a slow‑moving soundscape built from deep sub‑bass drones, metallic clangs, grinding metal scrapes, and sparse percussive hits that punctuate the evolving layers. The production emphasizes spacious reverb and wide stereo imaging, allowing each element—from low rumbling bass to high‑frequency hiss—to occupy its own depth while maintaining a cohesive, oppressive ambience. No vocal lines are present, so there are no timbral or lyrical contributions to describe. Structurally, the track progresses through gradual layering: an opening swell of drone gives way to intermittent metallic impacts, then recedes into quieter passages before building again toward a final, sustained climax where all elements converge. Overall, the mood is ominous, unsettling, and cinematic, evoking desolate industrial wastelands and reinforcing themes of decay and isolation within a minimalist yet richly textured sonic environment.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Мёртвый Груз - 02 - Мы подземные твари",
+        "artist": "Dead Load",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1414208&format=mp31",
+         "page": "https://www.jamendo.com/track/1414208",
+         "license": "Creative Commons Attribution",
+         "license_url": "http://creativecommons.org/licenses/by/3.0/"
+        }
+       },
+       "instruction": "drain the energy, darker industrial drone",
+       "instruction_contextual": "drain the energy, darker industrial drone",
+       "hardness": "hard",
+       "transition_score": 0.7135,
+       "change_axes": [
+        "energy"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from laid-back French trap to dark, slow-moving industrial drone with harsh mechanical percussion.",
+       "lost": [
+        "acousticguitar",
+        "clarinet",
+        "jazz",
+        "synthesizer",
+        "trap",
+        "french",
+        "gritty",
+        "street",
+        "laid-back",
+        "driving",
+        "introspective"
+       ],
+       "new": [
+        "rap",
+        "dark",
+        "ambient",
+        "industrial",
+        "drone",
+        "brooding",
+        "atmospheric",
+        "harsh",
+        "mechanical",
+        "percussion",
+        "slow-moving",
+        "ominous",
+        "unsettling",
+        "cinematic",
+        "decay",
+        "isolation"
+       ],
+       "preserved": [
+        "vocal",
+        "hiphop"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "track_1414208::0-30::1",
+        "track_id": "track_1414208",
+        "tags": [
+         "hiphop",
+         "rap"
+        ],
+        "caption": "This piece is a dark‑ambient / industrial‑drone composition that blends brooding atmospheric textures with harsh mechanical percussion. It unfolds as a slow‑moving soundscape built from deep sub‑bass drones, metallic clangs, grinding metal scrapes, and sparse percussive hits that punctuate the evolving layers. The production emphasizes spacious reverb and wide stereo imaging, allowing each element—from low rumbling bass to high‑frequency hiss—to occupy its own depth while maintaining a cohesive, oppressive ambience. No vocal lines are present, so there are no timbral or lyrical contributions to describe. Structurally, the track progresses through gradual layering: an opening swell of drone gives way to intermittent metallic impacts, then recedes into quieter passages before building again toward a final, sustained climax where all elements converge. Overall, the mood is ominous, unsettling, and cinematic, evoking desolate industrial wastelands and reinforcing themes of decay and isolation within a minimalist yet richly textured sonic environment.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Мёртвый Груз - 02 - Мы подземные твари",
+        "artist": "Dead Load",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1414208&format=mp31",
+         "page": "https://www.jamendo.com/track/1414208",
+         "license": "Creative Commons Attribution",
+         "license_url": "http://creativecommons.org/licenses/by/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_1414212::0-30::1",
+        "track_id": "track_1414212",
+        "tags": [
+         "hiphop",
+         "rap"
+        ],
+        "caption": "This piece is a dark, atmospheric electronic composition that blends industrial‑ambient textures with cinematic orchestral elements. It unfolds slowly over a wide stereo field, driven by deep synth drones, metallic percussive hits, resonant low strings, and subtle piano chords that create a brooding, suspenseful ambience reminiscent of modern horror film scores. The sparse, reverberated vocal fragments add an unsettling human presence without forming discernible melodies or lyrical themes. Overall, the track conveys a tense, ominous mood suited to dramatic or thriller contexts.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Мёртвый Груз - 04 - Труп Лёши",
+        "artist": "Dead Load",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1414212&format=mp31",
+         "page": "https://www.jamendo.com/track/1414212",
+         "license": "Creative Commons Attribution",
+         "license_url": "http://creativecommons.org/licenses/by/3.0/"
+        }
+       },
+       "instruction": "add sparse unsettling vocal fragments to the dark industrial ambient track",
+       "instruction_contextual": "add sparse unsettling vocal fragments to keep the dark industrial vibe",
+       "hardness": "easy",
+       "transition_score": 0.9075,
+       "change_axes": [
+        "vocal_style_or_gender"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Introduce sparse, unsettling vocal fragments with Russian lyrics into the dark industrial-ambient track.",
+       "lost": [
+        "no vocals (from previous)",
+        "harsh mechanical percussion",
+        "metallic clangs/grinding scrapes",
+        "short spoken English dialogue (from seed)"
+       ],
+       "new": [
+        "sparse reverberated vocal fragments",
+        "unsettling human presence",
+        "Russian lyrics",
+        "deep synth drones",
+        "resonant low strings",
+        "subtle piano chords"
+       ],
+       "preserved": [
+        "hiphop/rap tags",
+        "vocal metadata",
+        "dark atmospheric mood",
+        "industrial-ambient textures",
+        "cinematic feel"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 4,
+       "source": {
+        "clip_id": "track_1414212::0-30::1",
+        "track_id": "track_1414212",
+        "tags": [
+         "hiphop",
+         "rap"
+        ],
+        "caption": "This piece is a dark, atmospheric electronic composition that blends industrial‑ambient textures with cinematic orchestral elements. It unfolds slowly over a wide stereo field, driven by deep synth drones, metallic percussive hits, resonant low strings, and subtle piano chords that create a brooding, suspenseful ambience reminiscent of modern horror film scores. The sparse, reverberated vocal fragments add an unsettling human presence without forming discernible melodies or lyrical themes. Overall, the track conveys a tense, ominous mood suited to dramatic or thriller contexts.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Мёртвый Груз - 04 - Труп Лёши",
+        "artist": "Dead Load",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1414212&format=mp31",
+         "page": "https://www.jamendo.com/track/1414212",
+         "license": "Creative Commons Attribution",
+         "license_url": "http://creativecommons.org/licenses/by/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0235304::0-30::1",
+        "track_id": "track_0235304",
+        "tags": [
+         "electronic"
+        ],
+        "caption": "This piece is an experimental electronic drone work that blends ambient textures with minimalist noise aesthetics. It features sustained synth pads and deep sub‑bass drones layered over sparse metallic percussive hits, creating a spacious yet unsettling atmosphere. The rhythm is irregular and free‑flowing rather than metrically strict, emphasizing gradual timbral shifts and subtle dynamic swells. Production emphasizes high‑fidelity spatial imaging, wide stereo panning, and meticulous layering to evoke a sense of vastness and introspection. No vocal elements are present, allowing the evolving instrumental landscape to remain the sole focus. Overall, the track conveys a contemplative, almost meditative mood while maintaining an undercurrent of tension through its dissonant harmonics and slowly morphing sonic layers.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "rumsteppa",
+        "artist": "Garish_cyborg",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=235304&format=mp31",
+         "page": "https://www.jamendo.com/track/235304",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "instruction": "strip vocals, keep ambient drones",
+       "instruction_contextual": "strip vocals, keep ambient drones",
+       "hardness": "medium",
+       "transition_score": 0.7545,
+       "change_axes": [
+        "vocal_style_or_gender"
+       ],
+       "preserve_axes": [
+        "texture_production"
+       ],
+       "primary_edit": "Remove all vocals and spoken parts to make it purely instrumental.",
+       "lost": [
+        "vocal",
+        "spoken interjections",
+        "male voices",
+        "narrative dialogue",
+        "hiphop",
+        "rap",
+        "dark atmospheric",
+        "cinematic orchestral",
+        "tense ominous mood"
+       ],
+       "new": [
+        "instrumental",
+        "no vocals",
+        "experimental drone",
+        "minimalist noise",
+        "irregular rhythm",
+        "contemplative mood"
+       ],
+       "preserved": [
+        "electronic",
+        "ambient textures",
+        "deep drones",
+        "metallic percussive hits"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 5,
+       "source": {
+        "clip_id": "track_0235304::0-30::1",
+        "track_id": "track_0235304",
+        "tags": [
+         "electronic"
+        ],
+        "caption": "This piece is an experimental electronic drone work that blends ambient textures with minimalist noise aesthetics. It features sustained synth pads and deep sub‑bass drones layered over sparse metallic percussive hits, creating a spacious yet unsettling atmosphere. The rhythm is irregular and free‑flowing rather than metrically strict, emphasizing gradual timbral shifts and subtle dynamic swells. Production emphasizes high‑fidelity spatial imaging, wide stereo panning, and meticulous layering to evoke a sense of vastness and introspection. No vocal elements are present, allowing the evolving instrumental landscape to remain the sole focus. Overall, the track conveys a contemplative, almost meditative mood while maintaining an undercurrent of tension through its dissonant harmonics and slowly morphing sonic layers.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "rumsteppa",
+        "artist": "Garish_cyborg",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=235304&format=mp31",
+         "page": "https://www.jamendo.com/track/235304",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_1209799::0-30::1",
+        "track_id": "track_1209799",
+        "tags": [
+         "ambient",
+         "experimental",
+         "soundtrack"
+        ],
+        "caption": "This piece is an experimental electronic instrumental that blends glitch‑hop textures with abstract sound design. It features sparse, heavily processed synth pads and fragmented percussive elements that create a disorienting, atmospheric soundscape. The rhythm is deliberately irregular, emphasizing spatial movement over conventional groove. Production emphasizes high‑fidelity digital processing: granular synthesis, extensive reverb and delay, and wide stereo imaging give the track an immersive, almost cinematic quality. No vocal lines appear, so there are no lyrical themes to describe. Overall, the mood feels introspective and unsettling, positioning the track within contemporary avant‑garde electronic music that challenges traditional song structures and timbral expectations.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Interference",
+        "artist": "Sägnik Basu",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1209799&format=mp31",
+         "page": "https://www.jamendo.com/track/1209799",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "instruction": "swap sustained drones for fragmented glitch-hop percussion, abstract textures, and disorienting cinematic mood",
+       "instruction_contextual": "replace the previous drones with fragmented glitch-hop percussion, abstract textures, and a disorienting cinematic mood",
+       "hardness": "hard",
+       "transition_score": 0.7591,
+       "change_axes": [
+        "instrumentation",
+        "texture_production",
+        "mood",
+        "genre_style"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from sustained ambient drones to fragmented glitch-hop textures with abstract sound design.",
+       "lost": [
+        "ambient drone work",
+        "minimalist noise aesthetics",
+        "sustained synth pads",
+        "deep sub-bass drones",
+        "metallic percussive hits",
+        "meditative mood",
+        "vastness and introspection without tension"
+       ],
+       "new": [
+        "glitch-hop textures",
+        "abstract sound design",
+        "sparse heavily processed synth pads",
+        "fragmented percussive elements",
+        "disorienting atmosphere",
+        "cinematic quality",
+        "introspective and unsettling mood"
+       ],
+       "preserved": [
+        "experimental electronic foundation",
+        "irregular rhythm",
+        "high-fidelity production",
+        "instrumental nature"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000344",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "track_0915580::0-30::1",
+        "track_id": "track_0915580",
+        "tags": [
+         "blues",
+         "experimental",
+         "bass",
+         "drums",
+         "electricguitar",
+         "synthesizer",
+         "voice",
+         "romantic"
+        ],
+        "caption": "This is a raw garage‑rock / punk rock piece that leans heavily into lo‑fi, unpolished aesthetics. It features distorted electric guitars playing simple power‑chord riffs, a punchy bass line, and energetic acoustic drums driving a fast, aggressive rhythm. The overall feel is gritty, rebellious, and high‑energy, capturing the spirit of early‑90s underground rock scenes.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Gonna Meet",
+        "artist": "Sean T Wright",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=915580&format=mp31",
+         "page": "https://www.jamendo.com/track/915580",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_1414840::0-30::1",
+        "track_id": "track_1414840",
+        "tags": [
+         "alternativerock",
+         "bass",
+         "drums",
+         "electricguitar"
+        ],
+        "caption": "This is a high‑energy instrumental rock piece that blends alternative‑rock sensibilities with post‑punk revival intensity. It features heavily distorted electric guitars delivering fast, intricate riffs, a punchy bass line locking tightly with aggressive acoustic drums, and a raw, live‑band feel captured in a wide stereo field. The overall mood is urgent and rebellious, driven by relentless rhythmic propulsion and dynamic shifts typical of modern indie‑rock performances.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Verbal Abuse",
+        "artist": "Warehouse Music",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1414840&format=mp31",
+         "page": "https://www.jamendo.com/track/1414840",
+         "license": "Creative Commons Attribution-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+        }
+       },
+       "instruction": "Polish the production to wide stereo alternative rock, losing the lo-fi garage grit.",
+       "instruction_contextual": "Polish the production to wide stereo alternative rock, losing the lo-fi garage grit.",
+       "hardness": "hard",
+       "transition_score": 0.6256,
+       "change_axes": [
+        "texture_production"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from lo-fi garage/punk to polished alternative/post-punk with intricate riffs and wide stereo production.",
+       "lost": [
+        "blues",
+        "experimental",
+        "romantic",
+        "synthesizer",
+        "lo-fi",
+        "unpolished",
+        "simple power chords",
+        "garage-rock",
+        "punk rock"
+       ],
+       "new": [
+        "alternativerock",
+        "post-punk revival",
+        "intricate riffs",
+        "wide stereo field",
+        "live-band feel",
+        "urgent mood",
+        "dynamic shifts"
+       ],
+       "preserved": [
+        "vocals",
+        "bass",
+        "drums",
+        "electricguitar",
+        "high energy",
+        "distorted guitars",
+        "rebellious mood"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "track_1414840::0-30::1",
+        "track_id": "track_1414840",
+        "tags": [
+         "alternativerock",
+         "bass",
+         "drums",
+         "electricguitar"
+        ],
+        "caption": "This is a high‑energy instrumental rock piece that blends alternative‑rock sensibilities with post‑punk revival intensity. It features heavily distorted electric guitars delivering fast, intricate riffs, a punchy bass line locking tightly with aggressive acoustic drums, and a raw, live‑band feel captured in a wide stereo field. The overall mood is urgent and rebellious, driven by relentless rhythmic propulsion and dynamic shifts typical of modern indie‑rock performances.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Verbal Abuse",
+        "artist": "Warehouse Music",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1414840&format=mp31",
+         "page": "https://www.jamendo.com/track/1414840",
+         "license": "Creative Commons Attribution-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0604688::0-30::1",
+        "track_id": "track_0604688",
+        "tags": [
+         "alternative",
+         "rock"
+        ],
+        "caption": "This is a high‑energy punk rock track that leans toward hardcore punk, driven by fast, aggressive electric guitars playing power chords, a punchy bass line, and relentless double‑kick drumming. The raw, lo‑fi production captures a live‑room feel typical of underground Spanish punk scenes, while the brief vocal snippet adds a fleeting lyrical touch: “Un transe eterno me dejó acostumbrando al estupor ahora y ahora estoy vacío por cortar.” The overall mood remains urgent and rebellious, reflecting the intensity of contemporary punk performance.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Trance",
+        "artist": "Icarus Crash",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=604688&format=mp31",
+         "page": "https://www.jamendo.com/track/604688",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "instruction": "Switch to Spanish lyrics with a rawer hardcore punk vibe.",
+       "instruction_contextual": "Switch to Spanish lyrics with a rawer hardcore punk vibe.",
+       "hardness": "hard",
+       "transition_score": 0.685,
+       "change_axes": [
+        "theme_or_language"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Switch the lyrics to Spanish and lean into a rawer hardcore punk vibe.",
+       "lost": [
+        "English lyrics",
+        "garage rock aesthetics",
+        "post-punk revival",
+        "alternative rock tags"
+       ],
+       "new": [
+        "Spanish lyrics",
+        "hardcore punk style",
+        "double-kick drumming",
+        "lo-fi production"
+       ],
+       "preserved": [
+        "vocal",
+        "high energy",
+        "punk rock",
+        "fast tempo",
+        "aggressive guitars",
+        "rebellious mood"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "track_0604688::0-30::1",
+        "track_id": "track_0604688",
+        "tags": [
+         "alternative",
+         "rock"
+        ],
+        "caption": "This is a high‑energy punk rock track that leans toward hardcore punk, driven by fast, aggressive electric guitars playing power chords, a punchy bass line, and relentless double‑kick drumming. The raw, lo‑fi production captures a live‑room feel typical of underground Spanish punk scenes, while the brief vocal snippet adds a fleeting lyrical touch: “Un transe eterno me dejó acostumbrando al estupor ahora y ahora estoy vacío por cortar.” The overall mood remains urgent and rebellious, reflecting the intensity of contemporary punk performance.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Trance",
+        "artist": "Icarus Crash",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=604688&format=mp31",
+         "page": "https://www.jamendo.com/track/604688",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0025269::0-30::1",
+        "track_id": "track_0025269",
+        "tags": [
+         "chanson",
+         "pop",
+         "rock",
+         "melodic"
+        ],
+        "caption": "This is a melancholic French alternative‑rock piece that blends indie‑rock sensibilities with subtle electronic textures. The arrangement centers on clean electric guitars playing arpeggiated chords, warm synth pads filling out the harmonic space, a steady bass line anchoring the low end, and crisp acoustic drums providing a relaxed yet propulsive rhythm. Production is polished and high‑fidelity: guitars sit wide in the stereo field, synths add depth without crowding the mix, and the overall balance emphasizes clarity and spaciousness while keeping volume levels consistent throughout. Vocals are delivered by a male baritone singing in French; his timbre is smooth and slightly breathy, conveying introspection and emotional weight. The performance is melodic and expressive, treated with moderate reverb and delay plus light compression to preserve intimacy. Lyrically, the song explores themes of disorientation and inner reflection, illustrated by lines such as “Des jours entiers sans savoir où j’en suis chaque nuit qui passe à ressasser mes idées noires” (“Days spent without knowing where I am, every night passing by, ruminating on my dark ideas”). These verses reinforce the reflective atmosphere created by the instrumentation. Structurally, the composition follows a conventional verse‑chorus form with instrumental breaks",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Mes Idées Noires",
+        "artist": "Badger",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=25269&format=mp31",
+         "page": "https://www.jamendo.com/track/25269",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/2.0/fr/"
+        }
+       },
+       "instruction": "Polish the raw lo-fi distortion into a clean, spacious, and melancholic pop-rock production.",
+       "instruction_contextual": "Trade the gritty punk distortion for a polished, spacious, and melancholic pop-rock texture.",
+       "hardness": "hard",
+       "transition_score": 0.7284,
+       "change_axes": [
+        "texture_production"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from raw, distorted punk production to a polished, spacious, and melancholic pop-rock sound.",
+       "lost": [
+        "lo-fi unpolished aesthetics",
+        "distorted guitars",
+        "raw garage/punk sound",
+        "aggressive energy",
+        "fast rhythm"
+       ],
+       "new": [
+        "polished high-fidelity production",
+        "clean electric guitars",
+        "warm synth pads",
+        "spacious stereo field",
+        "melancholic mood",
+        "chanson/pop style",
+        "french lyrics"
+       ],
+       "preserved": [
+        "vocals",
+        "rock genre"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 4,
+       "source": {
+        "clip_id": "track_0025269::0-30::1",
+        "track_id": "track_0025269",
+        "tags": [
+         "chanson",
+         "pop",
+         "rock",
+         "melodic"
+        ],
+        "caption": "This is a melancholic French alternative‑rock piece that blends indie‑rock sensibilities with subtle electronic textures. The arrangement centers on clean electric guitars playing arpeggiated chords, warm synth pads filling out the harmonic space, a steady bass line anchoring the low end, and crisp acoustic drums providing a relaxed yet propulsive rhythm. Production is polished and high‑fidelity: guitars sit wide in the stereo field, synths add depth without crowding the mix, and the overall balance emphasizes clarity and spaciousness while keeping volume levels consistent throughout. Vocals are delivered by a male baritone singing in French; his timbre is smooth and slightly breathy, conveying introspection and emotional weight. The performance is melodic and expressive, treated with moderate reverb and delay plus light compression to preserve intimacy. Lyrically, the song explores themes of disorientation and inner reflection, illustrated by lines such as “Des jours entiers sans savoir où j’en suis chaque nuit qui passe à ressasser mes idées noires” (“Days spent without knowing where I am, every night passing by, ruminating on my dark ideas”). These verses reinforce the reflective atmosphere created by the instrumentation. Structurally, the composition follows a conventional verse‑chorus form with instrumental breaks",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Mes Idées Noires",
+        "artist": "Badger",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=25269&format=mp31",
+         "page": "https://www.jamendo.com/track/25269",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/2.0/fr/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0321051::0-30::1",
+        "track_id": "track_0321051",
+        "tags": [
+         "pop"
+        ],
+        "caption": "This is a melancholic Spanish‑language indie pop song that blends gentle acoustic guitar strumming with subtle synth pads, creating a reflective and intimate atmosphere. The arrangement features soft percussion and warm bass, supporting emotive male vocals delivered in a calm, expressive tone. Lyrically, the singer asks “Me junto a las hojas… ¿Se van o se quedan?” and reflects on time’s passage with lines like “Ya está el visarás, hebradas y deformadas,” underscoring themes of change, memory, and longing. The overall mood remains wistful yet hopeful, fitting comfortably within contemporary Latin indie aesthetics.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Resolana",
+        "artist": "Camilo Artigas",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=321051&format=mp31",
+         "page": "https://www.jamendo.com/track/321051",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/2.0/cl/"
+        }
+       },
+       "instruction": "swap electric guitars for gentle acoustic strumming",
+       "instruction_contextual": "swap electric guitars for gentle acoustic strumming",
+       "hardness": "medium",
+       "transition_score": 0.7655,
+       "change_axes": [
+        "instrumentation"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Switch instrumentation from clean electric guitars to gentle acoustic guitar strumming while keeping the pop vibe.",
+       "lost": [
+        "clean electric guitar arpeggios",
+        "crisp acoustic drums",
+        "french language",
+        "alternative rock style",
+        "chanson style"
+       ],
+       "new": [
+        "acoustic guitar strumming",
+        "soft percussion",
+        "spanish language",
+        "gentle texture"
+       ],
+       "preserved": [
+        "vocal",
+        "pop",
+        "melancholic mood",
+        "indie aesthetic",
+        "synth pads",
+        "bass"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000496",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "track_1046003::0-30::1",
+        "track_id": "track_1046003",
+        "tags": [
+         "alternative",
+         "funk",
+         "pop"
+        ],
+        "caption": "This piece is an instrumental rock‑infused electronic track that blends gritty guitar riffs with punchy synth bass and crisp drum programming, creating a high‑energy, forward‑driving feel. The arrangement leans on distorted electric guitars playing tight power chords, layered over bright, side‑stereo synths that add melodic hooks and atmospheric pads. Production is polished yet retains a raw edge: drums sit front‑and‑center with tight compression, guitars are panned wide for width, and the mix emphasizes clarity while preserving a slightly aggressive tone. No vocal lines appear, so the focus remains entirely on the instrumental interplay.\nThe composition follows a straightforward verse‑chorus structure typical of modern alternative rock, punctuated by brief instrumental breaks where the guitars take the lead before returning to the hook. Dynamic shifts are subtle but effective—the verses stay relatively restrained, building tension through rhythmic syncopation, then explode into full‑band choruses that reinforce the driving momentum.\nOverall, the track conveys an upbeat, confident mood suited to energetic settings such as live shows or workout playlists, reflecting contemporary trends where organic rock instrumentation meets electronic polish.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Rubicon of Gits.",
+        "artist": "Conway Hambone",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1046003&format=mp31",
+         "page": "https://www.jamendo.com/track/1046003",
+         "license": "Creative Commons Attribution-Non-Commercial-No Derivatives",
+         "license_url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_1281247::0-30::1",
+        "track_id": "track_1281247",
+        "tags": [
+         "hiphop",
+         "rap",
+         "dark"
+        ],
+        "caption": "This piece is a raw spoken‑word/industrial‑ambient vignette that blends stark narrative delivery with gritty electronic textures. It features a deep male voice speaking English in a calm yet urgent tone over sparse industrial percussion (metallic hits, low thuds) and a subtle sub‑bass drone, creating a tense, dystopian atmosphere reminiscent of underground protest recordings or post‑apocalyptic soundscapes. The duration of the piece is 30.05 seconds.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "LONDON ft PL-Ease and Teeth Collider",
+        "artist": "The Hate Eighties",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1281247&format=mp31",
+         "page": "https://www.jamendo.com/track/1281247",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "instruction": "swap guitars for industrial percussion and spoken word",
+       "instruction_contextual": "swap guitars for industrial percussion and spoken word",
+       "hardness": "hard",
+       "transition_score": 0.6325,
+       "change_axes": [
+        "instrumentation",
+        "genre_style",
+        "vocal_style_or_gender"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Swap rock instrumentation for industrial percussion and spoken word vocals in a dark hiphop style.",
+       "lost": [
+        "rock guitars",
+        "synth bass",
+        "crisp drums",
+        "high energy",
+        "alternative/funk/pop style",
+        "upbeat mood"
+       ],
+       "new": [
+        "industrial percussion",
+        "sub-bass drone",
+        "spoken word delivery",
+        "dark mood",
+        "hiphop/rap style",
+        "metallic textures"
+       ],
+       "preserved": [
+        "vocals",
+        "electronic elements"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "track_1281247::0-30::1",
+        "track_id": "track_1281247",
+        "tags": [
+         "hiphop",
+         "rap",
+         "dark"
+        ],
+        "caption": "This piece is a raw spoken‑word/industrial‑ambient vignette that blends stark narrative delivery with gritty electronic textures. It features a deep male voice speaking English in a calm yet urgent tone over sparse industrial percussion (metallic hits, low thuds) and a subtle sub‑bass drone, creating a tense, dystopian atmosphere reminiscent of underground protest recordings or post‑apocalyptic soundscapes. The duration of the piece is 30.05 seconds.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "LONDON ft PL-Ease and Teeth Collider",
+        "artist": "The Hate Eighties",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=1281247&format=mp31",
+         "page": "https://www.jamendo.com/track/1281247",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0253730::0-30::1",
+        "track_id": "track_0253730",
+        "tags": [
+         "hiphop",
+         "metal",
+         "progressive",
+         "rock"
+        ],
+        "caption": "This piece is a dark‑ambient / industrial spoken‑word composition that blends brooding atmospheric textures with harsh mechanical percussion. It unfolds as a slow, deliberate soundscape built around deep synth drones, metallic clangs, low rumbling bass tones, and sparse electronic clicks that punctuate the silence. The production emphasizes spacious reverb and subtle delay on every element, creating an immersive stereo field where the listener feels enveloped by oppressive ambience rather than driven by rhythm. Vocals consist solely of heavily processed male spoken word samples delivered in English. These fragments are filtered through distortion, pitch shifting, granular synthesis, and long reverbs/delays, rendering them almost robotic and disembodied. Their timbre is thin yet resonant, functioning more as narrative punctuation than melodic singing. Lyrical themes revolve around existential questioning and confinement, repeatedly asking “Is it about life or death?” and echoing lines such as “Cause I won’t tell you lies free,” “Cause I won’t let you lie free,” and “Cause we won’t let me die.” Other excerpts include “It’s all within your mind” and “Your fucking free but if you say another line like you burn your house,” underscoring a sense of inner turmoil and fatalistic reflection. Struct",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "I Could Burn Your House",
+        "artist": "After Many Days",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=253730&format=mp31",
+         "page": "https://www.jamendo.com/track/253730",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "instruction": "Keep vocals, make them robotic and metal.",
+       "instruction_contextual": "Keep vocals, make them robotic and metal.",
+       "hardness": "hard",
+       "transition_score": 0.6371,
+       "change_axes": [
+        "vocal_style_or_gender"
+       ],
+       "preserve_axes": [
+        "other"
+       ],
+       "primary_edit": "Shift vocals to heavily processed, robotic spoken word with French lyrics while adding metal/rock elements.",
+       "lost": [
+        "rap tag",
+        "dark tag",
+        "natural/calm male voice",
+        "English lyrics",
+        "London/protest narrative"
+       ],
+       "new": [
+        "metal/rock/progressive tags",
+        "heavily processed/robotic vocal timbre",
+        "distorted/pitch-shifted vocal effects",
+        "French lyrics",
+        "existential/confinement themes"
+       ],
+       "preserved": [
+        "vocal presence",
+        "hiphop tag",
+        "ambient/industrial texture",
+        "spoken word delivery"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "track_0253730::0-30::1",
+        "track_id": "track_0253730",
+        "tags": [
+         "hiphop",
+         "metal",
+         "progressive",
+         "rock"
+        ],
+        "caption": "This piece is a dark‑ambient / industrial spoken‑word composition that blends brooding atmospheric textures with harsh mechanical percussion. It unfolds as a slow, deliberate soundscape built around deep synth drones, metallic clangs, low rumbling bass tones, and sparse electronic clicks that punctuate the silence. The production emphasizes spacious reverb and subtle delay on every element, creating an immersive stereo field where the listener feels enveloped by oppressive ambience rather than driven by rhythm. Vocals consist solely of heavily processed male spoken word samples delivered in English. These fragments are filtered through distortion, pitch shifting, granular synthesis, and long reverbs/delays, rendering them almost robotic and disembodied. Their timbre is thin yet resonant, functioning more as narrative punctuation than melodic singing. Lyrical themes revolve around existential questioning and confinement, repeatedly asking “Is it about life or death?” and echoing lines such as “Cause I won’t tell you lies free,” “Cause I won’t let you lie free,” and “Cause we won’t let me die.” Other excerpts include “It’s all within your mind” and “Your fucking free but if you say another line like you burn your house,” underscoring a sense of inner turmoil and fatalistic reflection. Struct",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "I Could Burn Your House",
+        "artist": "After Many Days",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=253730&format=mp31",
+         "page": "https://www.jamendo.com/track/253730",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0009837::0-30::1",
+        "track_id": "track_0009837",
+        "tags": [
+         "hard",
+         "metal",
+         "progressive",
+         "rock",
+         "heavy"
+        ],
+        "caption": "This is a high‑energy punk rock track that leans toward garage‑punk aggression, driven by fast, distorted electric guitars playing tight power chords, a punchy bass line, and rapid, hard‑hitting drums that keep the momentum relentless. The raw, lo‑fi production captures a gritty live feel, while the vocal delivery is shouted male singing with a strained, urgent timbre typical of classic punk frontmen. Lyrically, the song channels themes of deception and betrayal, opening with lines such as “Someone once told me he would have put my trust” and “Someone wants me through his magic,” underscoring a sense of mistrust and personal conflict. Structurally, the piece follows a straightforward verse‑chorus format punctuated by brief instrumental breaks that let the guitars riff freely before launching back into the next vocal section, maintaining constant intensity from start to finish. Overall, the track exudes a rebellious, confrontational mood rooted in early‑90s underground punk aesthetics, delivering an unpolished yet powerful sonic assault.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Chains of a martyr",
+        "artist": "Countdown",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=9837&format=mp31",
+         "page": "https://www.jamendo.com/track/9837",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/2.5/"
+        }
+       },
+       "instruction": "Shout vocals, fast punk, heavy aggressive",
+       "instruction_contextual": "Shout vocals, fast punk, heavy aggressive",
+       "hardness": "medium",
+       "transition_score": 0.789,
+       "change_axes": [
+        "vocal_style_or_gender",
+        "genre_style",
+        "speed",
+        "energy"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Switch from slow, dark spoken-word industrial to fast, aggressive punk rock with shouted male vocals.",
+       "lost": [
+        "hiphop",
+        "dark ambient",
+        "industrial",
+        "spoken word",
+        "slow tempo",
+        "brooding mood"
+       ],
+       "new": [
+        "hard",
+        "heavy",
+        "punk",
+        "garage",
+        "shouted male vocals",
+        "high energy",
+        "fast tempo",
+        "aggressive mood"
+       ],
+       "preserved": [
+        "vocals",
+        "metal",
+        "progressive",
+        "rock"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 4,
+       "source": {
+        "clip_id": "track_0009837::0-30::1",
+        "track_id": "track_0009837",
+        "tags": [
+         "hard",
+         "metal",
+         "progressive",
+         "rock",
+         "heavy"
+        ],
+        "caption": "This is a high‑energy punk rock track that leans toward garage‑punk aggression, driven by fast, distorted electric guitars playing tight power chords, a punchy bass line, and rapid, hard‑hitting drums that keep the momentum relentless. The raw, lo‑fi production captures a gritty live feel, while the vocal delivery is shouted male singing with a strained, urgent timbre typical of classic punk frontmen. Lyrically, the song channels themes of deception and betrayal, opening with lines such as “Someone once told me he would have put my trust” and “Someone wants me through his magic,” underscoring a sense of mistrust and personal conflict. Structurally, the piece follows a straightforward verse‑chorus format punctuated by brief instrumental breaks that let the guitars riff freely before launching back into the next vocal section, maintaining constant intensity from start to finish. Overall, the track exudes a rebellious, confrontational mood rooted in early‑90s underground punk aesthetics, delivering an unpolished yet powerful sonic assault.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Chains of a martyr",
+        "artist": "Countdown",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=9837&format=mp31",
+         "page": "https://www.jamendo.com/track/9837",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/2.5/"
+        }
+       },
+       "target": {
+        "clip_id": "track_0293911::0-30::1",
+        "track_id": "track_0293911",
+        "tags": [
+         "alternative",
+         "indie",
+         "rock"
+        ],
+        "caption": "This is an energetic pop‑punk anthem that blends classic punk aggression with melodic hooks. The arrangement centers on heavily distorted electric guitars playing driving power chords, a punchy bass line locking tightly with fast, relentless drums, and raw male lead vocals delivering angsty, rebellious lyrics. Production is deliberately lo‑fi yet powerful: guitars are panned wide left and right, while drums, bass, and vocals sit front‑and‑center, creating a dense “wall of sound” typical of early‑2000s punk recordings. The overall vibe is defiantly youthful and confrontational, capturing the spirit of teenage frustration and self‑assertion.",
+        "vocals": "",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Self Sympathy",
+        "artist": "Crazed Outlook",
+        "audio": {
+         "kind": "jamendo",
+         "url": "https://mp3d.jamendo.com/?trackid=293911&format=mp31",
+         "page": "https://www.jamendo.com/track/293911",
+         "license": "Creative Commons Attribution-Non-Commercial-Share-Alike",
+         "license_url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+        }
+       },
+       "instruction": "Ditch the heavy metal for energetic pop-punk hooks.",
+       "instruction_contextual": "Swap the prog-metal grind for upbeat pop-punk energy.",
+       "hardness": "hard",
+       "transition_score": 0.6677,
+       "change_axes": [
+        "energy",
+        "genre_style"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from heavy progressive metal to energetic pop-punk with melodic hooks.",
+       "lost": [
+        "hard",
+        "heavy",
+        "metal",
+        "progressive",
+        "garage-punk aggression",
+        "shouted vocals",
+        "themes of deception"
+       ],
+       "new": [
+        "pop-punk",
+        "indie",
+        "anthemic",
+        "melodic hooks",
+        "lo-fi production",
+        "angsty lyrics"
+       ],
+       "preserved": [
+        "vocal",
+        "rock",
+        "distorted electric guitars",
+        "punchy bass",
+        "fast drums",
+        "male vocals",
+        "rebellious mood"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "music4all",
+   "label": "Music4All",
+   "chains": [
+    {
+     "chain_id": "chain_00000050",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "5jjGnuy8IVSa1dui::0-30::1",
+        "track_id": "5jjGnuy8IVSa1dui",
+        "tags": [
+         "grunge",
+         "rock"
+        ],
+        "caption": "This instrumental piece is a slow‑tempo post‑rock/ambient track that blends cinematic orchestration with modern electronic textures. It features lush string arrangements, expansive synth pads, subtle piano motifs, and understated percussion, creating a melancholic yet hopeful atmosphere. The composition unfolds gradually, building emotional depth through layered instrumentation rather than vocal lines, evoking introspection and serenity.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "I'm Open",
+        "artist": "Pearl Jam",
+        "audio": {
+         "kind": "spotify",
+         "id": "1eSs3ZKTdiUmw9e2EQ3SZ6"
+        }
+       },
+       "target": {
+        "clip_id": "ciHqhiSlWW2w6Fcp::0-30::1",
+        "track_id": "ciHqhiSlWW2w6Fcp",
+        "tags": [
+         "hardcore",
+         "melodic hardcore",
+         "instrumental",
+         "intro",
+         "modern hardcore"
+        ],
+        "caption": "This instrumental post-rock piece features layered electric guitars that build from delicate arpeggios into soaring, reverb‑drenched crescendos, supported by subtle bass and restrained percussion. The slow tempo and atmospheric textures create a contemplative yet expansive mood typical of modern post‑rock, evoking a sense of introspection and emotional depth without vocal elements.",
+        "vocals": "instrumental",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Asleep",
+        "artist": "More Than Life",
+        "audio": {
+         "kind": "spotify",
+         "id": "3umoXWhbLQ4N0xUE7UAcdm"
+        }
+       },
+       "instruction": "swap strings and synths for reverb-drenched electric guitar crescendos",
+       "instruction_contextual": "swap strings and synths for reverb-drenched electric guitar crescendos",
+       "hardness": "hard",
+       "transition_score": 0.6949,
+       "change_axes": [
+        "instrumentation",
+        "texture_production"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Swap the orchestral/electronic instrumentation for layered electric guitars with reverb-drenched crescendos while keeping the slow, atmospheric post-rock vibe.",
+       "lost": [
+        "grunge",
+        "rock",
+        "cinematic orchestration",
+        "lush strings",
+        "synth pads",
+        "piano motifs",
+        "vocal lines",
+        "fast speed"
+       ],
+       "new": [
+        "electric guitars",
+        "delicate arpeggios",
+        "soaring reverb-drenched crescendos",
+        "subtle bass",
+        "restrained percussion",
+        "hardcore/melodic hardcore tags"
+       ],
+       "preserved": [
+        "instrumental",
+        "slow tempo",
+        "post-rock aesthetic",
+        "layered arrangement",
+        "atmospheric mood",
+        "contemplative feel"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "ciHqhiSlWW2w6Fcp::0-30::1",
+        "track_id": "ciHqhiSlWW2w6Fcp",
+        "tags": [
+         "hardcore",
+         "melodic hardcore",
+         "instrumental",
+         "intro",
+         "modern hardcore"
+        ],
+        "caption": "This instrumental post-rock piece features layered electric guitars that build from delicate arpeggios into soaring, reverb‑drenched crescendos, supported by subtle bass and restrained percussion. The slow tempo and atmospheric textures create a contemplative yet expansive mood typical of modern post‑rock, evoking a sense of introspection and emotional depth without vocal elements.",
+        "vocals": "instrumental",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Asleep",
+        "artist": "More Than Life",
+        "audio": {
+         "kind": "spotify",
+         "id": "3umoXWhbLQ4N0xUE7UAcdm"
+        }
+       },
+       "target": {
+        "clip_id": "bm7KIRJGz2EZqibc::0-30::1",
+        "track_id": "bm7KIRJGz2EZqibc",
+        "tags": [
+         "post-punk",
+         "goth",
+         "gothic",
+         "siouxsie and the banshees"
+        ],
+        "caption": "This piece is an experimental electronic‑ambient work that blends glitch‑y synth textures with abstract noise elements, creating a dark, unsettling atmosphere. The instrumentation centers on heavily processed synthesizers producing distorted drones, metallic scrapes, and granular noises, all layered over sparse, low‑frequency pulses that act as a subtle rhythmic anchor. Production emphasizes extreme distortion, wide stereo imaging, and dynamic shifts from quiet, eerie passages to sudden bursts of abrasive intensity, giving the track a raw yet meticulously crafted sonic footprint. No vocal material is present, so there are no timbres, gender cues, or lyrical themes to describe. Structurally",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Pure",
+        "artist": "Siouxsie and the Banshees",
+        "audio": {
+         "kind": "spotify",
+         "id": "5se0IMKESSaFGP3M3Imkp5"
+        }
+       },
+       "instruction": "swap the post-rock guitars for glitchy, distorted goth synths and noise textures",
+       "instruction_contextual": "replace the previous post-rock guitars with glitchy, distorted goth synths and noise textures",
+       "hardness": "medium",
+       "transition_score": 0.6821,
+       "change_axes": [
+        "instrumentation",
+        "genre_style"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from post-rock/hardcore instrumentation to glitchy, distorted goth/post-punk synths and noise textures.",
+       "lost": [
+        "grunge/rock style",
+        "post-rock style",
+        "hardcore style",
+        "lush string arrangements",
+        "expansive synth pads",
+        "subtle piano motifs",
+        "understated percussion",
+        "layered electric guitars",
+        "delicate arpeggios",
+        "reverb-drenched crescendos",
+        "subtle bass",
+        "restrained percussion",
+        "contemplative/expansive mood",
+        "cinematic orchestration"
+       ],
+       "new": [
+        "goth/post-punk style",
+        "glitchy synth textures",
+        "abstract noise elements",
+        "dark/unsettling atmosphere",
+        "heavily processed synthesizers",
+        "distorted drones",
+        "metallic scrapes",
+        "granular noises",
+        "sparse low-frequency pulses",
+        "extreme distortion",
+        "wide stereo imaging",
+        "abrasive intensity bursts"
+       ],
+       "preserved": [
+        "slow tempo",
+        "ambient/electronic foundation",
+        "atmospheric mood"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "bm7KIRJGz2EZqibc::0-30::1",
+        "track_id": "bm7KIRJGz2EZqibc",
+        "tags": [
+         "post-punk",
+         "goth",
+         "gothic",
+         "siouxsie and the banshees"
+        ],
+        "caption": "This piece is an experimental electronic‑ambient work that blends glitch‑y synth textures with abstract noise elements, creating a dark, unsettling atmosphere. The instrumentation centers on heavily processed synthesizers producing distorted drones, metallic scrapes, and granular noises, all layered over sparse, low‑frequency pulses that act as a subtle rhythmic anchor. Production emphasizes extreme distortion, wide stereo imaging, and dynamic shifts from quiet, eerie passages to sudden bursts of abrasive intensity, giving the track a raw yet meticulously crafted sonic footprint. No vocal material is present, so there are no timbres, gender cues, or lyrical themes to describe. Structurally",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Pure",
+        "artist": "Siouxsie and the Banshees",
+        "audio": {
+         "kind": "spotify",
+         "id": "5se0IMKESSaFGP3M3Imkp5"
+        }
+       },
+       "target": {
+        "clip_id": "vB3TClbdsRST99Qa::0-30::1",
+        "track_id": "vB3TClbdsRST99Qa",
+        "tags": [
+         "noise",
+         "electronic",
+         "experimental",
+         "electronica"
+        ],
+        "caption": "This track is an experimental electronic piece that blends glitch‑hop textures with abstract IDM sensibilities, creating a fragmented yet rhythmically engaging soundscape. The duration of the piece is 30 seconds.\nInstrumentation centers on heavily processed digital percussion—sharp clicks, metallic hits, and granular noise bursts—that drive syncopated, off‑grid rhythms. A deep sub‑bass underpins the mix, while high‑frequency synth stabs and evolving atmospheric pads add tension and spatial depth. Production emphasizes extreme stereo panning, aggressive distortion, and dynamic filtering, giving the arrangement a raw, immersive feel.\nThere are no vocal elements,",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Rough Steez",
+        "artist": "Fuck Buttons",
+        "audio": {
+         "kind": "spotify",
+         "id": "4TRFXXPbilJiuGf5HqwX6v"
+        }
+       },
+       "instruction": "swap the gothic drones for punchy digital percussion and glitch-hop rhythms",
+       "instruction_contextual": "replace the previous dark drones with sharp digital percussion and glitch-hop beats",
+       "hardness": "hard",
+       "transition_score": 0.7063,
+       "change_axes": [
+        "instrumentation"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift instrumentation from drone-heavy gothic synths to rhythmic digital percussion and glitch-hop beats.",
+       "lost": [
+        "gothic/post-punk atmosphere",
+        "distorted drones",
+        "metallic scrapes",
+        "slow tempo",
+        "dark unsettling mood"
+       ],
+       "new": [
+        "digital percussion focus",
+        "sharp clicks and metallic hits",
+        "granular noise bursts",
+        "syncopated off-grid rhythms",
+        "deep sub-bass",
+        "glitch-hop/IDM sensibilities",
+        "medium speed"
+       ],
+       "preserved": [
+        "vocal presence",
+        "experimental electronic foundation",
+        "abstract textures"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000138",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "QRQ2fW4yy0ySZfij::0-30::1",
+        "track_id": "QRQ2fW4yy0ySZfij",
+        "tags": [
+         "doom metal",
+         "gothic metal",
+         "stoner metal",
+         "grunge"
+        ],
+        "caption": "This instrumental piece is a dark, atmospheric blend of doom metal and gothic rock, characterized by heavy, distorted guitars that deliver slow, crushing riffs over a steady, deliberate drum pulse. The bass underpins the low‑end weight while subtle keyboard textures add depth and ambience. Production favors a dense, immersive stereo field with pronounced reverb on the guitars and drums, creating a brooding, melancholic atmosphere typical of early‑90s European doom/goth aesthetics. No vocal lines appear, so the focus remains entirely on the instrumental narrative.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Vultures",
+        "artist": "A Pale Horse Named Death",
+        "audio": {
+         "kind": "spotify",
+         "id": "6rX5oEPRUL31F6lMMkwTFY"
+        }
+       },
+       "target": {
+        "clip_id": "UfnWHCm9gOY9ALC7::0-30::1",
+        "track_id": "UfnWHCm9gOY9ALC7",
+        "tags": [
+         "doom metal",
+         "metal",
+         "stoner metal",
+         "psychedelic"
+        ],
+        "caption": "This instrumental piece is a high‑energy blend of post‑rock and shoegaze, driven by heavily distorted electric guitars that create dense, layered textures through extensive reverb and delay. The rhythm section delivers a steady, propulsive beat that underpins the expansive, atmospheric soundscape. Production emphasizes wide stereo imaging and dynamic shifts, allowing the guitars to swell from subtle ambience into powerful crescendos while maintaining clarity across the mix. No vocals are present, so the focus remains entirely on the evolving guitar lines and rhythmic foundation. Overall, the track conveys an intense yet ethereal mood characteristic of modern post‑rock/shoeg",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Woodbine",
+        "artist": "Windhand",
+        "audio": {
+         "kind": "spotify",
+         "id": "59ML0d8TWN9YIUK1KG62NC"
+        }
+       },
+       "instruction": "keep the medium pace but make it high-energy psychedelic shoegaze",
+       "instruction_contextual": "keep the medium pace but make it high-energy psychedelic shoegaze",
+       "hardness": "hard",
+       "transition_score": 0.7533,
+       "change_axes": [
+        "speed"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from dark, slow gothic/doom to high-energy psychedelic shoegaze while keeping medium speed.",
+       "lost": [
+        "gothic metal",
+        "grunge",
+        "dark atmosphere",
+        "slow crushing riffs",
+        "brooding melancholic mood",
+        "lyrics"
+       ],
+       "new": [
+        "psychedelic",
+        "metal",
+        "high energy",
+        "post-rock",
+        "shoegaze",
+        "layered textures",
+        "reverb and delay",
+        "propulsive beat"
+       ],
+       "preserved": [
+        "doom metal",
+        "stoner metal",
+        "vocal",
+        "medium speed",
+        "distorted guitars",
+        "instrumental"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "UfnWHCm9gOY9ALC7::0-30::1",
+        "track_id": "UfnWHCm9gOY9ALC7",
+        "tags": [
+         "doom metal",
+         "metal",
+         "stoner metal",
+         "psychedelic"
+        ],
+        "caption": "This instrumental piece is a high‑energy blend of post‑rock and shoegaze, driven by heavily distorted electric guitars that create dense, layered textures through extensive reverb and delay. The rhythm section delivers a steady, propulsive beat that underpins the expansive, atmospheric soundscape. Production emphasizes wide stereo imaging and dynamic shifts, allowing the guitars to swell from subtle ambience into powerful crescendos while maintaining clarity across the mix. No vocals are present, so the focus remains entirely on the evolving guitar lines and rhythmic foundation. Overall, the track conveys an intense yet ethereal mood characteristic of modern post‑rock/shoeg",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Woodbine",
+        "artist": "Windhand",
+        "audio": {
+         "kind": "spotify",
+         "id": "59ML0d8TWN9YIUK1KG62NC"
+        }
+       },
+       "target": {
+        "clip_id": "nI03rDC3AIfkGN4q::0-30::1",
+        "track_id": "nI03rDC3AIfkGN4q",
+        "tags": [
+         "thrash metal",
+         "groove metal",
+         "heavy metal"
+        ],
+        "caption": "This instrumental piece is a high‑energy blend of industrial metal and nu‑metal, driven by heavily distorted electric guitars that deliver aggressive riffs and power chords. The rhythm section features punchy drums with double‑bass patterns and a thick, overdriven bass guitar, all locked into a relentless groove. Production emphasizes raw distortion and tight compression, creating a dense “wall of sound” with wide stereo imaging that lets the guitars cut through while preserving the low‑end weight. No vocal lines appear, so the focus remains on the instrumental intensity.\nThe composition follows a typical verse‑chorus framework: an opening riff builds tension, leading",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "A Nation On Fire",
+        "artist": "Machine Head",
+        "audio": {
+         "kind": "spotify",
+         "id": "3EQGVx92eRnUjptgNnKFr5"
+        }
+       },
+       "instruction": "Speed it up and make the mood aggressive.",
+       "instruction_contextual": "Drop the brooding vibe, speed it up, and make it aggressive.",
+       "hardness": "hard",
+       "transition_score": 0.7254,
+       "change_axes": [
+        "mood",
+        "speed"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from a slow, atmospheric doom/gothic mood to a fast, aggressive thrash metal energy.",
+       "lost": [
+        "slow, crushing doom riffs",
+        "dark, atmospheric, brooding mood",
+        "gothic/grunge aesthetics",
+        "medium speed",
+        "shoegaze/post-rock textures"
+       ],
+       "new": [
+        "fast tempo",
+        "aggressive, high-energy mood",
+        "thrash/groove metal style",
+        "punchy, tight production",
+        "double-bass drum patterns"
+       ],
+       "preserved": [
+        "vocal presence",
+        "heavy metal genre foundation",
+        "distorted guitar instrumentation"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "nI03rDC3AIfkGN4q::0-30::1",
+        "track_id": "nI03rDC3AIfkGN4q",
+        "tags": [
+         "thrash metal",
+         "groove metal",
+         "heavy metal"
+        ],
+        "caption": "This instrumental piece is a high‑energy blend of industrial metal and nu‑metal, driven by heavily distorted electric guitars that deliver aggressive riffs and power chords. The rhythm section features punchy drums with double‑bass patterns and a thick, overdriven bass guitar, all locked into a relentless groove. Production emphasizes raw distortion and tight compression, creating a dense “wall of sound” with wide stereo imaging that lets the guitars cut through while preserving the low‑end weight. No vocal lines appear, so the focus remains on the instrumental intensity.\nThe composition follows a typical verse‑chorus framework: an opening riff builds tension, leading",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "A Nation On Fire",
+        "artist": "Machine Head",
+        "audio": {
+         "kind": "spotify",
+         "id": "3EQGVx92eRnUjptgNnKFr5"
+        }
+       },
+       "target": {
+        "clip_id": "y16ceYuRGrjP3If0::0-30::1",
+        "track_id": "y16ceYuRGrjP3If0",
+        "tags": [
+         "melodic death metal",
+         "progressive metal",
+         "doom metal",
+         "death metal"
+        ],
+        "caption": "This instrumental piece is a high‑energy blend of melodic death metal and progressive metal, driven by aggressive double‑bass drumming and intricate guitar work that shifts between rapid tremolo picking and soaring lead lines. The production is polished and dense, creating a wide stereo image where guitars dominate the left/right fields while drums sit centrally, all compressed for maximum impact. A prominent bass underpins the rhythm section, adding weight without muddying the mix. No vocal parts are present, so the focus remains entirely on the instrumental interplay.\nThe composition moves through distinct sections: an opening riff‑based intro establishes tension, followed by a verse",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Suffocated",
+        "artist": "Ghost Brigade",
+        "audio": {
+         "kind": "spotify",
+         "id": "5cfe277hqv4FEIZ58yEj58"
+        }
+       },
+       "instruction": "slow it down to medium pace, lean into high-energy melodic death metal",
+       "instruction_contextual": "bring the speed back to medium, push toward high-energy melodic death metal",
+       "hardness": "hard",
+       "transition_score": 0.7081,
+       "change_axes": [
+        "speed",
+        "genre_style"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Slow down the tempo to medium while shifting the style to high-energy melodic death metal.",
+       "lost": [
+        "gothic metal",
+        "grunge",
+        "stoner metal",
+        "fast speed",
+        "thrash metal",
+        "heavy metal",
+        "industrial metal",
+        "nu-metal",
+        "slow crushing riffs",
+        "atmospheric/dark mood"
+       ],
+       "new": [
+        "death metal",
+        "melodic death metal",
+        "progressive metal",
+        "medium speed",
+        "high energy",
+        "aggressive double-bass drumming",
+        "intricate guitar work",
+        "polished production"
+       ],
+       "preserved": [
+        "doom metal",
+        "vocal",
+        "dense production",
+        "instrumental focus"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000288",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "b6tgfpk8sgyNJJ0m::0-30::1",
+        "track_id": "b6tgfpk8sgyNJJ0m",
+        "tags": [
+         "progressive metal",
+         "death metal",
+         "progressive death metal",
+         "epic song is epic"
+        ],
+        "caption": "This instrumental piece is a high‑energy blend of melodic death metal and progressive metal, driven by relentless double‑bass drumming and heavily distorted guitars that weave intricate riffs and harmonies across a wide stereo field. The composition maintains a fast, aggressive pace typical of modern extreme metal while incorporating complex rhythmic shifts and dynamic contrasts, creating an intense yet technically polished atmosphere suited for fans of technical deathcore and progressive metal.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Born in Winter",
+        "artist": "Gojira",
+        "audio": {
+         "kind": "spotify",
+         "id": "1rDzUqMRA9VdGCIwzgfeh9"
+        }
+       },
+       "target": {
+        "clip_id": "ZnaeLynPiBOau473::0-30::1",
+        "track_id": "ZnaeLynPiBOau473",
+        "tags": [
+         "progressive metal",
+         "power metal",
+         "progressive power metal"
+        ],
+        "caption": "This instrumental piece is a high‑energy progressive metal track that blends melodic death‑metal aggression with symphonic orchestration. It features heavily distorted electric guitars delivering intricate riffs and soaring leads, a driving bass line, punchy double‑bass drumming, atmospheric synth pads, and cinematic string sections that add depth and drama. The composition moves through dynamic shifts from intense, fast‑paced passages to more expansive, anthemic moments, creating a powerful and epic atmosphere typical of modern European prog‑metal.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "The Moment",
+        "artist": "Conception",
+        "audio": {
+         "kind": "spotify",
+         "id": "7bODAYZ1EPDVck7eAr7kuV"
+        }
+       },
+       "instruction": "Swap the death metal for power metal and layer in symphonic orchestration.",
+       "instruction_contextual": "Drop the death metal edge, add power metal and symphonic orchestration.",
+       "hardness": "medium",
+       "transition_score": 0.7827,
+       "change_axes": [
+        "genre_style",
+        "texture_production"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from death metal to power metal with symphonic orchestration.",
+       "lost": [
+        "death metal",
+        "progressive death metal",
+        "relentless aggression",
+        "narrow stereo field"
+       ],
+       "new": [
+        "power metal",
+        "symphonic orchestration",
+        "cinematic strings",
+        "anthemic atmosphere",
+        "soaring leads"
+       ],
+       "preserved": [
+        "progressive metal",
+        "vocal",
+        "medium speed",
+        "high energy",
+        "instrumental focus",
+        "intricate guitar work"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "ZnaeLynPiBOau473::0-30::1",
+        "track_id": "ZnaeLynPiBOau473",
+        "tags": [
+         "progressive metal",
+         "power metal",
+         "progressive power metal"
+        ],
+        "caption": "This instrumental piece is a high‑energy progressive metal track that blends melodic death‑metal aggression with symphonic orchestration. It features heavily distorted electric guitars delivering intricate riffs and soaring leads, a driving bass line, punchy double‑bass drumming, atmospheric synth pads, and cinematic string sections that add depth and drama. The composition moves through dynamic shifts from intense, fast‑paced passages to more expansive, anthemic moments, creating a powerful and epic atmosphere typical of modern European prog‑metal.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "The Moment",
+        "artist": "Conception",
+        "audio": {
+         "kind": "spotify",
+         "id": "7bODAYZ1EPDVck7eAr7kuV"
+        }
+       },
+       "target": {
+        "clip_id": "GBxZ2okCG8lZrC6M::0-30::1",
+        "track_id": "GBxZ2okCG8lZrC6M",
+        "tags": [
+         "synthpop",
+         "rock",
+         "gothic",
+         "awesome",
+         "darkwave",
+         "trip-rock"
+        ],
+        "caption": "This instrumental post-rock piece blends shoegaze textures with progressive rock dynamics, featuring layered electric guitars that shift from clean arpeggios to heavily distorted swells, supported by driving bass and dynamic drums. The composition unfolds with expansive crescendos and atmospheric breakdowns, creating an ethereal yet powerful sonic landscape typical of early‑2000s European alternative rock.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Time Out of Place",
+        "artist": "Dark Tranquillity",
+        "audio": {
+         "kind": "spotify",
+         "id": "1T2wxyfvcKQSKIj0DdMZNM"
+        }
+       },
+       "instruction": "swap the metal guitars for layered post-rock shoegaze textures",
+       "instruction_contextual": "trade the metal riffs for layered post-rock shoegaze textures",
+       "hardness": "hard",
+       "transition_score": 0.7478,
+       "change_axes": [
+        "instrumentation",
+        "texture_production"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from aggressive metal instrumentation to layered post-rock guitars with shoegaze textures and ethereal swells.",
+       "lost": [
+        "death metal",
+        "power metal",
+        "progressive metal",
+        "high energy aggression",
+        "relentless double-bass drumming",
+        "symphonic orchestration",
+        "cinematic strings",
+        "fast aggressive pace"
+       ],
+       "new": [
+        "post-rock style",
+        "shoegaze textures",
+        "layered electric guitars",
+        "clean arpeggios shifting to distorted swells",
+        "ethereal atmosphere",
+        "expansive crescendos",
+        "atmospheric breakdowns",
+        "darkwave/gothic/synthpop tags"
+       ],
+       "preserved": [
+        "vocal",
+        "medium speed",
+        "instrumental piece",
+        "progressive dynamics",
+        "driving bass",
+        "dynamic drums"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "GBxZ2okCG8lZrC6M::0-30::1",
+        "track_id": "GBxZ2okCG8lZrC6M",
+        "tags": [
+         "synthpop",
+         "rock",
+         "gothic",
+         "awesome",
+         "darkwave",
+         "trip-rock"
+        ],
+        "caption": "This instrumental post-rock piece blends shoegaze textures with progressive rock dynamics, featuring layered electric guitars that shift from clean arpeggios to heavily distorted swells, supported by driving bass and dynamic drums. The composition unfolds with expansive crescendos and atmospheric breakdowns, creating an ethereal yet powerful sonic landscape typical of early‑2000s European alternative rock.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Time Out of Place",
+        "artist": "Dark Tranquillity",
+        "audio": {
+         "kind": "spotify",
+         "id": "1T2wxyfvcKQSKIj0DdMZNM"
+        }
+       },
+       "target": {
+        "clip_id": "d9gqQrTy6u3fml8j::0-30::1",
+        "track_id": "d9gqQrTy6u3fml8j",
+        "tags": [
+         "shoegaze",
+         "space rock"
+        ],
+        "caption": "This instrumental post-rock piece features layered electric guitars drenched in reverb and delay, creating expansive, atmospheric textures that evolve into soaring crescendos. The rhythm section provides a steady yet dynamic pulse, while subtle bass lines underpin the harmonic progression. Production emphasizes wide stereo imaging and high-fidelity clarity, delivering an immersive, cinematic soundscape typical of modern post-rock.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Cold Morning",
+        "artist": "Air Formation",
+        "audio": {
+         "kind": "spotify",
+         "id": "5gz7C7pokQ1bgIwC1FHJeM"
+        }
+       },
+       "instruction": "Drench the guitars in reverb and delay for a shoegaze, space rock vibe, keeping the medium tempo steady.",
+       "instruction_contextual": "Swap the heavy metal riffs for reverb-soaked shoegaze guitars and space rock atmospherics, maintaining the medium pace.",
+       "hardness": "medium",
+       "transition_score": 0.7761,
+       "change_axes": [
+        "instrumentation",
+        "texture_production"
+       ],
+       "preserve_axes": [
+        "speed"
+       ],
+       "primary_edit": "Transform the instrumentation into shoegaze and space rock by drenching the guitars in reverb and delay to create an expansive, atmospheric soundscape.",
+       "lost": [
+        "death metal aggression",
+        "progressive metal complexity",
+        "relentless double-bass drumming",
+        "heavily distorted intricate riffs",
+        "fast aggressive pace",
+        "gothic darkwave elements",
+        "synthpop elements",
+        "clean arpeggios"
+       ],
+       "new": [
+        "shoegaze texture",
+        "space rock atmosphere",
+        "reverb-drenched guitars",
+        "delay effects",
+        "expansive atmospheric textures",
+        "soaring crescendos",
+        "cinematic soundscape",
+        "wide stereo imaging"
+       ],
+       "preserved": [
+        "vocal",
+        "medium speed",
+        "instrumental post-rock structure",
+        "layered electric guitars",
+        "dynamic bass lines"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 4,
+       "source": {
+        "clip_id": "d9gqQrTy6u3fml8j::0-30::1",
+        "track_id": "d9gqQrTy6u3fml8j",
+        "tags": [
+         "shoegaze",
+         "space rock"
+        ],
+        "caption": "This instrumental post-rock piece features layered electric guitars drenched in reverb and delay, creating expansive, atmospheric textures that evolve into soaring crescendos. The rhythm section provides a steady yet dynamic pulse, while subtle bass lines underpin the harmonic progression. Production emphasizes wide stereo imaging and high-fidelity clarity, delivering an immersive, cinematic soundscape typical of modern post-rock.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Cold Morning",
+        "artist": "Air Formation",
+        "audio": {
+         "kind": "spotify",
+         "id": "5gz7C7pokQ1bgIwC1FHJeM"
+        }
+       },
+       "target": {
+        "clip_id": "FNUlO6ojDec30b5o::0-30::1",
+        "track_id": "FNUlO6ojDec30b5o",
+        "tags": [
+         "alternative rock",
+         "rock",
+         "hard rock",
+         "alternative metal",
+         "10 years",
+         "love 10 years and beautiful"
+        ],
+        "caption": "This is an energetic pop‑punk anthem that blends alternative rock sensibilities with bright, guitar‑driven hooks. The arrangement centers on distorted electric guitars playing melodic riffs, a punchy bass line, and fast‑paced drums that drive the rhythm forward. Production is polished yet retains a raw edge: guitars are panned wide left and right, while lead vocals sit front‑and‑center in the mix, supported by subtle reverb and compression. Vocals are delivered by a male tenor with a slightly strained timbre, conveying youthful angst and emotional intensity through passionate, anthemic singing. Lyrically, the song explores",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Beautiful",
+        "artist": "10 Years",
+        "audio": {
+         "kind": "spotify",
+         "id": "6AgtIN7FyBd4zJhZI7mrsz"
+        }
+       },
+       "instruction": "Dump the dreamy shoegaze haze for a punchy, anthemic alternative metal vibe.",
+       "instruction_contextual": "Trade that washed-out shoegaze mood for gritty, energetic alternative metal.",
+       "hardness": "hard",
+       "transition_score": 0.6941,
+       "change_axes": [
+        "mood",
+        "genre_style"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from atmospheric shoegaze to energetic alternative metal with anthemic vocals.",
+       "lost": [
+        "mood: atmospheric, cinematic, expansive",
+        "genre: shoegaze, space rock, post-rock",
+        "texture: drenched in reverb and delay, wide stereo imaging",
+        "theme: waiting, dreaming, coldness"
+       ],
+       "new": [
+        "mood: energetic, anthemic, youthful angst",
+        "genre: alternative metal, alternative rock, hard rock",
+        "vocal style: male tenor, strained timbre, passionate",
+        "texture: polished yet raw edge",
+        "theme: vanity, beauty, social critique"
+       ],
+       "preserved": [
+        "vocals: vocal",
+        "speed: medium",
+        "distorted electric guitars",
+        "bass line",
+        "drums"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 5,
+       "source": {
+        "clip_id": "FNUlO6ojDec30b5o::0-30::1",
+        "track_id": "FNUlO6ojDec30b5o",
+        "tags": [
+         "alternative rock",
+         "rock",
+         "hard rock",
+         "alternative metal",
+         "10 years",
+         "love 10 years and beautiful"
+        ],
+        "caption": "This is an energetic pop‑punk anthem that blends alternative rock sensibilities with bright, guitar‑driven hooks. The arrangement centers on distorted electric guitars playing melodic riffs, a punchy bass line, and fast‑paced drums that drive the rhythm forward. Production is polished yet retains a raw edge: guitars are panned wide left and right, while lead vocals sit front‑and‑center in the mix, supported by subtle reverb and compression. Vocals are delivered by a male tenor with a slightly strained timbre, conveying youthful angst and emotional intensity through passionate, anthemic singing. Lyrically, the song explores",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Beautiful",
+        "artist": "10 Years",
+        "audio": {
+         "kind": "spotify",
+         "id": "6AgtIN7FyBd4zJhZI7mrsz"
+        }
+       },
+       "target": {
+        "clip_id": "ONpPQJg0UgmbJJtn::0-30::1",
+        "track_id": "ONpPQJg0UgmbJJtn",
+        "tags": [
+         "doom metal",
+         "stoner rock",
+         "doom",
+         "stoner doom"
+        ],
+        "caption": "This instrumental post-rock piece unfolds with expansive, reverb‑drenched guitars that build from delicate arpeggios into soaring melodic lines, supported by steady drums and bass that drive a gradual crescendo toward an emotionally charged climax. The overall mood is introspective yet uplifting, capturing a sense of yearning and catharsis typical of modern post‑rock’s cinematic soundscapes.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Summon the Moon",
+        "artist": "Windhand",
+        "audio": {
+         "kind": "spotify",
+         "id": "6E1jlkza3zEmLqXq4aE4uY"
+        }
+       },
+       "instruction": "Drop the vocals entirely and shift into a heavy, reverb-soaked doom metal instrumental.",
+       "instruction_contextual": "Kill the singing and lean into a slow, expansive doom metal vibe with washed-out guitars.",
+       "hardness": "hard",
+       "transition_score": 0.6865,
+       "change_axes": [
+        "vocal_style_or_gender",
+        "genre_style"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from energetic alternative metal with vocals to an instrumental, reverb-drenched doom/stoner sound with a gradual crescendo.",
+       "lost": [
+        "genre: alternative metal, hard rock, pop-punk",
+        "mood: energetic, anthemic, raw edge",
+        "texture: punchy, fast-paced",
+        "vocals: male tenor, strained timbre, passionate singing"
+       ],
+       "new": [
+        "genre: doom metal, stoner doom",
+        "mood: introspective, uplifting, yearning",
+        "texture: reverb-drenched, expansive",
+        "structure: gradual crescendo, delicate arpeggios"
+       ],
+       "preserved": [
+        "vocals: vocal",
+        "speed: medium",
+        "instrumental nature (lyrics: instrumental)"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000314",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "Ap1vQ6lW8RjLShTY::0-30::1",
+        "track_id": "Ap1vQ6lW8RjLShTY",
+        "tags": [
+         "post-punk",
+         "new wave",
+         "gothic rock",
+         "80s",
+         "goth",
+         "gothic"
+        ],
+        "caption": "This track is a high‑energy post‑punk/new wave piece that blends jangly guitar riffs with bright synth textures, creating an upbeat yet slightly edgy atmosphere typical of early‑80s British alternative rock. The instrumentation centers on clean electric guitars playing melodic chord progressions, a driving bass line, punchy drum patterns, and layered synthesizers that add shimmering pads and arpeggiated motifs. Production is polished and spacious: guitars are panned wide left/right, synths occupy the upper mids, while drums and lead vocals sit centrally in a balanced stereo field. Vocals are delivered by a female singer",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Into the Light",
+        "artist": "Siouxsie and the Banshees",
+        "audio": {
+         "kind": "spotify",
+         "id": "01V0Tau0s8AQkUm6ae1rEF"
+        }
+       },
+       "target": {
+        "clip_id": "EPtgL5mnoGUwwyql::0-30::1",
+        "track_id": "EPtgL5mnoGUwwyql",
+        "tags": [
+         "new wave",
+         "post-punk",
+         "gothic rock",
+         "80s",
+         "goth",
+         "gothic"
+        ],
+        "caption": "This track is a high‑energy New Wave / Post‑Punk piece that blends jangly guitar riffs with bright synth melodies, creating a vibrant yet slightly edgy atmosphere. The instrumentation centers on clean electric guitars playing rhythmic chord progressions, a melodic bass line that drives the groove, punchy acoustic drums with crisp snare hits, and layered synthesizers adding shimmering pads and arpeggiated leads. Production is polished and spacious: guitars are panned wide left/right, synths occupy the upper mids, while drums and lead vocals sit centrally in a well‑balanced stereo field. Vocals are delivered by",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Cities in Dust - Single Version",
+        "artist": "Siouxsie and the Banshees",
+        "audio": {
+         "kind": "spotify",
+         "id": "0LvH53IYMdkQ2VHanpCiBi"
+        }
+       },
+       "instruction": "slow the tempo down to medium while keeping the gothic new wave vibe",
+       "instruction_contextual": "bring the pace down to medium but keep that dark 80s new wave sound",
+       "hardness": "easy",
+       "transition_score": 0.9229,
+       "change_axes": [
+        "speed"
+       ],
+       "preserve_axes": [
+        "genre_style"
+       ],
+       "primary_edit": "Slow down the tempo to a medium pace while keeping the gothic new wave style and female vocals.",
+       "lost": [
+        "fast speed",
+        "fast tempo",
+        "lyrics about standing in the light",
+        "upbeat atmosphere"
+       ],
+       "new": [
+        "medium speed",
+        "slower tempo",
+        "lyrics about cities in dust/apocalypse",
+        "acoustic drum texture",
+        "crisp snare"
+       ],
+       "preserved": [
+        "80s goth/gothic rock/new wave/post-punk genre",
+        "female vocals",
+        "high energy",
+        "jangly clean electric guitars",
+        "bright synths",
+        "polished spacious production"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "EPtgL5mnoGUwwyql::0-30::1",
+        "track_id": "EPtgL5mnoGUwwyql",
+        "tags": [
+         "new wave",
+         "post-punk",
+         "gothic rock",
+         "80s",
+         "goth",
+         "gothic"
+        ],
+        "caption": "This track is a high‑energy New Wave / Post‑Punk piece that blends jangly guitar riffs with bright synth melodies, creating a vibrant yet slightly edgy atmosphere. The instrumentation centers on clean electric guitars playing rhythmic chord progressions, a melodic bass line that drives the groove, punchy acoustic drums with crisp snare hits, and layered synthesizers adding shimmering pads and arpeggiated leads. Production is polished and spacious: guitars are panned wide left/right, synths occupy the upper mids, while drums and lead vocals sit centrally in a well‑balanced stereo field. Vocals are delivered by",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Cities in Dust - Single Version",
+        "artist": "Siouxsie and the Banshees",
+        "audio": {
+         "kind": "spotify",
+         "id": "0LvH53IYMdkQ2VHanpCiBi"
+        }
+       },
+       "target": {
+        "clip_id": "7VGLFcmOXVBrrcRu::0-30::1",
+        "track_id": "7VGLFcmOXVBrrcRu",
+        "tags": [
+         "new wave",
+         "80s",
+         "indie",
+         "alternative",
+         "manchester"
+        ],
+        "caption": "This is a high‑energy post‑punk/new wave track featuring jangly electric guitars, driving basslines, and punchy drum patterns typical of early 80s British alternative rock. The upbeat rhythm and bright tonality create an optimistic yet slightly edgy atmosphere, characteristic of the era’s vibrant indie scene. **Key: C♯ major**. **BPM: 157.89**.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "What Difference Does It Make",
+        "artist": "The Smiths",
+        "audio": {
+         "kind": "spotify",
+         "id": "65E3ajL0Yz7kljk89Qdm6Q"
+        }
+       },
+       "instruction": "swap female vocals for male, lean indie",
+       "instruction_contextual": "make it male vocals, more indie",
+       "hardness": "medium",
+       "transition_score": 0.7529,
+       "change_axes": [
+        "vocal_style_or_gender",
+        "genre_style"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from gothic female vocals to indie male vocals while keeping the fast new wave energy.",
+       "lost": [
+        "goth",
+        "gothic",
+        "gothic rock",
+        "post-punk",
+        "female vocals",
+        "dark/edgy atmosphere"
+       ],
+       "new": [
+        "alternative",
+        "indie",
+        "manchester",
+        "male vocals",
+        "optimistic mood",
+        "bright tonality"
+       ],
+       "preserved": [
+        "80s",
+        "new wave",
+        "fast speed",
+        "vocal",
+        "high energy",
+        "jangly guitars",
+        "driving bass",
+        "punchy drums"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "7VGLFcmOXVBrrcRu::0-30::1",
+        "track_id": "7VGLFcmOXVBrrcRu",
+        "tags": [
+         "new wave",
+         "80s",
+         "indie",
+         "alternative",
+         "manchester"
+        ],
+        "caption": "This is a high‑energy post‑punk/new wave track featuring jangly electric guitars, driving basslines, and punchy drum patterns typical of early 80s British alternative rock. The upbeat rhythm and bright tonality create an optimistic yet slightly edgy atmosphere, characteristic of the era’s vibrant indie scene. **Key: C♯ major**. **BPM: 157.89**.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "What Difference Does It Make",
+        "artist": "The Smiths",
+        "audio": {
+         "kind": "spotify",
+         "id": "65E3ajL0Yz7kljk89Qdm6Q"
+        }
+       },
+       "target": {
+        "clip_id": "SlJhtpqXOdDWSITH::0-30::1",
+        "track_id": "SlJhtpqXOdDWSITH",
+        "tags": [
+         "post-punk",
+         "gothic rock",
+         "80s",
+         "1984"
+        ],
+        "caption": "This track is a darkwave‑infused post‑punk piece that blends brooding gothic atmospheres with jangly guitar textures. It moves at a brisk ≈ 142.86 BPM in G major (time signature not specified), driven by steady drums, melodic bass lines, clean electric guitars playing arpeggiated chords, and atmospheric synth pads that fill the stereo field. The production is polished yet retains a raw edge typical of early‑90s underground scenes, with wide panning on guitars and synths creating depth while keeping the rhythm section centered. Vocals",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Belladonna",
+        "artist": "Siouxsie and the Banshees",
+        "audio": {
+         "kind": "spotify",
+         "id": "5DieoJEo9dzsKmHJoOBzbR"
+        }
+       },
+       "instruction": "dial back the energy, make it darker",
+       "instruction_contextual": "dial back the energy, make it darker",
+       "hardness": "hard",
+       "transition_score": 0.753,
+       "change_axes": [
+        "energy"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Reduce the high energy and upbeat brightness to create a darker, brooding darkwave atmosphere.",
+       "lost": [
+        "high energy",
+        "upbeat",
+        "bright synth textures",
+        "new wave",
+        "punchy drum patterns",
+        "optimistic mood"
+       ],
+       "new": [
+        "darkwave",
+        "brooding atmosphere",
+        "lower energy",
+        "steady drums",
+        "melodic bass",
+        "atmospheric synth pads",
+        "gothic lyrics"
+       ],
+       "preserved": [
+        "80s",
+        "post-punk",
+        "gothic rock",
+        "fast speed",
+        "vocals",
+        "jangly guitar textures",
+        "driving rhythm"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 4,
+       "source": {
+        "clip_id": "SlJhtpqXOdDWSITH::0-30::1",
+        "track_id": "SlJhtpqXOdDWSITH",
+        "tags": [
+         "post-punk",
+         "gothic rock",
+         "80s",
+         "1984"
+        ],
+        "caption": "This track is a darkwave‑infused post‑punk piece that blends brooding gothic atmospheres with jangly guitar textures. It moves at a brisk ≈ 142.86 BPM in G major (time signature not specified), driven by steady drums, melodic bass lines, clean electric guitars playing arpeggiated chords, and atmospheric synth pads that fill the stereo field. The production is polished yet retains a raw edge typical of early‑90s underground scenes, with wide panning on guitars and synths creating depth while keeping the rhythm section centered. Vocals",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Belladonna",
+        "artist": "Siouxsie and the Banshees",
+        "audio": {
+         "kind": "spotify",
+         "id": "5DieoJEo9dzsKmHJoOBzbR"
+        }
+       },
+       "target": {
+        "clip_id": "AeHadMz8nixjnKet::0-30::1",
+        "track_id": "AeHadMz8nixjnKet",
+        "tags": [
+         "indie pop",
+         "90s"
+        ],
+        "caption": "This is a high‑energy indie rock track that leans heavily into post‑punk revival aesthetics, driven by jangly electric guitars playing bright chord progressions and a punchy bass line. The rhythm section delivers a steady, propulsive beat typical of early‑2000s British alternative rock, while the overall mix feels raw yet polished, capturing a nostalgic yet forward‑looking vibe.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Show Girl",
+        "artist": "The Auteurs",
+        "audio": {
+         "kind": "spotify",
+         "id": "0UbefaUT31AygrDbmOWT0w"
+        }
+       },
+       "instruction": "Lighten the mood from brooding goth to upbeat 90s indie pop, keeping the raw yet polished mix.",
+       "instruction_contextual": "Brighten the vibe to 90s indie pop, shedding the dark goth feel for a raw, polished mix.",
+       "hardness": "hard",
+       "transition_score": 0.7292,
+       "change_axes": [
+        "mood",
+        "genre_style",
+        "texture_production"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from dark, brooding 80s goth/post-punk to upbeat, nostalgic 90s indie pop with a lighter mood.",
+       "lost": [
+        "80s goth/gothic rock style",
+        "new wave/post-punk style",
+        "darkwave-infused atmosphere",
+        "brooding gothic atmospheres",
+        "synth textures and pads",
+        "dark, fatal perfume theme",
+        "edgy, slightly ominous mood"
+       ],
+       "new": [
+        "90s indie pop style",
+        "post-punk revival aesthetics",
+        "raw yet polished mix",
+        "nostalgic yet forward-looking vibe",
+        "lighthearted showgirl theme",
+        "upbeat, less brooding mood"
+       ],
+       "preserved": [
+        "fast speed",
+        "vocal presence",
+        "high energy",
+        "jangly electric guitars",
+        "bright chord progressions",
+        "punchy bass line",
+        "steady rhythm section"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000540",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "ijrnISkCN4YlTPhO::0-30::1",
+        "track_id": "ijrnISkCN4YlTPhO",
+        "tags": [
+         "rock",
+         "hardcore",
+         "alternative rock",
+         "post-hardcore",
+         "progressive rock",
+         "brazilian"
+        ],
+        "caption": "This is a Brazilian indie‑rock piece that blends melodic guitar‑driven rock with subtle electronic textures, creating a reflective yet energetic atmosphere. The arrangement features clean electric guitars playing arpeggiated chords, a steady drum groove, warm bass lines, and atmospheric synth pads that add depth without overwhelming the organic feel. Production is polished and high‑fidelity: drums sit centrally in the mix while guitars and synths are spread wide across the stereo field, giving the song spaciousness and clarity. Vocals are delivered by a male tenor singing in Portuguese with a smooth, slightly melancholic timbre; his performance is intimate and emot",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Phi",
+        "artist": "Scalene",
+        "audio": {
+         "kind": "spotify",
+         "id": "7yK0JliunYeYeFYUx5kciW"
+        }
+       },
+       "target": {
+        "clip_id": "Mcq0ZC8ZTuO80j0N::0-30::1",
+        "track_id": "Mcq0ZC8ZTuO80j0N",
+        "tags": [
+         "rock",
+         "alternative rock",
+         "rocking out",
+         "goodbye",
+         "my darkest days",
+         "exceptional"
+        ],
+        "caption": "This is an energetic pop‑punk anthem that blends melodic hardcore intensity with emo‑styled emotional expression. The arrangement centers on heavily distorted electric guitars delivering driving riffs, a punchy bass line locking tightly with fast, aggressive drums, and raw male lead vocals sung in English with a passionate, slightly strained timbre. Production is polished yet retains a gritty edge: guitars are panned wide left/right, while drums, bass, and vocals sit centrally in a spacious stereo field, creating a full, high‑energy mix typical of modern punk rock. Lyrically, the song explores themes of regret, missed opportunities, and longing for what",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Goodbye",
+        "artist": "My Darkest Days",
+        "audio": {
+         "kind": "spotify",
+         "id": "2B5WqVkRvdevF7RWAURmhG"
+        }
+       },
+       "instruction": "crank the energy up to an aggressive pop-punk level",
+       "instruction_contextual": "crank the energy up to an aggressive pop-punk level",
+       "hardness": "hard",
+       "transition_score": 0.7034,
+       "change_axes": [
+        "energy"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from a slow, reflective Brazilian indie-rock track to a high-energy, aggressive pop-punk anthem with distorted guitars and English vocals.",
+       "lost": [
+        "low energy",
+        "reflective mood",
+        "brazilian indie style",
+        "clean guitars",
+        "subtle electronics",
+        "slow speed",
+        "portuguese lyrics",
+        "melancholic timbre"
+       ],
+       "new": [
+        "high energy",
+        "aggressive intensity",
+        "pop-punk style",
+        "emo influence",
+        "distorted guitars",
+        "fast drums",
+        "english lyrics",
+        "medium speed"
+       ],
+       "preserved": [
+        "vocals",
+        "rock genre",
+        "male vocals"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "Mcq0ZC8ZTuO80j0N::0-30::1",
+        "track_id": "Mcq0ZC8ZTuO80j0N",
+        "tags": [
+         "rock",
+         "alternative rock",
+         "rocking out",
+         "goodbye",
+         "my darkest days",
+         "exceptional"
+        ],
+        "caption": "This is an energetic pop‑punk anthem that blends melodic hardcore intensity with emo‑styled emotional expression. The arrangement centers on heavily distorted electric guitars delivering driving riffs, a punchy bass line locking tightly with fast, aggressive drums, and raw male lead vocals sung in English with a passionate, slightly strained timbre. Production is polished yet retains a gritty edge: guitars are panned wide left/right, while drums, bass, and vocals sit centrally in a spacious stereo field, creating a full, high‑energy mix typical of modern punk rock. Lyrically, the song explores themes of regret, missed opportunities, and longing for what",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Goodbye",
+        "artist": "My Darkest Days",
+        "audio": {
+         "kind": "spotify",
+         "id": "2B5WqVkRvdevF7RWAURmhG"
+        }
+       },
+       "target": {
+        "clip_id": "U0RaKoqRZ1Ts0QNM::0-30::1",
+        "track_id": "U0RaKoqRZ1Ts0QNM",
+        "tags": [
+         "shoegaze",
+         "dream pop",
+         "brazilian",
+         "indie"
+        ],
+        "caption": "This is a melancholic Brazilian indie‑rock piece that blends lo‑fi garage aesthetics with subtle electronic textures. The arrangement centers on clean electric guitars playing arpeggiated chords, a steady bass line, and understated drums that keep a relaxed pulse around mid‑tempo (approximately 95–100 BPM). Ambient synth pads add depth while maintaining a spacious stereo field, creating a reflective and introspective atmosphere typical of contemporary Brazilian alternative music.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Luz de Bem",
+        "artist": "Terno Rei",
+        "audio": {
+         "kind": "spotify",
+         "id": "07o6IvdCs09U05Kcqjc4DO"
+        }
+       },
+       "instruction": "Kill the punk energy, switch to dreamy shoegaze, keep vocals.",
+       "instruction_contextual": "Dial back the intensity to a relaxed shoegaze vibe, keep the singing.",
+       "hardness": "hard",
+       "transition_score": 0.6446,
+       "change_axes": [
+        "energy",
+        "genre_style"
+       ],
+       "preserve_axes": [
+        "other"
+       ],
+       "primary_edit": "Shift from energetic pop-punk to melancholic Brazilian dream pop/shoegaze with lower energy and lo-fi textures.",
+       "lost": [
+        "alternative rock",
+        "hardcore",
+        "post-hardcore",
+        "progressive rock",
+        "rock",
+        "energetic",
+        "pop-punk anthem",
+        "melodic hardcore intensity",
+        "emo-styled emotional expression",
+        "heavily distorted electric guitars",
+        "driving riffs",
+        "punchy bass line",
+        "fast aggressive drums",
+        "raw male lead vocals",
+        "passionate strained timbre",
+        "gritty edge",
+        "lyrics about regret and phone yelling"
+       ],
+       "new": [
+        "dream pop",
+        "shoegaze",
+        "melancholic mood",
+        "lo-fi garage aesthetics",
+        "understated drums",
+        "relaxed pulse",
+        "ambient synth pads",
+        "lyrics about light and new world"
+       ],
+       "preserved": [
+        "brazilian",
+        "vocals:vocal",
+        "speed:medium",
+        "indie",
+        "subtle electronic textures"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "U0RaKoqRZ1Ts0QNM::0-30::1",
+        "track_id": "U0RaKoqRZ1Ts0QNM",
+        "tags": [
+         "shoegaze",
+         "dream pop",
+         "brazilian",
+         "indie"
+        ],
+        "caption": "This is a melancholic Brazilian indie‑rock piece that blends lo‑fi garage aesthetics with subtle electronic textures. The arrangement centers on clean electric guitars playing arpeggiated chords, a steady bass line, and understated drums that keep a relaxed pulse around mid‑tempo (approximately 95–100 BPM). Ambient synth pads add depth while maintaining a spacious stereo field, creating a reflective and introspective atmosphere typical of contemporary Brazilian alternative music.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Luz de Bem",
+        "artist": "Terno Rei",
+        "audio": {
+         "kind": "spotify",
+         "id": "07o6IvdCs09U05Kcqjc4DO"
+        }
+       },
+       "target": {
+        "clip_id": "MQEESdPmay6zAag9::0-30::1",
+        "track_id": "MQEESdPmay6zAag9",
+        "tags": [
+         "post-punk",
+         "new wave"
+        ],
+        "caption": "This track is a high‑energy punk rock piece that leans into classic garage‑rock aggression while incorporating post‑punk angularity. It drives forward with fast‑paced electric guitars drenched in distortion, punchy bass lines, and relentless drumming that propels the song’s urgent momentum. The raw vocal delivery sits front‑and‑center, delivering shouted, slightly gritty verses that match the rebellious spirit typical of late‑70s/early‑80s UK punk scenes. Lyrically, the song channels defiant self‑assertion and cryptic commentary on observation and consequence, as heard in lines like “Refused thought",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "The 15th",
+        "artist": "Wire",
+        "audio": {
+         "kind": "spotify",
+         "id": "6uzfO4Nl3imrQEEbUN8kBY"
+        }
+       },
+       "instruction": "strip the polish, add distortion and raw energy",
+       "instruction_contextual": "ditch the dreamy vibe, go raw and distorted",
+       "hardness": "hard",
+       "transition_score": 0.6306,
+       "change_axes": [
+        "texture_production",
+        "energy"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from clean, reflective indie rock to raw, distorted post-punk with high energy.",
+       "lost": [
+        "clean guitars",
+        "subtle electronic textures",
+        "reflective mood",
+        "brazilian indie style",
+        "dream pop style",
+        "shoegaze style",
+        "melancholic mood",
+        "polished production"
+       ],
+       "new": [
+        "distorted guitars",
+        "raw production",
+        "high energy",
+        "urgent momentum",
+        "post-punk style",
+        "new wave style",
+        "shouted vocals"
+       ],
+       "preserved": [
+        "vocals",
+        "medium speed",
+        "electric guitars",
+        "bass lines"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 4,
+       "source": {
+        "clip_id": "MQEESdPmay6zAag9::0-30::1",
+        "track_id": "MQEESdPmay6zAag9",
+        "tags": [
+         "post-punk",
+         "new wave"
+        ],
+        "caption": "This track is a high‑energy punk rock piece that leans into classic garage‑rock aggression while incorporating post‑punk angularity. It drives forward with fast‑paced electric guitars drenched in distortion, punchy bass lines, and relentless drumming that propels the song’s urgent momentum. The raw vocal delivery sits front‑and‑center, delivering shouted, slightly gritty verses that match the rebellious spirit typical of late‑70s/early‑80s UK punk scenes. Lyrically, the song channels defiant self‑assertion and cryptic commentary on observation and consequence, as heard in lines like “Refused thought",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "The 15th",
+        "artist": "Wire",
+        "audio": {
+         "kind": "spotify",
+         "id": "6uzfO4Nl3imrQEEbUN8kBY"
+        }
+       },
+       "target": {
+        "clip_id": "LixeOnseKEtowvk2::0-30::1",
+        "track_id": "LixeOnseKEtowvk2",
+        "tags": [
+         "post-punk",
+         "70s"
+        ],
+        "caption": "This post‑punk track features jangly guitars layered over steady bass and drums, creating a raw yet melodic indie rock atmosphere typical of early 80s British alternative music. The rhythm is mid‑tempo with a driving beat that supports introspective male vocals delivered in English with a detached tone. Lyrically, the song paints surreal images such as “A total eclipse arrives now and Niagara Falls,” hints at uncertainty with lines like “No loss of life yet… I never know which version I’m going to be,” and adds cryptic reflections (“I told her clips arrive now and no further call”). These verses reinforce",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "40 Versions",
+        "artist": "Wire",
+        "audio": {
+         "kind": "spotify",
+         "id": "2XpWo1xqtW8ttBYgZ9dwDQ"
+        }
+       },
+       "instruction": "slow it down to a mid-tempo 70s post-punk groove with jangly guitars, keep the vocals",
+       "instruction_contextual": "drop the new wave rush for a mid-tempo 70s post-punk feel, keep the vocals",
+       "hardness": "medium",
+       "transition_score": 0.8118,
+       "change_axes": [
+        "speed",
+        "genre_style"
+       ],
+       "preserve_axes": [
+        "other"
+       ],
+       "primary_edit": "Shift from high-energy new wave punk to a mid-tempo, jangly 70s post-punk style with detached vocals.",
+       "lost": [
+        "new wave",
+        "high energy",
+        "garage rock aggression",
+        "shouted vocals",
+        "fast-paced distortion"
+       ],
+       "new": [
+        "70s aesthetic",
+        "jangly guitars",
+        "detached vocal tone",
+        "introspective mood"
+       ],
+       "preserved": [
+        "vocals",
+        "post-punk",
+        "male vocals",
+        "english lyrics",
+        "mid-tempo rhythm"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    },
+    {
+     "chain_id": "chain_00000596",
+     "split": "val",
+     "judge_score": 5.0,
+     "steps": [
+      {
+       "turn": 1,
+       "source": {
+        "clip_id": "mcajsZX8dqr95ud0::0-30::1",
+        "track_id": "mcajsZX8dqr95ud0",
+        "tags": [
+         "experimental",
+         "indie"
+        ],
+        "caption": "This piece is a minimalist electronic instrumental that blends lo‑fi synth textures with subtle glitch elements, creating a calm yet slightly unsettling atmosphere. The arrangement centers on soft, sustained synthesizer pads and delicate arpeggiated figures, supported by sparse percussion clicks and low‑frequency drones that give the track a spacious, immersive feel. Production emphasizes gentle compression and wide stereo imaging, allowing each layer to breathe while maintaining a cohesive, introspective vibe. No vocal lines appear, so the focus remains entirely on the evolving harmonic landscape. Overall, the composition evokes a reflective, almost meditative mood suitable for background listening or focused study sessions.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Two Time",
+        "artist": "Jack Stauber's Micropop",
+        "audio": {
+         "kind": "spotify",
+         "id": "7JTGwb6ug0z15F5roNLE0s"
+        }
+       },
+       "target": {
+        "clip_id": "QddaeffBoq1et5PY::0-30::1",
+        "track_id": "QddaeffBoq1et5PY",
+        "tags": [
+         "ambient",
+         "electronica",
+         "electronic",
+         "beautiful"
+        ],
+        "caption": "This piece is an experimental electronic‑ambient work that blends glitch‑infused textures with abstract sound design. It moves at a slow, free‑flowing pace (tempo not specified) and lacks a fixed time signature, creating a spacious, contemplative atmosphere. The instrumentation centers on heavily processed synthesizers, granular synth layers, and subtle field recordings that generate evolving drones and fragmented melodic fragments. Production emphasizes extreme dynamic contrast—from whisper‑soft whispers to sudden, jarring bursts—and extensive use of reverb, delay, distortion, and pitch shifting to sculpt an unsettling yet immersive sonic environment. No vocal elements are present, so there",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Transit",
+        "artist": "Fennesz",
+        "audio": {
+         "kind": "spotify",
+         "id": "1XYrG94W9WH2gU202w8x4s"
+        }
+       },
+       "instruction": "Swap the calm indie vibe for unsettling ambient energy with extreme dynamic shifts, keeping the medium pace.",
+       "instruction_contextual": "Turn up the unsettling ambient energy with wild dynamic contrasts, but keep the medium speed steady.",
+       "hardness": "hard",
+       "transition_score": 0.5929,
+       "change_axes": [
+        "energy"
+       ],
+       "preserve_axes": [
+        "speed"
+       ],
+       "primary_edit": "Shift from a calm, minimalist indie electronic piece to a beautiful, unsettling ambient electronica track with extreme dynamic contrasts and abstract sound design, while keeping the medium tempo and vocal metadata.",
+       "lost": [
+        "indie genre",
+        "experimental tag",
+        "minimalist arrangement",
+        "calm mood",
+        "meditative vibe",
+        "sustained synth pads",
+        "delicate arpeggios",
+        "sparse percussion clicks",
+        "lyrical content"
+       ],
+       "new": [
+        "ambient genre",
+        "beautiful aesthetic",
+        "electronica style",
+        "abstract sound design",
+        "extreme dynamic contrast",
+        "unsettling mood",
+        "instrumental focus (lyrics removed)"
+       ],
+       "preserved": [
+        "vocal presence",
+        "medium speed",
+        "electronic instrumentation",
+        "glitch textures",
+        "spacious atmosphere"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 2,
+       "source": {
+        "clip_id": "QddaeffBoq1et5PY::0-30::1",
+        "track_id": "QddaeffBoq1et5PY",
+        "tags": [
+         "ambient",
+         "electronica",
+         "electronic",
+         "beautiful"
+        ],
+        "caption": "This piece is an experimental electronic‑ambient work that blends glitch‑infused textures with abstract sound design. It moves at a slow, free‑flowing pace (tempo not specified) and lacks a fixed time signature, creating a spacious, contemplative atmosphere. The instrumentation centers on heavily processed synthesizers, granular synth layers, and subtle field recordings that generate evolving drones and fragmented melodic fragments. Production emphasizes extreme dynamic contrast—from whisper‑soft whispers to sudden, jarring bursts—and extensive use of reverb, delay, distortion, and pitch shifting to sculpt an unsettling yet immersive sonic environment. No vocal elements are present, so there",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Transit",
+        "artist": "Fennesz",
+        "audio": {
+         "kind": "spotify",
+         "id": "1XYrG94W9WH2gU202w8x4s"
+        }
+       },
+       "target": {
+        "clip_id": "j7OxMe3y1wbAxjAZ::0-30::1",
+        "track_id": "j7OxMe3y1wbAxjAZ",
+        "tags": [
+         "ambient",
+         "ethereal",
+         "darkwave",
+         "gothic",
+         "dead can dance"
+        ],
+        "caption": "This piece is a darkwave‑inflected electronic ballad that blends gothic ambience with synth‑driven pop sensibilities. It moves at a brisk ≈ 142.86 BPM in a steady 4/4 meter and is rooted in E♭ major, though the harmonic palette leans heavily toward minor colors (e.g., Gm7, Cm) before resolving back to the tonic. The arrangement centers on lush synthesizer pads, arpeggiated textures, and melodic lead lines that weave through the chord progression, while sparse electronic percussion provides a subtle",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "The Carnival Is Over",
+        "artist": "Dead Can Dance",
+        "audio": {
+         "kind": "spotify",
+         "id": "3ItJx8fzchJOxirzLihyvL"
+        }
+       },
+       "instruction": "pump up the energy and speed into a driving darkwave track",
+       "instruction_contextual": "ramp up the energy and tempo for a driving darkwave vibe",
+       "hardness": "medium",
+       "transition_score": 0.7064,
+       "change_axes": [
+        "energy"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from a slow, glitchy ambient track to a fast, energetic darkwave ballad.",
+       "lost": [
+        "medium tempo",
+        "experimental/indie style",
+        "glitch elements",
+        "minimalist feel",
+        "free-flowing rhythm"
+       ],
+       "new": [
+        "fast tempo",
+        "darkwave/gothic style",
+        "higher energy",
+        "steady 4/4 rhythm",
+        "ethereal mood"
+       ],
+       "preserved": [
+        "vocals",
+        "ambient atmosphere",
+        "synth-driven texture"
+       ],
+       "shape": "two_changes"
+      },
+      {
+       "turn": 3,
+       "source": {
+        "clip_id": "j7OxMe3y1wbAxjAZ::0-30::1",
+        "track_id": "j7OxMe3y1wbAxjAZ",
+        "tags": [
+         "ambient",
+         "ethereal",
+         "darkwave",
+         "gothic",
+         "dead can dance"
+        ],
+        "caption": "This piece is a darkwave‑inflected electronic ballad that blends gothic ambience with synth‑driven pop sensibilities. It moves at a brisk ≈ 142.86 BPM in a steady 4/4 meter and is rooted in E♭ major, though the harmonic palette leans heavily toward minor colors (e.g., Gm7, Cm) before resolving back to the tonic. The arrangement centers on lush synthesizer pads, arpeggiated textures, and melodic lead lines that weave through the chord progression, while sparse electronic percussion provides a subtle",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "The Carnival Is Over",
+        "artist": "Dead Can Dance",
+        "audio": {
+         "kind": "spotify",
+         "id": "3ItJx8fzchJOxirzLihyvL"
+        }
+       },
+       "target": {
+        "clip_id": "3uFbbqEH1cTE4QJu::0-30::1",
+        "track_id": "3uFbbqEH1cTE4QJu",
+        "tags": [
+         "gothic metal",
+         "symphonic metal"
+        ],
+        "caption": "This instrumental piece is a dark‑ambient composition that blends cinematic orchestration with subtle electronic textures, creating an epic yet melancholic atmosphere. The arrangement features lush string sections, resonant piano chords, deep synth pads, and sparse metallic percussion, all rendered with high‑fidelity, spacious mixing that emphasizes wide stereo imaging and gentle dynamic shifts. No vocal lines appear, allowing the instrumentation alone to convey its somber narrative tone. The overall feel evokes introspection and grandeur, suitable for film scoring or immersive listening experiences.",
+        "vocals": "vocal",
+        "start": 0.0,
+        "end": 30.0,
+        "title": "Grace",
+        "artist": "Within Temptation",
+        "audio": {
+         "kind": "spotify",
+         "id": "2e2RNUtmk1EQzYuj093dHO"
+        }
+       },
+       "instruction": "make it gothic symphonic metal",
+       "instruction_contextual": "make it gothic symphonic metal",
+       "hardness": "medium",
+       "transition_score": 0.7653,
+       "change_axes": [
+        "genre_style"
+       ],
+       "preserve_axes": [],
+       "primary_edit": "Shift from ambient/darkwave electronic to epic gothic/symphonic metal with orchestral textures.",
+       "lost": [
+        "experimental",
+        "indie",
+        "ambient",
+        "darkwave",
+        "minimalist electronic",
+        "glitch elements",
+        "fast speed"
+       ],
+       "new": [
+        "gothic metal",
+        "symphonic metal",
+        "cinematic orchestration",
+        "epic atmosphere",
+        "melancholic mood"
+       ],
+       "preserved": [
+        "vocals",
+        "medium speed"
+       ],
+       "shape": "two_changes"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
