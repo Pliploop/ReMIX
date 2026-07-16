@@ -137,7 +137,9 @@ def _wrapped(text: str, max_w: float, size: float = T_SMALL) -> VGroup:
             cur = probe
     if cur:
         lines.append(cur)
-    return VGroup(*[txt(l, size) for l in lines]).arrange(DOWN, buff=0.1, aligned_edge=LEFT)
+    # Centred: a quoted instruction ragged-right in a centred bubble looks like a
+    # mistake rather than a choice.
+    return VGroup(*[txt(l, size) for l in lines]).arrange(DOWN, buff=0.1)
 
 
 class StageRail(VGroup):

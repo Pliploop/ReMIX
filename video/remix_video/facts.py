@@ -75,6 +75,15 @@ def figures() -> Dict[str, Any]:
     out["accept_hi"] = round(max(accepts)) if accepts else _FALLBACK["accept_hi"]
     out["ac1_lo"] = round(min(ac1s), 2) if ac1s else _FALLBACK["ac1_lo"]
     out["ac1_hi"] = round(max(ac1s), 2) if ac1s else _FALLBACK["ac1_hi"]
+
+    # Which axes instructions actually change, summed across datasets. Real
+    # measured counts, so the bars in stage 4 are the distribution and not a
+    # decorative ramp.
+    changed: Dict[str, int] = {}
+    for ds in data["datasets"]:
+        for row in ds.get("axes", []):
+            changed[row["axis"]] = changed.get(row["axis"], 0) + int(row.get("changed", 0))
+    out["axes"] = sorted(changed.items(), key=lambda kv: -kv[1])
     return out
 
 
