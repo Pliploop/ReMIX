@@ -249,41 +249,81 @@ def _explode_counts(series: pd.Series) -> pd.Series:
 # --------------------------------------------------------------------------- #
 # Corpus figures
 # --------------------------------------------------------------------------- #
+# Vivid donut palette echoing the ReMIX pipeline figure's five stage hues
+# (red / blue / green / orange / purple), brightened for "pop" and extended with
+# harmonized accents. The tail "Other" bucket is a neutral grey so it recedes.
+GENRE_PALETTE = ["#2E6FD6", "#FB8B24", "#1FA347", "#E23B34", "#7B3FF2",
+                 "#17B2C3", "#EC5FA6", "#F5B301", "#4657D6"]
+GENRE_OTHER = "#C3C7CD"
+
+# Fixed genre -> colour map so a genre keeps its colour across both datasets
+# (shared genres line up; each dataset's shown slices stay well separated).
+# Keys are the raw coarse-genre names emitted by `tags_to_genre`.
+GENRE_COLORS = {
+    "Rock": "#2E6FD6", "Pop": "#FB8B24", "Metal": "#E23B34", "Electronic": "#7B3FF2",
+    "Folk": "#1FA347", "Punk": "#EC4F9E", "Hip-hop": "#F5B301", "Soul/R&B": "#17B2C3",
+    "Classical": "#C81D6B", "Ambient": "#00B4D8", "Jazz": "#8A5A2B", "Reggae": "#86C232",
+    "Blues": "#3A6EA5", "Country": "#CC7A00", "Latin": "#F72585", "Funk": "#9B5DE5",
+    "World": "#00BFA5", "Experimental": "#6C757D",
+}
+
+
+def _darken(hex_color: str, factor: float = 0.62) -> tuple[float, float, float]:
+    """Scale an RGB hex toward black for legible-but-colorful label text."""
+    h = hex_color.lstrip("#")
+    r, g, b = (int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    return (r * factor, g * factor, b * factor)
+
+
 def fig_genre(ctx):
     gc = ctx["corpus_df"]["genre"].value_counts()
     other = int(gc.pop("Other")) if "Other" in gc.index else 0   # explicit unmatched bucket
-    top = gc.head(9)
-    other += int(gc.iloc[9:].sum())                              # + long tail -> single "Other"
+    top = gc.head(8)
+    other += int(gc.iloc[8:].sum())                              # + long tail -> single "Other"
     if other > 0:
         top = pd.concat([top, pd.Series({"Other": other})])
     labels = [nice(g) for g in top.index]
     sizes = top.values.astype(float)
-    pct = 100.0 * sizes / sizes.sum()
-    colors = [QUAL[i % len(QUAL)] for i in range(len(top))]
-    fig, ax = _new(6.6, 5.6)
+    total = sizes.sum()
+    pct = 100.0 * sizes / total
+    colors = [
+        GENRE_OTHER if g == "Other" else GENRE_COLORS.get(g, GENRE_PALETTE[i % len(GENRE_PALETTE)])
+        for i, g in enumerate(top.index)
+    ]
+
+    fig, ax = _new(6.4, 5.4)
     wedges, _ = ax.pie(
         sizes,
-        explode=[0.09] * len(sizes),
         startangle=90,
         counterclock=False,
         colors=colors,
-        wedgeprops=dict(edgecolor="none", linewidth=0, alpha=0.92),
+        radius=1.0,
+        wedgeprops=dict(width=0.34, edgecolor="white", linewidth=2.0),
     )
-    # Nice elbow ("bracket") callouts; each label box is tinted to its wedge colour.
+    # Clip count in the hole of the donut.
+    ax.text(0, 0, f"{_abbrev(total)}", ha="center", va="center",
+            fontsize=19, fontweight="bold", color="#2b2b2b")
+    ax.text(0, -0.19, "clips", ha="center", va="center", fontsize=11, color="#8a8a8a")
+    # Sleek leader callouts: genre name in dark, percentage tinted to its wedge.
     for w, lab, p, col in zip(wedges, labels, pct, colors):
         ang = np.deg2rad((w.theta1 + w.theta2) / 2.0)
         x, y = np.cos(ang), np.sin(ang)
-        ha = "left" if x >= 0 else "right"
+        side = 1 if x >= 0 else -1
+        ha = "left" if side > 0 else "right"
+        is_other = col == GENRE_OTHER
+        lead = "#a7abb2" if is_other else col
+        txt_col = "#8a8e95" if is_other else _darken(col)
         ax.annotate(
-            f"{lab}  ({p:.0f}%)",
-            xy=(x, y),
-            xytext=(1.4 * np.sign(x), 1.28 * y),
-            ha=ha, va="center", fontsize=10,
-            bbox=dict(boxstyle="round,pad=0.45,rounding_size=0.5", fc="white", ec=col, lw=1.2),
-            arrowprops=dict(arrowstyle="-", color=col, lw=1.1,
+            f"{lab}  {p:.0f}%",
+            xy=(x, y), xycoords="data",
+            xytext=(1.20 * side, 1.15 * y), textcoords="data",
+            ha=ha, va="center", fontsize=10.5, fontweight="medium", color=txt_col,
+            arrowprops=dict(arrowstyle="-", color=lead, lw=1.0, shrinkA=1, shrinkB=3,
                             connectionstyle=f"angle,angleA=0,angleB={np.rad2deg(ang):.0f}"),
         )
     ax.set(aspect="equal")
+    ax.set_xlim(-1.52, 1.52)
+    ax.set_ylim(-1.28, 1.28)
     _finish(fig, ax, ctx, "corpus_genre", grid=None)
 
 
@@ -637,6 +677,149 @@ def make_table1(ctx):
 
 
 # --------------------------------------------------------------------------- #
+# Combined two-dataset ("ReMIX") figures
+# --------------------------------------------------------------------------- #
+DS_TITLE = {"music4all": "Music4All", "mtg_jamendo": "MTG-Jamendo"}
+DS_COLOR = {"music4all": BLUE, "mtg_jamendo": ORANGE}
+
+
+def _load_cached(cache_dir: Path, label: str) -> Dict[str, Any]:
+    steps_df = pd.read_parquet(cache_dir / label / "steps.parquet")
+    corpus_df = pd.read_parquet(cache_dir / label / "corpus.parquet")
+    d = derive(steps_df, corpus_df)
+    return {"corpus_df": corpus_df, "steps_unique": d["steps_unique"], "instr": d["instr"], "label": label}
+
+
+def _grouped_barh(ax, cats, series, labels_order):
+    """Horizontal grouped bars: series = {label: {cat: value}}."""
+    y = np.arange(len(cats))
+    h = 0.8 / max(1, len(labels_order))
+    for i, lab in enumerate(labels_order):
+        vals = [series[lab].get(c, 0) for c in cats]
+        off = (i - (len(labels_order) - 1) / 2) * h
+        ax.barh(y + off, vals, height=h, color=DS_COLOR.get(lab, QUAL[i]), label=DS_TITLE.get(lab, lab), **BAR)
+    ax.set_yticks(y, [nice(c) for c in cats])
+
+
+def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[str, Any]) -> None:
+    fd, td = out["figures_dir"], out["tables_dir"]
+    pre = out["label"]
+
+    def save(fig, name, grid="y"):
+        fig.tight_layout()
+        fig.savefig(fd / f"{pre}_{name}.pdf")
+        plt.close(fig)
+
+    # overview table (both datasets side by side)
+    rows = []
+    def stat(fn):
+        return {lab: fn(ds[lab]) for lab in order}
+    metrics = [
+        ("Chains", lambda c: c["steps_unique"]["chain_id"].nunique()),
+        ("Steps", lambda c: len(c["steps_unique"])),
+        ("Instruction variants", lambda c: len(c["instr"])),
+        ("Unique clips", lambda c: c["corpus_df"]["clip_id"].nunique()),
+        ("Unique artists", lambda c: c["corpus_df"]["artist_id"].replace("", np.nan).fillna(c["corpus_df"]["artist_name"]).nunique()),
+        ("Mean steps / chain", lambda c: round(len(c["steps_unique"]) / max(1, c["steps_unique"]["chain_id"].nunique()), 2)),
+        ("Mean variants / step", lambda c: round(len(c["instr"]) / max(1, len(c["steps_unique"])), 2)),
+        ("Mean transition score", lambda c: round(c["steps_unique"]["transition_score"].mean(), 3)),
+        ("Caption-grounded rate", lambda c: round(c["instr"]["caption_only_change"].mean(), 3)),
+    ]
+    table = pd.DataFrame([{"Metric": m, **{DS_TITLE[l]: fn(ds[l]) for l in order}} for m, fn in metrics])
+    table.to_csv(td / f"{pre}_overview.csv", index=False)
+    (td / f"{pre}_overview.tex").write_text(
+        table.to_latex(index=False, caption="ReMIX dataset statistics across both source catalogs.", label="tab:remix_overview"),
+        encoding="utf-8",
+    )
+
+    # genre (grouped, % of clips, union of top genres)
+    gseries, gcats = {}, []
+    for lab in order:
+        gc = ds[lab]["corpus_df"]["genre"].value_counts(normalize=True)
+        gseries[lab] = gc.to_dict()
+        gcats += list(gc.head(10).index)
+    gcats = [g for g in dict.fromkeys(gcats) if g != "Other"][:10][::-1]
+    fig, ax = _new(6.2, 4.4)
+    _grouped_barh(ax, gcats, gseries, order)
+    ax.set_xlabel("Fraction of clips")
+    ax.legend()
+    save(fig, "corpus_genre", grid="x")
+
+    # transition score (overlaid step hists)
+    fig, ax = _new(5.6, 3.6)
+    for lab in order:
+        ax.hist(ds[lab]["steps_unique"]["transition_score"].dropna(), bins=40, histtype="step",
+                linewidth=1.8, color=DS_COLOR[lab], label=DS_TITLE[lab], density=True)
+    ax.set_xlabel("Transition score")
+    ax.set_ylabel("Density")
+    ax.legend()
+    save(fig, "trans_score")
+
+    # chain length (grouped bar, % of chains)
+    lens = {}
+    maxlen = 1
+    for lab in order:
+        cl = ds[lab]["steps_unique"].groupby("chain_id")["turn_index"].nunique().value_counts(normalize=True)
+        lens[lab] = cl.to_dict()
+        maxlen = max(maxlen, int(cl.index.max()))
+    cats = list(range(1, maxlen + 1))
+    fig, ax = _new(5.2, 3.4)
+    x = np.arange(len(cats)); w = 0.8 / len(order)
+    for i, lab in enumerate(order):
+        ax.bar(x + (i - (len(order) - 1) / 2) * w, [lens[lab].get(c, 0) for c in cats], width=w,
+               color=DS_COLOR[lab], label=DS_TITLE[lab], **BAR)
+    ax.set_xticks(x, cats)
+    ax.set_xlabel("Steps per chain")
+    ax.set_ylabel("Fraction of chains")
+    ax.legend()
+    save(fig, "chain_length")
+
+    # change-axis frequency (grouped, % of instructions)
+    aseries, acats = {}, []
+    for lab in order:
+        counts = _explode_counts(ds[lab]["instr"]["change_axes"])
+        total = max(1, len(ds[lab]["instr"]))
+        aseries[lab] = (counts / total).to_dict()
+        acats += list(counts.head(8).index)
+    acats = [a for a in dict.fromkeys(acats)][:10][::-1]
+    fig, ax = _new(6.0, 4.2)
+    _grouped_barh(ax, acats, aseries, order)
+    ax.set_xlabel("Fraction of instructions editing axis")
+    ax.legend()
+    save(fig, "recipe_axes", grid="x")
+
+    # edit complexity (# change axes, grouped)
+    nseries = {lab: ds[lab]["instr"]["change_axis_count"].value_counts(normalize=True).to_dict() for lab in order}
+    cats = sorted({int(k) for lab in order for k in nseries[lab]})
+    fig, ax = _new(5.0, 3.4)
+    x = np.arange(len(cats)); w = 0.8 / len(order)
+    for i, lab in enumerate(order):
+        ax.bar(x + (i - (len(order) - 1) / 2) * w, [nseries[lab].get(c, 0) for c in cats], width=w,
+               color=DS_COLOR[lab], label=DS_TITLE[lab], **BAR)
+    ax.set_xticks(x, cats)
+    ax.set_xlabel("Number of change axes")
+    ax.set_ylabel("Fraction of instructions")
+    ax.legend()
+    save(fig, "recipe_num_axes")
+
+    # metadata coverage (grouped)
+    def cov(c):
+        d = c["corpus_df"]
+        return {"Caption": d["has_caption"].mean(), "Tags": (d["tag_count"] > 0).mean(),
+                "Vocal label": (d["vocals"] != "unknown").mean(), "Tempo label": (d["speed"] != "unknown").mean(),
+                "Duration": d["duration_sec"].notna().mean(),
+                "Lyrics": d["lyrics_status"].isin(["ok", "found", "available"]).mean()}
+    covs = {lab: cov(ds[lab]) for lab in order}
+    ccats = list(covs[order[0]].keys())[::-1]
+    fig, ax = _new(5.4, 3.4)
+    _grouped_barh(ax, ccats, covs, order)
+    ax.set_xlim(0, 1.1)
+    ax.set_xlabel("Fraction of clips")
+    ax.legend()
+    save(fig, "corpus_coverage", grid="x")
+
+
+# --------------------------------------------------------------------------- #
 # Registry + main
 # --------------------------------------------------------------------------- #
 def figure_registry(include_appendix: bool) -> List[tuple[str, Callable[[Dict[str, Any]], None]]]:
@@ -679,6 +862,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-chains", type=int, default=0, help="0 = all instructed chains.")
     p.add_argument("--refresh", action="store_true", help="Rebuild parquet cache from the dataset.")
     p.add_argument("--no-appendix", action="store_true")
+    p.add_argument("--combined", action="store_true",
+                   help="Render combined two-dataset figures from existing caches (no dataset load).")
+    p.add_argument("--labels", default="music4all,mtg_jamendo", help="--combined: comma-separated dataset labels.")
     return p
 
 
@@ -690,6 +876,13 @@ def main() -> None:
     tables_dir = Path(args.out_dir) / "tables"
     figures_dir.mkdir(parents=True, exist_ok=True)
     tables_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.combined:
+        order = [s for s in args.labels.split(",") if s.strip()]
+        ds = {lab: _load_cached(Path(args.cache_dir), lab) for lab in order}
+        combined_figures(ds, order, {"figures_dir": figures_dir, "tables_dir": tables_dir, "label": "remix"})
+        console.print(f"[green]Combined figures[/green] ({', '.join(order)}) -> {figures_dir}")
+        return
 
     stages = figure_registry(not args.no_appendix)
     columns = [

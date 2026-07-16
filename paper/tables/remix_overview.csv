@@ -1,0 +1,10 @@
+Metric,Music4All,MTG-Jamendo
+Chains,7554.0,2186.0
+Steps,18744.0,5373.0
+Instruction variants,88204.0,26737.0
+Unique clips,22333.0,6777.0
+Unique artists,7486.0,1908.0
+Mean steps / chain,2.48,2.46
+Mean variants / step,4.71,4.98
+Mean transition score,0.782,0.761
+Caption-grounded rate,0.001,0.037

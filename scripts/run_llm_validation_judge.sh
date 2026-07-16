@@ -25,6 +25,7 @@ TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-1}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.9}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-32768}"
 KV_CACHE_DTYPE="${KV_CACHE_DTYPE:-}"
+QUANTIZATION="${QUANTIZATION:-}"
 BATCH_SIZE="${BATCH_SIZE:-8}"
 MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-768}"
 TEMPERATURE="${TEMPERATURE:-0.0}"
@@ -69,6 +70,9 @@ CMD=(
 
 if [[ -n "${KV_CACHE_DTYPE}" ]]; then
   CMD+=(--kv-cache-dtype "${KV_CACHE_DTYPE}")
+fi
+if [[ -n "${QUANTIZATION}" ]]; then
+  CMD+=(--quantization "${QUANTIZATION}")
 fi
 
 # Optional: restrict to the frozen human-validation slice so the LLM judges

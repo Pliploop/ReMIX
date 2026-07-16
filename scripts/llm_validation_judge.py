@@ -465,6 +465,15 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     out.add_argument("--output-dir", help="Override output dir (default: dataset validation dir).")
     out.add_argument("--output-name", default="llm_ratings.jsonl")
     out.add_argument("--annotator-id", default=None, help="Override annotator id (default: llm:<model_id>).")
+    out.add_argument(
+        "--emit-validated",
+        action="store_true",
+        help="After judging, also write validated_instructions.jsonl (the instruction-validity gate "
+        "consumed by relevance_pool) from the graded ratings.",
+    )
+    out.add_argument("--accept-threshold", type=float, default=4.0, help="--emit-validated: overall_validity >= accepts.")
+    out.add_argument("--contextual-policy", default="truncate", choices=["truncate", "drop", "per_step"])
+    out.add_argument("--chain-aggregate", default="min", choices=["min", "mean"])
     return parser
 
 
@@ -613,6 +622,33 @@ def main() -> None:
         f"({parse_failures} items with parse issues).",
         flush=True,
     )
+
+    if args.emit_validated:
+        from jamendo_instruct.validation_gate import GateConfig, grade_records, select_chain_variants
+
+        all_ratings = _read_jsonl_records(output_path)
+        instruction_records = [sample["record"] for sample in samples if sample.get("record")]
+        config = GateConfig(
+            accept_threshold=float(args.accept_threshold),
+            contextual_policy=str(args.contextual_policy),
+            chain_aggregate=str(args.chain_aggregate),
+            instruction_field=instruction_field,
+        )
+        graded, _ = grade_records(instruction_records, all_ratings, config)
+        selected, report = select_chain_variants(graded, config)
+        with (output_dir / "instruction_grades.jsonl").open("w", encoding="utf-8") as gf:
+            for record in graded:
+                gf.write(json.dumps(record, ensure_ascii=True) + "\n")
+        with (output_dir / "validated_instructions.jsonl").open("w", encoding="utf-8") as vf:
+            for record in selected:
+                vf.write(json.dumps(record, ensure_ascii=True) + "\n")
+        (output_dir / "validation_gate_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+        c = report["counts"]
+        print(
+            f"[llm-judge] wrote grades + validated_instructions — accepted {c['accepted']}/{c['steps']} steps "
+            f"(threshold={args.accept_threshold}, fallback_used={c['fallback_used']}).",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":

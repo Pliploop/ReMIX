@@ -628,42 +628,159 @@ def _accept_kappa(hs: Sequence[float], ls: Sequence[float]) -> float | None:
     return (po - pe) / (1 - pe)
 
 
+def _accept_ac1(hs: Sequence[float], ls: Sequence[float]) -> float | None:
+    """Gwet's AC1 on the binary accept decision. Robust to prevalence, so it
+    does not collapse when almost everything is accepted (unlike Cohen's kappa)."""
+    n = len(hs)
+    if n == 0:
+        return None
+    ha = [1 if x >= 4 else 0 for x in hs]
+    la = [1 if y >= 4 else 0 for y in ls]
+    po = sum(1 for a, b in zip(ha, la) if a == b) / n
+    pi = (sum(ha) + sum(la)) / (2 * n)     # mean prevalence of "accept"
+    pe = 2 * pi * (1 - pi)
+    if pe >= 1:
+        return None
+    return (po - pe) / (1 - pe)
+
+
+def _quadratic_kappa(hs: Sequence[float], ls: Sequence[float], *, k: int = 5) -> float | None:
+    """Quadratic-weighted kappa over the 1..k scale (scores rounded to categories).
+    Near-misses get partial credit, so it is the right agreement metric for the
+    ordinal 1-5 rubric."""
+    n = len(hs)
+    if n == 0:
+        return None
+    def cat(x: float) -> int:
+        return min(k, max(1, int(round(x))))
+    a = [cat(x) for x in hs]
+    b = [cat(y) for y in ls]
+    row = [0.0] * (k + 1)
+    col = [0.0] * (k + 1)
+    obs = [[0.0] * (k + 1) for _ in range(k + 1)]
+    for x, y in zip(a, b):
+        obs[x][y] += 1
+        row[x] += 1
+        col[y] += 1
+    num = den = 0.0
+    for i in range(1, k + 1):
+        for j in range(1, k + 1):
+            w = ((i - j) ** 2) / ((k - 1) ** 2)   # disagreement weight
+            expected = row[i] * col[j] / n
+            num += w * obs[i][j]
+            den += w * expected
+    if den == 0:
+        return None
+    return 1.0 - num / den
+
+
+def _spearman(xs: Sequence[float], ys: Sequence[float]) -> float | None:
+    """Rank correlation (Pearson on average ranks); better than Pearson for ordinal."""
+    n = len(xs)
+    if n < 3:
+        return None
+
+    def ranks(values: Sequence[float]) -> List[float]:
+        order = sorted(range(n), key=lambda i: values[i])
+        out = [0.0] * n
+        i = 0
+        while i < n:
+            j = i
+            while j + 1 < n and values[order[j + 1]] == values[order[i]]:
+                j += 1
+            avg = (i + j) / 2.0 + 1.0
+            for t in range(i, j + 1):
+                out[order[t]] = avg
+            i = j + 1
+        return out
+
+    return _pearson(ranks(xs), ranks(ys))
+
+
 def _agreement_rows(
-    human_records: Sequence[Dict[str, Any]],
-    llm_records: Sequence[Dict[str, Any]],
+    left_records: Sequence[Dict[str, Any]],
+    right_records: Sequence[Dict[str, Any]],
+    *,
+    left_label: str = "human",
+    right_label: str = "llm",
 ) -> List[Dict[str, Any]]:
+    """Per-question agreement between two rater sets (human-vs-LLM or LLM-vs-LLM)."""
     rows: List[Dict[str, Any]] = []
     for question in RATING_QUESTIONS:
         qid = str(question["id"])
-        human_map = _item_mean_scores(human_records, qid)
-        llm_map = _item_mean_scores(llm_records, qid)
-        keys = sorted(set(human_map) & set(llm_map))
+        left_map = _item_mean_scores(left_records, qid)
+        right_map = _item_mean_scores(right_records, qid)
+        keys = sorted(set(left_map) & set(right_map))
         if not keys:
             rows.append({"question_id": qid, "question": question["statement"], "n_items": 0})
             continue
-        hs = [human_map[k] for k in keys]
-        ls = [llm_map[k] for k in keys]
+        hs = [left_map[k] for k in keys]
+        ls = [right_map[k] for k in keys]
         n = len(keys)
+        left_mean = sum(hs) / n
+        right_mean = sum(ls) / n
         mae = sum(abs(h - l) for h, l in zip(hs, ls)) / n
         within1 = sum(1 for h, l in zip(hs, ls) if abs(h - l) <= 1) / n
         accept = sum(1 for h, l in zip(hs, ls) if (h >= 4) == (l >= 4)) / n
-        kappa = _accept_kappa(hs, ls)
-        pearson = _pearson(hs, ls)
+
+        def _r(value: float | None) -> float | None:
+            return round(value, 3) if value is not None else None
+
         rows.append(
             {
                 "question_id": qid,
                 "question": question["statement"],
                 "n_items": n,
-                "human_mean": round(sum(hs) / n, 3),
-                "llm_mean": round(sum(ls) / n, 3),
+                f"{left_label}_mean": round(left_mean, 3),
+                f"{right_label}_mean": round(right_mean, 3),
+                "mean_diff": round(right_mean - left_mean, 3),   # + => right rater more lenient
                 "mae": round(mae, 3),
                 "within1_rate": round(within1, 3),
                 "accept_agree_rate": round(accept, 3),
-                "accept_kappa": round(kappa, 3) if kappa is not None else None,
-                "pearson_r": round(pearson, 3) if pearson is not None else None,
+                "accept_kappa": _r(_accept_kappa(hs, ls)),
+                "accept_ac1": _r(_accept_ac1(hs, ls)),
+                "quadratic_kappa": _r(_quadratic_kappa(hs, ls)),
+                "pearson_r": _r(_pearson(hs, ls)),
+                "spearman_r": _r(_spearman(hs, ls)),
             }
         )
     return rows
+
+
+def _short_model(annotator_id: str) -> str:
+    """`llm:google/gemma-2-27b-it` -> `gemma-2-27b-it` for compact labels."""
+    text = str(annotator_id or "").split(":", 1)[-1]
+    return text.rsplit("/", 1)[-1] or text
+
+
+def _render_cross_llm_agreement_section(st: Any, output_dir: Path) -> None:
+    llm_records = _llm_rating_records(output_dir)
+    st.markdown("**Cross-LLM agreement**")
+    models = _llm_model_ids(llm_records)
+    if len(models) < 2:
+        st.info("Need ratings from at least two judge models. Run the sidecar judge with a second `--model-id`.")
+        return
+    labels = {m: _short_model(m) for m in models}
+    col_a, col_b = st.columns(2)
+    model_a = col_a.selectbox("Model A", options=models, index=0, format_func=labels.get, key="cross_llm_a")
+    default_b = 1 if models[0] == model_a else 0
+    model_b = col_b.selectbox("Model B", options=models, index=default_b, format_func=labels.get, key="cross_llm_b")
+    if model_a == model_b:
+        st.info("Pick two different models to compare.")
+        return
+    recs_a = [r for r in llm_records if str(r.get("annotator_id", "") or "") == model_a]
+    recs_b = [r for r in llm_records if str(r.get("annotator_id", "") or "") == model_b]
+    st.dataframe(
+        _agreement_rows(recs_a, recs_b, left_label=labels[model_a], right_label=labels[model_b]),
+        width="stretch",
+        hide_index=True,
+    )
+    st.caption(
+        "Over items rated by both models. mean_diff = B - A (+ = B more lenient); within1 = share within 1 point; "
+        "accept = score >= 4. accept_kappa (Cohen) is deflated under high accept rates; "
+        "accept_ac1 (Gwet) is prevalence-robust; quadratic_kappa weights near-misses; "
+        "pearson_r / spearman_r over shared items."
+    )
 
 
 def _llm_per_model_question_means(records: Sequence[Dict[str, Any]], models: Sequence[str]) -> List[Dict[str, Any]]:
@@ -723,8 +840,10 @@ def _render_llm_agreement_section(st: Any, output_dir: Path, human_records: Sequ
     st.dataframe(_agreement_rows(human_records, model_records), width="stretch", hide_index=True)
     st.caption(
         "Over items rated by both humans and the selected LLM (scores averaged per item across annotators). "
-        "within1 = share with |human-LLM| <= 1; accept = score >= 4; "
-        "accept_kappa = Cohen's kappa on the accept decision; pearson_r over shared items."
+        "mean_diff = LLM - human (+ = LLM more lenient); within1 = share within 1 point; "
+        "accept = score >= 4. accept_kappa (Cohen) is deflated when almost everything is accepted; "
+        "accept_ac1 (Gwet) is prevalence-robust; quadratic_kappa weights near-misses on the 1-5 scale; "
+        "pearson_r / spearman_r over shared items."
     )
 
 
@@ -845,6 +964,7 @@ def _render_admin_tab(
         st.dataframe(_issue_tag_rows(rating_records), width="stretch", hide_index=True)
 
     _render_llm_agreement_section(st, output_dir, rating_records)
+    _render_cross_llm_agreement_section(st, output_dir)
 
     with st.expander("Rating export table", expanded=False):
         st.dataframe(_flatten_rating_records(rating_records), width="stretch", hide_index=True)

@@ -305,6 +305,20 @@ Default outputs:
 - `artifacts/<run_name>/validation/validated_instructions.jsonl`
 - `artifacts/<run_name>/validation/validation_report.json`
 
+Graded gate (alternative to the binary stage):
+- A **graded** instruction-validity gate now exists alongside the binary stage.
+  It turns the 1–5 rubric ratings (`scripts/llm_validation_judge.py`) into a
+  human-calibratable accept decision plus a chain-coherence rule (contextual
+  instructions are truncated at the first invalid step), and writes
+  `validated_instructions.jsonl` in the **same schema** this stage produces, so
+  `relevance_pool` is unchanged.
+- Build it CPU-only with `scripts/build_validated_instructions.py`, or add
+  `--emit-validated` to `llm_validation_judge.py`.
+- This is **instruction validity** (a good query?), distinct from Stage 9's
+  **candidate relevance** grading (the benchmark ground truth). See
+  [`docs/validation_gate.md`](docs/validation_gate.md) and
+  [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
 Potential upgrades kept in scope:
 - richer faithfulness-oriented LLM judge rubrics
 - agreement checks across multiple judges or prompts
