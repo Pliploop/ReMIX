@@ -11,6 +11,18 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANIM="${MANIM:-/data/home/acw749/conda-envs/manim/bin/manim}"
 FFMPEG="${FFMPEG:-/data/home/acw749/conda-envs/manim/bin/ffmpeg}"
 
+# The render directory for this quality. Required: media/ accumulates a
+# directory per quality, so picking a scene's mp4 with `find | head -1` silently
+# grabs whichever resolution the filesystem lists first -- mixing stale renders
+# of different sizes into the concat and dropping seconds off the film.
+case "$QUALITY" in
+  -ql) RES_DIR="480p15" ;;
+  -qm) RES_DIR="720p30" ;;
+  -qh) RES_DIR="1080p60" ;;
+  -qk) RES_DIR="2160p60" ;;
+  *) echo "!! unknown quality ${QUALITY}" >&2; exit 1 ;;
+esac
+
 cd "$HERE"
 export PYTHONPATH="$HERE"
 
@@ -39,9 +51,9 @@ for entry in "${SCENES[@]}"; do
   file="${entry%%:*}"
   klass="${entry##*:}"
   stem="$(basename "$file" .py)"
-  found="$(find media/videos/"$stem" -name "${klass}.mp4" | head -1)"
-  if [[ -z "$found" ]]; then
-    echo "!! missing render for ${klass}" >&2
+  found="media/videos/${stem}/${RES_DIR}/${klass}.mp4"
+  if [[ ! -f "$found" ]]; then
+    echo "!! missing ${RES_DIR} render for ${klass}" >&2
     exit 1
   fi
   echo "file '$(realpath "$found")'" >> "$list"
