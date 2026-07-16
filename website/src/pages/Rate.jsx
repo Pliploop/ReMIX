@@ -165,10 +165,36 @@ export default function Rate() {
   }, [])
 
   const items = dataset?.items ?? []
-  // Serve unrated items first, but never lose access to the rest.
+
+  /**
+   * Queue order. The two calibration buckets want opposite treatment:
+   *
+   *   core_overlap - every rater must rate all 50 or there is no inter-rater
+   *                  agreement to compute, so these go first.
+   *   sentinel     - attention checks only work if a rater cannot tell when one
+   *                  is coming, so they are spread through the run rather than
+   *                  front-loaded (all-early checks miss a rater who drifts).
+   *   full         - the bulk, filling the gaps.
+   *
+   * Rated items are not dropped, just moved to the back.
+   */
   const order = useMemo(() => {
-    const pending = items.map((_, i) => i).filter((i) => !done.has(items[i].assignment_id))
-    const rated = items.map((_, i) => i).filter((i) => done.has(items[i].assignment_id))
+    const pick = (b) => items.map((_, i) => i).filter((i) => items[i].bucket === b)
+    const overlap = pick('core_overlap')
+    const sentinels = pick('sentinel')
+    const full = pick('full')
+
+    const queue = [...overlap]
+    const every = Math.max(1, Math.ceil(full.length / Math.max(sentinels.length, 1)))
+    let s = 0
+    full.forEach((idx, n) => {
+      queue.push(idx)
+      if (s < sentinels.length && (n + 1) % every === 0) queue.push(sentinels[s++])
+    })
+    while (s < sentinels.length) queue.push(sentinels[s++])
+
+    const pending = queue.filter((i) => !done.has(items[i].assignment_id))
+    const rated = queue.filter((i) => done.has(items[i].assignment_id))
     return [...pending, ...rated]
   }, [items, done])
 
