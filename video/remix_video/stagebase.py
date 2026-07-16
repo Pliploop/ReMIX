@@ -64,22 +64,21 @@ class StageScene(Scene):
     def open_stage(self, upto: int) -> tuple[VGroup, VGroup]:
         """Show the rail so far, then announce this stage.
 
+        The whole film is 60s, so five stages get ~7s each. There is no room for
+        a centred title card that then retreats -- the header goes straight in.
+
         Returns (rail, header) so the body can position around them.
         """
         rail = self.build_rail(upto)
         if len(rail):
             self.add(rail)
 
-        big = self.title_in().move_to(ORIGIN)
-        self.play(FadeIn(big, shift=UP * 0.3), run_time=0.7)
-        self.wait(0.45)
-
         header = VGroup(
             txt(f"{self.stage_index + 1}", 0.5, self.color(), BOLD),
             txt(self.name(), 0.4, INK, BOLD),
         ).arrange(RIGHT, buff=0.2)
         header.move_to(UP * 2.85)
-        self.play(ReplacementTransform(big, header), run_time=0.7)
+        self.play(FadeIn(header, shift=DOWN * 0.2), run_time=0.4)
         return rail, header
 
     def close_stage(self, content: VGroup, rail: VGroup, header: VGroup):
@@ -88,14 +87,11 @@ class StageScene(Scene):
         panel.move_to(slot_position(self.stage_index))
 
         self.play(
-            FadeOut(content, shift=DOWN * 0.3),
-            run_time=0.5,
-        )
-        self.play(
+            FadeOut(content, shift=DOWN * 0.25),
             ReplacementTransform(header, panel),
-            run_time=0.8,
+            run_time=0.7,
         )
-        self.wait(0.35)
+        self.wait(0.15)
         return panel
 
 

@@ -17,6 +17,12 @@ export PYTHONPATH="$HERE"
 # Scene order is the film's order.
 SCENES=(
   "scenes/s00_cold_open.py:ColdOpen"
+  "scenes/s01_enrich.py:Enrich"
+  "scenes/s02_neighbourhood.py:Neighbourhood"
+  "scenes/s03_chains.py:Chains"
+  "scenes/s04_instructions.py:Instructions"
+  "scenes/s05_validation.py:Validation"
+  "scenes/s06_assemble.py:Assemble"
 )
 
 for entry in "${SCENES[@]}"; do
