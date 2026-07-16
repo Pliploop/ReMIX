@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --stage-enrich: #e23b34;
+  --stage-neighbour: #2e6fd6;
+  --stage-chain: #1fa347;
+  --stage-instruct: #fb8b24;
+  --stage-validate: #7b3ff2;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+@layer components {
+  /* The paper figure's card: tinted fill, thin coloured border, generous radius. */
+  .stage-card {
+    @apply rounded-2xl border p-5 transition-colors duration-300;
+  }
+
+  .glass {
+    @apply rounded-2xl border border-white/50 bg-white/60 backdrop-blur-xl
+           dark:border-white/10 dark:bg-neutral-900/50;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm
+           transition-colors duration-200 hover:border-neutral-900 hover:bg-neutral-900 hover:text-white
+           dark:border-neutral-700 dark:hover:border-neutral-200 dark:hover:bg-neutral-100 dark:hover:text-neutral-900;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+}
