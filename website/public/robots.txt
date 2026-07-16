@@ -1,0 +1,5 @@
+# Not indexable until the paper and dataset are public — the links on the site
+# are still placeholders. Remove this file and the noindex meta in index.html
+# together when it is time to be found.
+User-agent: *
+Disallow: /
