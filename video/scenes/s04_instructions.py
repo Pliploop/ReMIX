@@ -110,12 +110,14 @@ class Instructions(StageScene):
         self.wait(0.8)
 
         # --- 3. the judges write the instruction ----------------------------- #
+        # `out` fades with the rest instead of travelling with the delta frame:
+        # an arrow that slides across the screen still pointing at nothing reads
+        # as a glitch.
         self.play(
-            FadeOut(VGroup(src, tgt, into, diff_call)),
-            VGroup(delta, out).animate.move_to(LEFT * 4.4 + UP * 0.4).scale(0.9),
+            FadeOut(VGroup(src, tgt, into, diff_call, out)),
+            delta.animate.move_to(LEFT * 4.4 + UP * 0.4).scale(0.9),
             run_time=0.7,
         )
-        self.remove(out)
 
         llm_box = card(2.6, 1.6, INSTRUCT, alpha=0.12, radius=0.14).move_to(LEFT * 0.5 + UP * 0.4)
         logos = Group(judge_logo("qwen", 0.62), judge_logo("gemma", 0.62)).arrange(RIGHT, buff=0.3)
@@ -142,7 +144,11 @@ class Instructions(StageScene):
         # --- 4. clause budget + axis distribution ---------------------------- #
         # Clear the machinery first, *then* move the instruction. Doing both at
         # once read as everything sliding around at random.
-        self.play(FadeOut(VGroup(delta, feed, llm_box, llm_t, emit)), FadeOut(logos), run_time=0.5)
+        #
+        # One Group, one FadeOut: the logos are ImageMobjects and cannot go in a
+        # VGroup, so fading them as a second argument gave them their own timer --
+        # they went first and then flickered back.
+        self.play(FadeOut(Group(delta, feed, llm_box, llm_t, emit, logos)), run_time=0.5)
         self.play(picked.animate.move_to(UP * 2.0), run_time=0.5)
 
         budget = VGroup(

@@ -76,19 +76,21 @@ class Enrich(StageScene):
         whisper = proc_box("Whisper", "lyrics", ENRICH).move_to(LEFT * 1.5 + DOWN * 0.7)
         table = manifest_table().move_to(RIGHT * 3.1 + UP * 0.1)
 
-        # One bus out, one bus in. Independent elbows would share the trunk and
-        # the turn, and their fillets would overlap into a bubble.
-        feeds = fork_link(
-            cats.get_right() + RIGHT * 0.05,
-            [afnext.get_left() + LEFT * 0.03, whisper.get_left() + LEFT * 0.03],
-            ENRICH, 2.2, mid=0.42,
+        # Plain elbows, with the two turns staggered to different x. A bus put a
+        # spine and two fillets at the same x, which read as brackets; staggering
+        # keeps each link a simple out-across-in, the way stage 4's do.
+        feeds = VGroup(
+            elbow_link(cats.get_right() + RIGHT * 0.05, afnext.get_left() + LEFT * 0.03,
+                       ENRICH, 2.2, mid=0.34),
+            elbow_link(cats.get_right() + RIGHT * 0.05, whisper.get_left() + LEFT * 0.03,
+                       ENRICH, 2.2, mid=0.62),
         )
-        joins = fork_link(
-            table.get_left() + LEFT * 0.03,
-            [afnext.get_right() + RIGHT * 0.03, whisper.get_right() + RIGHT * 0.03],
-            ENRICH, 2.2, mid=0.42, tip=False,
+        joins = VGroup(
+            elbow_link(afnext.get_right() + RIGHT * 0.03, table.get_left() + LEFT * 0.03,
+                       ENRICH, 2.2, mid=0.36),
+            elbow_link(whisper.get_right() + RIGHT * 0.03, table.get_left() + LEFT * 0.03,
+                       ENRICH, 2.2, mid=0.64),
         )
-        joins.add(_tip_dir(table.get_left() + LEFT * 0.03, RIGHT, ENRICH))
         content.add(cats, afnext, whisper, table, feeds, joins)
 
         line = explain("Open catalogues in — a caption and a transcript for every clip.")

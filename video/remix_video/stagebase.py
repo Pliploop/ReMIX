@@ -87,20 +87,27 @@ class StageScene(Scene):
         return rail, header
 
     def close_stage(self, content: VGroup, rail: VGroup, header: VGroup):
-        """Collapse this stage into its slot and join the rail."""
+        """Collapse this stage into its slot while everything else fades away.
+
+        Fades whatever is actually on screen rather than whatever `content`
+        happens to list. Two reasons: FadeOut re-adds a mobject that was already
+        removed (which made the stage-2 encoders reappear), and animating a
+        VGroup's children individually -- `*[Create(x) for x in group]` -- adds
+        the children, not the wrapper, so a `content`-based list silently missed
+        them and they hard-cut at the scene boundary instead of fading.
+        """
         panel = StagePanel(self.stage_index + 1, self.name(), self.color(),
                            SLOT_W, SLOT_H, label_size=0.62)
         panel.move_to(slot_position(self.stage_index))
         panel.set_opacity(0.9)
 
-        # Only fade what is still on screen: FadeOut re-adds a mobject that was
-        # already removed, which is how the encoders reappeared at the end of
-        # stage 2 in the first draft.
-        live = VGroup(*[m for m in content if m in self.mobjects])
+        protected = {header, rail}
+        live = Group(*[m for m in self.mobjects if m not in protected])
+
         self.play(
-            FadeOut(live, shift=DOWN * 0.25),
+            FadeOut(live, shift=DOWN * 0.2),
             ReplacementTransform(header, panel),
-            run_time=0.7,
+            run_time=0.8,
         )
         self.wait(0.15)
         return panel

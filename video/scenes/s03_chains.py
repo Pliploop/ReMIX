@@ -45,9 +45,12 @@ class Chains(StageScene):
         for i in pruned_idx:
             edges[i].set_opacity(0)
 
+        # Fade the graph in rather than cutting to it fully formed.
         line = explain("The same graph. A walk over edges that already exist.")
-        self.add(grid, edges, nodes)
-        self.play(FadeIn(line), run_time=0.4)
+        self.play(
+            FadeIn(grid), FadeIn(edges), FadeIn(nodes), FadeIn(line),
+            run_time=0.7,
+        )
 
         # --- the walk ------------------------------------------------------- #
         walk_marks = VGroup()

@@ -59,10 +59,12 @@ class Neighbourhood(StageScene):
         v1 = vector_strip(7, NEIGHBOUR, 1).next_to(audio_m, RIGHT, buff=0.35)
         v2 = vector_strip(7, NEIGHBOUR, 2).next_to(text_m, RIGHT, buff=0.35)
 
-        feeds = fork_link(
-            clip.get_right() + RIGHT * 0.05,
-            [audio_m.get_left() + LEFT * 0.03, text_m.get_left() + LEFT * 0.03],
-            NEIGHBOUR, 2.2, mid=0.45,
+        # Staggered elbows, not a bus: see s01_enrich.
+        feeds = VGroup(
+            elbow_link(clip.get_right() + RIGHT * 0.05, audio_m.get_left() + LEFT * 0.03,
+                       NEIGHBOUR, 2.2, mid=0.34),
+            elbow_link(clip.get_right() + RIGHT * 0.05, text_m.get_left() + LEFT * 0.03,
+                       NEIGHBOUR, 2.2, mid=0.62),
         )
         embed = VGroup(clip, audio_m, text_m, v1, v2, feeds)
 
