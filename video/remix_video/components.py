@@ -107,21 +107,62 @@ def _clip(s: str, n: int) -> str:
 
 
 class InstructionBubble(VGroup):
-    """The instruction. This is the hero of the whole video, so it gets the
-    orange of stage 4 and sits on the arrow between two tracks."""
+    """The instruction, sitting on the arrow between two tracks.
 
-    def __init__(self, text: str, width: float = 5.2, color: str = INSTRUCT, **kwargs):
+    `segments` colours spans of the text: green for what the instruction keeps,
+    orange for what it changes. The bubble itself stays neutral grey so those two
+    colours are the only ones carrying meaning -- an orange bubble around orange
+    words says nothing.
+    """
+
+    def __init__(
+        self,
+        text: str,
+        width: float = 5.2,
+        color: str = MUTED,
+        segments: Sequence[tuple[str, str | None]] | None = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
-        self.label = _wrapped(text, width - 0.5)
+        self.label = (
+            _wrapped_rich(segments, width - 0.5) if segments else _wrapped(text, width - 0.5)
+        )
         self.bg = RoundedRectangle(
             width=max(width, self.label.width + 0.5),
             height=self.label.height + 0.45,
             corner_radius=0.14,
-            fill_color=tint(color, 0.11), fill_opacity=1,
-            stroke_color=color, stroke_width=2.0,
+            fill_color=tint(color, 0.07), fill_opacity=1,
+            stroke_color=color, stroke_width=1.8,
         )
         self.label.move_to(self.bg.get_center())
         self.add(self.bg, self.label)
+
+
+def _wrapped_rich(segments, max_w: float, size: float = T_SMALL) -> VGroup:
+    """Wrap text whose words carry individual colours."""
+    words: list[tuple[str, str]] = []
+    for text, color in segments:
+        for w in text.split():
+            words.append((w, color or INK))
+
+    lines, cur = [], []
+    for w, c in words:
+        probe = VGroup(*[txt(x, size) for x, _ in cur + [(w, c)]])
+        probe.arrange(RIGHT, buff=size * 0.28)
+        if probe.width > max_w and cur:
+            lines.append(cur)
+            cur = [(w, c)]
+        else:
+            cur.append((w, c))
+    if cur:
+        lines.append(cur)
+
+    rows = VGroup()
+    for line in lines:
+        row = VGroup(*[txt(w, size, c, BOLD if c != INK else NORMAL) for w, c in line])
+        row.arrange(RIGHT, buff=size * 0.28)
+        rows.add(row)
+    return rows.arrange(DOWN, buff=0.11)
 
 
 def _wrapped(text: str, max_w: float, size: float = T_SMALL) -> VGroup:

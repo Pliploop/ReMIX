@@ -46,9 +46,13 @@ class ColdOpen(Scene):
         want = txt("But not quite right. So you say what to change.", T_BODY, MUTED).move_to(UP * 2.6)
         self.play(ReplacementTransform(lede, want), run_time=0.5)
 
-        bubble = InstructionBubble(f'"{st[0]["instruction"]}"', width=4.3)
-        bubble.move_to(UP * CARD_Y)
-        in_arrow = arrow(a.get_right() + RIGHT * 0.06, bubble.get_left() + LEFT * 0.06, INSTRUCT, 3.0)
+        # Grey bubble, grey arrows: the only colours in the instruction are the
+        # ones that mean something -- green for what it keeps, orange for what it
+        # changes.
+        bubble = InstructionBubble(
+            "", width=4.3, segments=_segments(st[0]["instruction"]),
+        ).move_to(UP * CARD_Y)
+        in_arrow = arrow(a.get_right() + RIGHT * 0.06, bubble.get_left() + LEFT * 0.06, MUTED, 3.0)
         self.play(GrowArrow(in_arrow), run_time=0.35)
         self.play(FadeIn(bubble, scale=0.92), run_time=0.6)
         self.wait(0.7)
@@ -58,7 +62,7 @@ class ColdOpen(Scene):
                       tags=tr[1].get("tags", []), playing=True, width=3.2, energy=1.2)
         b.move_to(RIGHT * 4.3 + UP * CARD_Y)
 
-        out_arrow = arrow(bubble.get_right() + RIGHT * 0.06, b.get_left() + LEFT * 0.06, INSTRUCT, 3.0)
+        out_arrow = arrow(bubble.get_right() + RIGHT * 0.06, b.get_left() + LEFT * 0.06, MUTED, 3.0)
         self.play(GrowArrow(out_arrow), run_time=0.35)
         self.play(FadeIn(b, shift=LEFT * 0.2), run_time=0.6)
         self.play(b.pulse(1.06, 0.7), run_time=0.7)
@@ -70,18 +74,24 @@ class ColdOpen(Scene):
                        tags=tr[2].get("tags", []), playing=True, width=3.2, energy=1.1)
         b2.move_to(RIGHT * 4.3 + UP * CARD_Y)
 
-        keep = InstructionBubble(f'"{st[1]["instruction"]}"', width=4.3)
-        keep.move_to(UP * CARD_Y)
+        keep = InstructionBubble(
+            "", width=4.3, segments=_segments(st[1]["instruction"]),
+        ).move_to(UP * CARD_Y)
 
+        # The arrows have to go *with* the bubble. Leaving them up while the card
+        # slides left left them anchored to positions nothing occupied any more,
+        # which is the flicker.
         self.play(
             ReplacementTransform(want, want2),
             FadeOut(a, shift=LEFT * 0.3),
+            FadeOut(VGroup(bubble, in_arrow, out_arrow), scale=0.9),
             b.animate.move_to(LEFT * 4.3 + UP * CARD_Y),
-            FadeOut(bubble, scale=0.9),
             run_time=0.7,
         )
-        self.play(FadeIn(keep, scale=0.92), run_time=0.5)
-        self.play(FadeIn(b2, shift=LEFT * 0.2), run_time=0.5)
+        in2 = arrow(b.get_right() + RIGHT * 0.06, keep.get_left() + LEFT * 0.06, MUTED, 3.0)
+        out2 = arrow(keep.get_right() + RIGHT * 0.06, b2.get_left() + LEFT * 0.06, MUTED, 3.0)
+        self.play(GrowArrow(in2), FadeIn(keep, scale=0.92), run_time=0.6)
+        self.play(GrowArrow(out2), FadeIn(b2, shift=LEFT * 0.2), run_time=0.5)
         self.play(b2.pulse(1.06, 0.6), run_time=0.6)
 
         # the thesis, said plainly
@@ -94,9 +104,9 @@ class ColdOpen(Scene):
         self.play(FadeIn(kw, shift=UP * 0.15), run_time=0.5)
         self.wait(1.0)
 
-        # --- 5. the chain, staggered ---------------------------------------- #
+        # --- 5. the chain, staggered, built one hop at a time ---------------- #
         self.play(
-            FadeOut(VGroup(kw, keep, in_arrow, out_arrow, want2)),
+            FadeOut(VGroup(kw, keep, in2, out2, want2)),
             FadeOut(VGroup(b, b2)),
             run_time=0.5,
         )
@@ -105,9 +115,9 @@ class ColdOpen(Scene):
         for i, t in enumerate(tr[:5]):
             minis.add(
                 GlassCard(t["title"], t["artist"], seed=3 + i * 7, color=NEIGHBOUR,
-                          width=2.45, energy=0.9 + 0.08 * i).scale(0.72)
+                          width=2.3, energy=0.9 + 0.08 * i).scale(0.66)
             )
-        minis.arrange(RIGHT, buff=0.42)
+        minis.arrange(RIGHT, buff=0.78)
         # Stagger vertically so the run reads as a walk, not a conveyor belt.
         for c, dy in zip(minis, [0.5, -0.3, 0.45, -0.4, 0.3]):
             c.shift(UP * dy)
@@ -122,17 +132,16 @@ class ColdOpen(Scene):
             VGroup(
                 Circle(radius=0.14, fill_color=NEIGHBOUR, fill_opacity=1, stroke_width=0),
                 txt(str(i + 1), 0.16, PAPER, BOLD),
-            ).arrange(ORIGIN).move_to(links[i].get_center() + UP * 0.28)
+            ).arrange(ORIGIN).move_to(links[i].get_center() + UP * 0.3)
             for i in range(len(links))
         ])
 
-        self.play(LaggedStart(*[FadeIn(c, shift=UP * 0.15) for c in minis], lag_ratio=0.13),
-                  run_time=1.1)
-        self.play(
-            LaggedStart(*[AnimationGroup(GrowArrow(links[i]), FadeIn(marks[i], scale=0.7))
-                          for i in range(len(links))], lag_ratio=0.18),
-            run_time=1.2,
-        )
+        # card, arrow, card, arrow... The chain is built, not revealed: showing
+        # every card first and then every arrow says "layout", not "walk".
+        self.play(FadeIn(minis[0], shift=UP * 0.15), run_time=0.45)
+        for i in range(len(links)):
+            self.play(GrowArrow(links[i]), FadeIn(marks[i], scale=0.7), run_time=0.32)
+            self.play(FadeIn(minis[i + 1], shift=UP * 0.12), run_time=0.32)
         self.wait(0.5)
 
         claim = title_card("Finding music is a conversation.", VALIDATE, 0.5).move_to(DOWN * 2.2)
@@ -144,28 +153,61 @@ class ColdOpen(Scene):
         # match rather than a jump. No numbers: this claim is qualitative.
         self.play(FadeOut(VGroup(minis, links, marks)), FadeOut(claim), run_time=0.6)
 
-        name = txt("ReMIX", 0.95, INK, BOLD).move_to(UP * 0.75)
+        name = txt("ReMIX", 0.95, INK, BOLD).move_to(UP * 0.9)
         sub = VGroup(
             txt("a dataset of", T_BODY, MUTED),
             txt("grounded transitions", T_BODY, INK, BOLD),
-        ).arrange(RIGHT, buff=0.16).next_to(name, DOWN, buff=0.35)
+        ).arrange(RIGHT, buff=0.16).next_to(name, DOWN, buff=0.32)
+        sub2 = txt("for composed music retrieval", T_BODY, MUTED).next_to(sub, DOWN, buff=0.16)
 
         dots = VGroup(*[
             Circle(radius=0.1, fill_color=c, fill_opacity=1, stroke_width=0)
             for c in STAGE_COLORS
-        ]).arrange(RIGHT, buff=0.22).next_to(sub, DOWN, buff=0.6)
+        ]).arrange(RIGHT, buff=0.22).next_to(sub2, DOWN, buff=0.6)
 
         self.play(FadeIn(name, shift=UP * 0.15), run_time=0.6)
         self.play(FadeIn(sub, shift=UP * 0.1), run_time=0.5)
+        self.play(FadeIn(sub2, shift=UP * 0.08), run_time=0.45)
         self.play(LaggedStart(*[GrowFromCenter(d) for d in dots], lag_ratio=0.1), run_time=0.7)
-        self.wait(0.9)
+        self.wait(1.0)
 
-        # The red dot swells and takes the frame: stage 1 begins inside it.
-        red = dots[0]
+        # The dots arrived left to right, so they leave right: they sweep off the
+        # way they came, which hands the frame to stage 1 without one of them
+        # ballooning and sitting there.
+        self.play(FadeOut(VGroup(name, sub, sub2)), run_time=0.4)
         self.play(
-            FadeOut(VGroup(name, sub)),
-            FadeOut(VGroup(*dots[1:])),
-            red.animate.scale(70),
-            run_time=0.9,
+            LaggedStart(
+                *[d.animate.shift(RIGHT * 16) for d in dots],
+                lag_ratio=0.09,
+            ),
+            run_time=0.8,
         )
-        self.play(FadeOut(red), run_time=0.4)
+        self.remove(dots)
+
+
+KEEP_WORDS = ("keep", "keeps", "keeping", "retain", "preserve", "maintain")
+CHANGE_WORDS = ("swap", "make", "shift", "switch", "add", "ditch", "drop", "slow",
+                "speed", "turn", "strip", "lower", "raise", "polish", "shout")
+
+
+def _segments(instruction: str):
+    """Colour the instruction by what it does: green for a clause that keeps
+    something, orange for one that changes something.
+
+    Split on commas, since these instructions are clause-per-comma by
+    construction -- that is what the clause budget in stage 4 enforces. A clause
+    is coloured only when it opens with a keep or change verb; guessing beyond
+    that would miscolour more often than it would help.
+    """
+    out = []
+    clauses = [c.strip() for c in instruction.strip().rstrip(".").split(",") if c.strip()]
+    for i, clause in enumerate(clauses):
+        head = clause.split()[0].lower().strip('"')
+        if head in KEEP_WORDS:
+            color = CHAIN
+        elif head in CHANGE_WORDS:
+            color = INSTRUCT
+        else:
+            color = None
+        out.append((clause + ("," if i < len(clauses) - 1 else ""), color))
+    return out

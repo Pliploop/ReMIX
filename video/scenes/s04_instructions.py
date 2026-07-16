@@ -23,28 +23,42 @@ from remix_video.theme import (
 )
 
 
-def axis_bars(width: float = 2.9) -> VGroup:
-    """The real axis distribution, from the exported stats."""
+def axis_bars(width: float = 5.2) -> tuple[VGroup, list]:
+    """The real axis distribution, from the exported stats.
+
+    Returns (rows, growers) so the caller can animate the bars out from zero --
+    a distribution that simply appears is a picture; one that grows is a result.
+    """
     dist = FIGURES.get("axes") or []
     if not dist:
-        dist = [("genre style", 1.0), ("mood", 0.66), ("instrumentation", 0.6),
-                ("texture", 0.55), ("rhythm", 0.4)]
-    top = dist[:5]
-    peak = max(v for _, v in top) or 1.0
+        dist = [("Genre style", 5779), ("Mood", 2973), ("Instrumentation", 2900),
+                ("Texture production", 3087), ("Rhythm", 1600), ("Energy", 1200)]
+    top = dist[:6]
+    peak = max(v for _, v in top) or 1
 
     rows = VGroup()
+    growers = []
     for name, val in top:
-        label = txt(name, T_TINY * 0.78, MUTED)
-        track = RoundedRectangle(width=width, height=0.1, corner_radius=0.04,
-                                 fill_color=tint(INSTRUCT, 0.14), fill_opacity=1, stroke_width=0)
-        fill = RoundedRectangle(width=max(0.04, width * val / peak), height=0.1, corner_radius=0.04,
+        label = txt(name, T_TINY * 1.0, MUTED)
+        track = RoundedRectangle(width=width, height=0.17, corner_radius=0.06,
+                                 fill_color=tint(INSTRUCT, 0.12), fill_opacity=1, stroke_width=0)
+        full_w = max(0.05, width * val / peak)
+        fill = RoundedRectangle(width=full_w, height=0.17, corner_radius=0.06,
                                 fill_color=INSTRUCT, fill_opacity=1, stroke_width=0)
         fill.align_to(track, LEFT)
+        count = txt(f"{val:,}", T_TINY * 0.9, INSTRUCT, BOLD)
         bar = VGroup(track, fill)
-        row = VGroup(label, bar).arrange(RIGHT, buff=0.2)
+        row = VGroup(label, bar, count).arrange(RIGHT, buff=0.24)
         rows.add(row)
-    rows.arrange(DOWN, buff=0.13, aligned_edge=RIGHT)
-    return rows
+        growers.append((fill, track, full_w))
+    rows.arrange(DOWN, buff=0.2)
+    # Right-align the labels so the bars share a baseline.
+    left_edge = max(r[0].get_right()[0] for r in rows)
+    for r in rows:
+        r[0].align_to([left_edge, 0, 0], RIGHT)
+        r[1].next_to(r[0], RIGHT, buff=0.24)
+        r[2].next_to(r[1], RIGHT, buff=0.24)
+    return rows, growers
 
 
 class Instructions(StageScene):
@@ -103,10 +117,10 @@ class Instructions(StageScene):
         )
         self.remove(out)
 
-        llm_box = card(2.3, 1.35, INSTRUCT, alpha=0.12, radius=0.14).move_to(LEFT * 0.5 + UP * 0.4)
-        logos = Group(judge_logo("qwen", 0.4), judge_logo("gemma", 0.4)).arrange(RIGHT, buff=0.25)
-        logos.move_to(llm_box.get_center() + UP * 0.2)
-        llm_t = txt("LLM", T_TINY * 1.05, INSTRUCT, BOLD).move_to(llm_box.get_center() + DOWN * 0.38)
+        llm_box = card(2.6, 1.6, INSTRUCT, alpha=0.12, radius=0.14).move_to(LEFT * 0.5 + UP * 0.4)
+        logos = Group(judge_logo("qwen", 0.62), judge_logo("gemma", 0.62)).arrange(RIGHT, buff=0.3)
+        logos.move_to(llm_box.get_center() + UP * 0.24)
+        llm_t = txt("LLM", T_TINY * 1.05, INSTRUCT, BOLD).move_to(llm_box.get_center() + DOWN * 0.5)
 
         feed = elbow_link(delta.get_right() + RIGHT * 0.04, llm_box.get_left() + LEFT * 0.03, INSTRUCT, 2.2)
 
@@ -126,28 +140,41 @@ class Instructions(StageScene):
         self.wait(0.9)
 
         # --- 4. clause budget + axis distribution ---------------------------- #
-        self.play(
-            FadeOut(VGroup(delta, feed, llm_box, llm_t, emit)),
-            FadeOut(logos),
-            picked.animate.move_to(UP * 1.85),
-            run_time=0.6,
-        )
+        # Clear the machinery first, *then* move the instruction. Doing both at
+        # once read as everything sliding around at random.
+        self.play(FadeOut(VGroup(delta, feed, llm_box, llm_t, emit)), FadeOut(logos), run_time=0.5)
+        self.play(picked.animate.move_to(UP * 2.0), run_time=0.5)
 
         budget = VGroup(
-            txt("clause budget", T_TINY * 0.85, MUTED),
-            txt("≤ 4 clauses", 0.32, INSTRUCT, BOLD),
-            txt("each on a named axis", T_TINY * 0.8, MUTED),
-        ).arrange(DOWN, buff=0.1).move_to(LEFT * 4.1 + DOWN * 0.5)
+            txt("≤ 4 clauses", 0.4, INSTRUCT, BOLD),
+            txt("per instruction", T_TINY * 0.9, MUTED),
+        ).arrange(DOWN, buff=0.1).move_to(LEFT * 5.1 + DOWN * 0.55)
 
-        bars = axis_bars(2.6).move_to(RIGHT * 1.3 + DOWN * 0.5)
-        bars_title = txt("what instructions change", T_TINY * 0.85, MUTED)
-        bars_title.next_to(bars, UP, buff=0.22)
+        bars, growers = axis_bars(4.6)
+        bars.move_to(RIGHT * 0.7 + DOWN * 0.6)
+        bars_title = txt("and each one lands on a named axis", T_TINY * 1.0, MUTED)
+        bars_title.next_to(bars, UP, buff=0.3)
 
-        line4 = explain("Every clause has to land on a named musical axis.")
+        line4 = explain("A clause budget is what stops the instructions turning to mush.")
         self.play(FadeIn(budget, shift=UP * 0.1), ReplacementTransform(line3, line4), run_time=0.6)
-        self.play(FadeIn(bars_title), LaggedStart(*[FadeIn(r, shift=LEFT * 0.15) for r in bars],
-                                                  lag_ratio=0.1), run_time=0.9)
-        self.wait(0.9)
+
+        # Bars grow from zero.
+        for fill, track, _ in growers:
+            fill.stretch_to_fit_width(0.05)
+            fill.align_to(track, LEFT)
+        self.play(FadeIn(bars_title), LaggedStart(*[FadeIn(r[0]) for r in bars], lag_ratio=0.06),
+                  run_time=0.6)
+        self.play(
+            LaggedStart(*[
+                AnimationGroup(
+                    fill.animate.stretch_to_fit_width(w).align_to(track, LEFT),
+                    FadeIn(row[2]),
+                )
+                for (fill, track, w), row in zip(growers, bars)
+            ], lag_ratio=0.11),
+            run_time=1.3,
+        )
+        self.wait(1.0)
 
         figs = stat_row(
             [(thousands(FIGURES["variants"]), "instruction variants"),
