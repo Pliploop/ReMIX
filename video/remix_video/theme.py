@@ -36,7 +36,11 @@ FAINT = "#D4D4D8"
 HAIR = "#E4E4E7"
 PAPER = "#FFFFFF"
 
-FONT = "sans-serif"
+# Inter, matching the companion website exactly (index.html loads it from rsms.me).
+# Helvetica Neue was the ask, but it is proprietary Linotype/Apple and cannot be
+# installed here; Inter is the neo-grotesque the site already renders in, so the
+# video and the site now agree. Installed to ~/.local/share/fonts/inter.
+FONT = "Inter"
 
 # Type scale, in manim units.
 T_TITLE = 0.72
@@ -44,6 +48,19 @@ T_HEAD = 0.46
 T_BODY = 0.32
 T_SMALL = 0.24
 T_TINY = 0.19
+
+# --- layout grid ---------------------------------------------------------- #
+# Fixed bands, so text can never land on text. Every scene uses these instead of
+# guessing offsets, which is what caused the overlaps in the first draft.
+Y_HEADER = 2.55     # stage number + name
+Y_STAGE_TOP = 1.85  # content may not go above this
+Y_STAGE_BOT = -1.5  # ...nor below this
+Y_EXPLAIN = -2.15   # the one explanatory sentence
+Y_FIGURES = -2.95   # the numbers
+
+# The rail of finished stages: padded from the top, tighter to the right.
+RAIL_TOP = 3.55
+RAIL_LEFT = -6.55
 
 
 def tint(color: str, alpha: float = 0.10) -> str:

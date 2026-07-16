@@ -13,17 +13,20 @@ from typing import List
 from manim import *
 
 from .glass import StagePanel
-from .theme import INK, MUTED, PAPER, STAGE_COLORS, STAGE_NAMES, T_SMALL, T_TINY, txt
+from .theme import (
+    INK, MUTED, PAPER, RAIL_LEFT, RAIL_TOP, STAGE_COLORS, STAGE_NAMES,
+    T_SMALL, T_TINY, Y_EXPLAIN, Y_FIGURES, Y_HEADER, txt,
+)
 
-# Where finished stages stack. Five slots across the top-left.
-SLOT_W = 2.05
-SLOT_H = 1.28
-SLOT_ORIGIN = np.array([-6.0, 3.35, 0.0])
-SLOT_GAP = 0.12
+# Where finished stages stack: a discreet rail, padded down from the top edge and
+# kept tight to the left so it never crowds the stage content.
+SLOT_W = 1.62
+SLOT_H = 0.9
+SLOT_GAP = 0.1
 
 
 def slot_position(i: int) -> np.ndarray:
-    return SLOT_ORIGIN + RIGHT * (i * (SLOT_W + SLOT_GAP)) + RIGHT * SLOT_W / 2
+    return np.array([RAIL_LEFT, RAIL_TOP, 0.0]) + RIGHT * (i * (SLOT_W + SLOT_GAP) + SLOT_W / 2)
 
 
 class StageScene(Scene):
@@ -49,8 +52,9 @@ class StageScene(Scene):
         """Panels for stages already finished (0..upto-1), parked top-left."""
         rail = VGroup()
         for i in range(upto):
-            p = StagePanel(i + 1, STAGE_NAMES[i], STAGE_COLORS[i], SLOT_W, SLOT_H)
+            p = StagePanel(i + 1, STAGE_NAMES[i], STAGE_COLORS[i], SLOT_W, SLOT_H, label_size=0.62)
             p.move_to(slot_position(i))
+            p.set_opacity(0.9)
             rail.add(p)
         return rail
 
@@ -77,17 +81,24 @@ class StageScene(Scene):
             txt(f"{self.stage_index + 1}", 0.5, self.color(), BOLD),
             txt(self.name(), 0.4, INK, BOLD),
         ).arrange(RIGHT, buff=0.2)
-        header.move_to(UP * 2.85)
+        # Right of the rail, never over it.
+        header.move_to(RIGHT * 1.6 + UP * Y_HEADER)
         self.play(FadeIn(header, shift=DOWN * 0.2), run_time=0.4)
         return rail, header
 
     def close_stage(self, content: VGroup, rail: VGroup, header: VGroup):
         """Collapse this stage into its slot and join the rail."""
-        panel = StagePanel(self.stage_index + 1, self.name(), self.color(), SLOT_W, SLOT_H)
+        panel = StagePanel(self.stage_index + 1, self.name(), self.color(),
+                           SLOT_W, SLOT_H, label_size=0.62)
         panel.move_to(slot_position(self.stage_index))
+        panel.set_opacity(0.9)
 
+        # Only fade what is still on screen: FadeOut re-adds a mobject that was
+        # already removed, which is how the encoders reappeared at the end of
+        # stage 2 in the first draft.
+        live = VGroup(*[m for m in content if m in self.mobjects])
         self.play(
-            FadeOut(content, shift=DOWN * 0.25),
+            FadeOut(live, shift=DOWN * 0.25),
             ReplacementTransform(header, panel),
             run_time=0.7,
         )
@@ -102,6 +113,7 @@ def stat_row(pairs: List[tuple[str, str]], color: str = INK, buff: float = 1.1) 
     return VGroup(*[StatBadge(v, l, color, 0.46) for v, l in pairs]).arrange(RIGHT, buff=buff)
 
 
-def explain(text: str, at=DOWN * 2.55, size: float = T_SMALL) -> Text:
-    """One plain sentence per stage. The film is silent; this carries it."""
-    return txt(text, size, MUTED).move_to(at)
+def explain(text: str, at=None, size: float = T_SMALL) -> Text:
+    """One plain sentence per stage, on its own band. The film is silent; this
+    carries it, so it must never collide with the figures below."""
+    return txt(text, size, MUTED).move_to(at if at is not None else UP * Y_EXPLAIN)

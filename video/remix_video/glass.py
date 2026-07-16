@@ -18,7 +18,7 @@ import numpy as np
 from manim import *
 
 from .components import Waveform, _chip, _clip
-from .theme import FAINT, HAIR, INK, INSTRUCT, MUTED, PAPER, T_TINY, T_SMALL, tint, txt
+from .theme import FAINT, FONT, HAIR, INK, INSTRUCT, MUTED, PAPER, T_TINY, T_SMALL, tint, txt
 
 
 class GlassCard(VGroup):
@@ -97,6 +97,72 @@ class GlassCard(VGroup):
         )
 
 
+def elbow_link(
+    a,
+    b,
+    color: str = INSTRUCT,
+    width: float = 2.6,
+    radius: float = 0.16,
+    tip: bool = True,
+    first: str = "h",
+) -> VGroup:
+    """An orthogonal connector with rounded elbows: out horizontally, turn, in.
+
+    This is the paper figure's language -- diagram plumbing is elbowed, not
+    curved. Curves are reserved for the graph and the chain, where the bend
+    actually means something.
+    """
+    a = np.array(a, dtype=float)
+    b = np.array(b, dtype=float)
+    dx, dy = b[0] - a[0], b[1] - a[1]
+
+    if abs(dy) < 1e-3 or abs(dx) < 1e-3:
+        path = Line(a, b, color=color, stroke_width=width)
+        g = VGroup(path)
+        if tip:
+            g.add(_tip_dir(b, np.array([dx, dy, 0.0]), color))
+        return g
+
+    if first == "h":
+        corner = np.array([b[0], a[1], 0.0])
+        indir = np.array([0.0, np.sign(dy), 0.0])
+    else:
+        corner = np.array([a[0], b[1], 0.0])
+        indir = np.array([np.sign(dx), 0.0, 0.0])
+
+    r = min(radius, abs(dx) / 2, abs(dy) / 2)
+    to_corner = (corner - a) / max(np.linalg.norm(corner - a), 1e-6)
+    from_corner = (b - corner) / max(np.linalg.norm(b - corner), 1e-6)
+    p1 = corner - to_corner * r
+    p2 = corner + from_corner * r
+
+    path = VMobject(color=color, stroke_width=width)
+    path.set_points_as_corners([a, p1])
+    arc = ArcBetweenPoints(p1, p2, angle=PI / 2 * _turn_sign(to_corner, from_corner))
+    path.append_points(arc.points)
+    path.add_points_as_corners([b])
+
+    g = VGroup(path)
+    if tip:
+        g.add(_tip_dir(b, indir, color))
+    return g
+
+
+def _turn_sign(a_dir, b_dir) -> float:
+    cross = a_dir[0] * b_dir[1] - a_dir[1] * b_dir[0]
+    return -1.0 if cross > 0 else 1.0
+
+
+def _tip_dir(at, direction, color: str, size: float = 0.13) -> Triangle:
+    angle = np.arctan2(direction[1], direction[0])
+    return (
+        Triangle(fill_color=color, fill_opacity=1, stroke_width=0)
+        .scale(size)
+        .rotate(angle - PI / 2)
+        .move_to(at)
+    )
+
+
 def organic_link(
     a: np.ndarray,
     b: np.ndarray,
@@ -153,94 +219,112 @@ class StatBadge(VGroup):
         self.add(VGroup(v, l).arrange(DOWN, buff=0.09))
 
 
-def panel_icon(n: int, color: str) -> VGroup:
-    """A tiny sketch of what a stage does.
+def panel_icon(n: int, color: str, scale: float = 1.0) -> VGroup:
+    """A tiny sketch of what a stage does, in straight lines.
 
     Without these the rail is five empty boxes, and the final assemble -- where
     the rail flies to centre and becomes the paper's main figure -- has nothing
-    to become. Each icon is the stage's own diagram, reduced to its silhouette.
+    to become. Straight, not curved: at icon size a bezier reads as a smudge.
     """
     g = VGroup()
     if n == 1:  # catalogue -> rows
-        cyl = VGroup(
-            Ellipse(width=0.3, height=0.1, fill_color=tint(color, 0.4), fill_opacity=1,
-                    stroke_color=color, stroke_width=1),
-            Rectangle(width=0.3, height=0.26, fill_color=tint(color, 0.2), fill_opacity=1,
-                      stroke_width=0),
-        )
-        cyl[0].move_to(cyl[1].get_top())
+        cyl = _mini_cylinder(color)
         rows = VGroup(*[
-            RoundedRectangle(width=0.42, height=0.06, corner_radius=0.02,
+            RoundedRectangle(width=0.4, height=0.055, corner_radius=0.02,
                              fill_color=tint(color, 0.34), fill_opacity=1, stroke_width=0)
             for _ in range(4)
-        ]).arrange(DOWN, buff=0.045)
-        g.add(VGroup(cyl, rows).arrange(RIGHT, buff=0.22))
+        ]).arrange(DOWN, buff=0.04)
+        g.add(VGroup(cyl, rows).arrange(RIGHT, buff=0.2))
     elif n == 2:  # graph
-        pts = [LEFT * 0.35 + UP * 0.12, ORIGIN + UP * 0.2, RIGHT * 0.36 + UP * 0.02,
-               LEFT * 0.18 + DOWN * 0.2, RIGHT * 0.22 + DOWN * 0.22]
+        pts = [LEFT * 0.34 + UP * 0.1, ORIGIN + UP * 0.2, RIGHT * 0.34 + UP * 0.02,
+               LEFT * 0.16 + DOWN * 0.2, RIGHT * 0.2 + DOWN * 0.22]
         for a, b in [(0, 1), (1, 2), (0, 3), (3, 4), (2, 4)]:
-            g.add(organic_link(pts[a], pts[b], color, 1.1, bow=0.08, seed=a + b, tip=False))
+            g.add(Line(pts[a], pts[b], color=color, stroke_width=1.1, stroke_opacity=0.55))
         for p in pts:
-            g.add(Dot(p, radius=0.045, color=color))
-    elif n == 3:  # a walk
-        pts = [LEFT * 0.42 + DOWN * 0.16, LEFT * 0.1 + UP * 0.16, RIGHT * 0.18 + DOWN * 0.12,
-               RIGHT * 0.46 + UP * 0.14]
-        for i in range(len(pts) - 1):
-            g.add(organic_link(pts[i], pts[i + 1], color, 1.6, bow=0.09, seed=i, tip=False))
+            g.add(Dot(p, radius=0.042, color=color))
+    elif n == 3:  # a walk over that same graph
+        pts = [LEFT * 0.34 + UP * 0.1, ORIGIN + UP * 0.2, RIGHT * 0.34 + UP * 0.02,
+               LEFT * 0.16 + DOWN * 0.2, RIGHT * 0.2 + DOWN * 0.22]
+        faint = [(1, 2), (2, 4)]
+        walk = [(0, 3), (3, 4), (0, 1)]
+        for a, b in faint:
+            g.add(Line(pts[a], pts[b], color=MUTED, stroke_width=0.9, stroke_opacity=0.3))
+        for a, b in walk:
+            g.add(Line(pts[a], pts[b], color=color, stroke_width=2.0))
         for p in pts:
-            g.add(Dot(p, radius=0.05, color=color))
-    elif n == 4:  # instruction bubbles
+            g.add(Dot(p, radius=0.042, color=color))
+    elif n == 4:  # instruction lines
         g.add(VGroup(*[
-            RoundedRectangle(width=0.62, height=0.15, corner_radius=0.07,
-                             fill_color=tint(color, 0.28), fill_opacity=1,
-                             stroke_color=color, stroke_width=0.8)
-            for _ in range(3)
-        ]).arrange(DOWN, buff=0.07))
+            RoundedRectangle(width=w, height=0.13, corner_radius=0.06,
+                             fill_color=tint(color, 0.26), fill_opacity=1,
+                             stroke_color=color, stroke_width=0.7)
+            for w in (0.66, 0.5, 0.6)
+        ]).arrange(DOWN, buff=0.07, aligned_edge=LEFT))
     else:  # rubric + gate
         bars = VGroup(*[
             VGroup(
-                RoundedRectangle(width=0.34, height=0.055, corner_radius=0.02,
+                RoundedRectangle(width=0.32, height=0.05, corner_radius=0.02,
                                  fill_color=tint(color, 0.18), fill_opacity=1, stroke_width=0),
-                RoundedRectangle(width=0.34 * f, height=0.055, corner_radius=0.02,
+                RoundedRectangle(width=0.32 * f, height=0.05, corner_radius=0.02,
                                  fill_color=color, fill_opacity=1, stroke_width=0),
             )
             for f in (0.9, 0.7, 0.85)
         ])
         for b in bars:
             b[1].align_to(b[0], LEFT)
-        bars.arrange(DOWN, buff=0.07)
+        bars.arrange(DOWN, buff=0.06)
         check = VGroup(
-            Circle(radius=0.11, fill_color=tint("#1FA347", 0.2), fill_opacity=1,
+            Circle(radius=0.1, fill_color=tint("#1FA347", 0.2), fill_opacity=1,
                    stroke_color="#1FA347", stroke_width=1.2),
-            Text("✓", font="sans-serif", color="#1FA347").scale(0.13),
+            Text("✓", font=FONT, color="#1FA347").scale(0.11),
         )
-        g.add(VGroup(bars, check).arrange(RIGHT, buff=0.18))
-    return g
+        g.add(VGroup(bars, check).arrange(RIGHT, buff=0.16))
+    return g.scale(scale)
+
+
+def _mini_cylinder(color: str, w: float = 0.28, h: float = 0.24) -> VGroup:
+    body = Rectangle(width=w, height=h, fill_color=tint(color, 0.2), fill_opacity=1, stroke_width=0)
+    top = Ellipse(width=w, height=w * 0.36, fill_color=tint(color, 0.42), fill_opacity=1,
+                  stroke_color=color, stroke_width=0.9).move_to(body.get_top())
+    bot = Arc(radius=w / 2, start_angle=PI, angle=PI, color=color, stroke_width=0.9)
+    bot.stretch(0.36, 1).move_to(body.get_bottom())
+    l = Line(body.get_corner(UL), body.get_corner(DL), color=color, stroke_width=0.9)
+    r = Line(body.get_corner(UR), body.get_corner(DR), color=color, stroke_width=0.9)
+    return VGroup(body, l, r, bot, top)
 
 
 class StagePanel(VGroup):
     """A finished stage, shrunk into the accumulating rail at the top left.
 
-    These are what assemble into the paper's main figure at the end, so they keep
-    the figure's grammar: numbered, colour-titled, tinted card, and a sketch of
-    the stage's own diagram.
+    These assemble into the paper's main figure at the end, so they keep the
+    figure's grammar. The label sits *outside* the patch: inside, it crowds the
+    icon and the panel stops reading at rail size.
     """
 
-    def __init__(self, n: int, name: str, color: str, width: float = 2.05, height: float = 1.28, **kwargs):
+    def __init__(
+        self,
+        n: int,
+        name: str,
+        color: str,
+        width: float = 1.95,
+        height: float = 1.05,
+        label_size: float = 0.8,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         bg = RoundedRectangle(
-            width=width, height=height, corner_radius=0.1,
-            fill_color=tint(color, 0.09), fill_opacity=1,
-            stroke_color=color, stroke_width=1.6,
+            width=width, height=height, corner_radius=0.12,
+            fill_color=tint(color, 0.07), fill_opacity=1,
+            stroke_color=color, stroke_width=1.3, stroke_opacity=0.8,
         )
-        label = txt(f"{n}. {name}", T_TINY * 0.8, color, BOLD)
-        if label.width > width - 0.2:
-            label.set(width=width - 0.2)
-        label.move_to(bg.get_top() + DOWN * 0.16)
+        self.body = panel_icon(n, color, scale=min(1.0, height / 1.05))
+        self.body.move_to(bg.get_center())
 
-        self.body = panel_icon(n, color)
-        self.body.move_to(bg.get_center() + DOWN * 0.14)
+        label = txt(f"{n}. {name}", T_TINY * label_size, color, BOLD)
+        if label.width > width + 0.3:
+            label.set(width=width + 0.3)
+        label.next_to(bg, DOWN, buff=0.1)
 
-        self.add(bg, label, self.body)
+        self.add(bg, self.body, label)
         self.bg = bg
         self.label = label

@@ -180,6 +180,35 @@ class StageRail(VGroup):
         return AnimationGroup(*anims, run_time=0.5)
 
 
+class SpeechBubble(VGroup):
+    """A bubble that actually reads as one: rounded body, a tail pointing down-left,
+    and two lines of 'text'. The first draft's plain rounded rectangle did not."""
+
+    def __init__(self, w: float = 0.62, h: float = 0.42, color: str = INK, **kwargs):
+        super().__init__(**kwargs)
+        body = RoundedRectangle(
+            width=w, height=h, corner_radius=0.11,
+            fill_color=PAPER, fill_opacity=1, stroke_color=color, stroke_width=2.2,
+        )
+        # Tail: a triangle overlapping the body, with a white patch hiding the seam.
+        tail = Polygon(
+            body.get_bottom() + LEFT * w * 0.24 + UP * 0.01,
+            body.get_bottom() + LEFT * w * 0.06 + UP * 0.01,
+            body.get_bottom() + LEFT * w * 0.30 + DOWN * 0.16,
+            fill_color=PAPER, fill_opacity=1, stroke_color=color, stroke_width=2.2,
+        )
+        seam = Line(
+            body.get_bottom() + LEFT * w * 0.24 + UP * 0.012,
+            body.get_bottom() + LEFT * w * 0.06 + UP * 0.012,
+            color=PAPER, stroke_width=3.2,
+        )
+        lines = VGroup(
+            Line(ORIGIN, RIGHT * w * 0.42, color=color, stroke_width=1.8),
+            Line(ORIGIN, RIGHT * w * 0.26, color=color, stroke_width=1.8),
+        ).arrange(DOWN, buff=0.09, aligned_edge=LEFT).move_to(body.get_center())
+        self.add(body, tail, seam, lines)
+
+
 class Logo(VGroup):
     """The mark: five bars in the stage colours, an instruction bubble, and an
     arrow looping back to re-shape the waveform."""
@@ -195,21 +224,111 @@ class Logo(VGroup):
             for h, c in zip(heights, STAGE_COLORS)
         ]).arrange(RIGHT, buff=0.07, aligned_edge=DOWN)
 
-        bubble = RoundedRectangle(
-            width=0.46, height=0.32, corner_radius=0.1,
-            fill_color=PAPER, fill_opacity=1, stroke_color=INK, stroke_width=2.2,
-        ).next_to(bars, UR, buff=0.06).shift(RIGHT * 0.06)
+        bubble = SpeechBubble(0.62, 0.42, INK)
+        bubble.next_to(bars, UR, buff=0.04).shift(RIGHT * 0.06)
 
+        # The arrow leaves the bubble and comes back down into the first bar: the
+        # instruction re-shapes the waveform. The bow has to clear the tallest
+        # bar -- a shallow arc cuts straight through the middle of the mark.
         loop = CurvedArrow(
-            bubble.get_left() + LEFT * 0.02 + DOWN * 0.06,
-            bars.get_left() + UP * 0.30,
-            angle=-TAU / 7,
+            bubble.get_left() + LEFT * 0.02 + DOWN * 0.04,
+            bars[0].get_top() + UP * 0.14,
+            angle=-TAU / 3.2,
             color=INK,
             stroke_width=2.4,
-            tip_length=0.14,
+            tip_length=0.13,
         )
         self.add(bars, bubble, loop)
         self.scale(scale_factor)
+
+
+def wordmark(size: float = 0.92) -> VGroup:
+    """ReMIX, with the acronym letters carrying the stage colours."""
+    letters = VGroup(
+        txt("R", size, STAGE_COLORS[0], BOLD),
+        txt("e", size, MUTED, BOLD),
+        txt("M", size, STAGE_COLORS[1], BOLD),
+        txt("I", size, STAGE_COLORS[3], BOLD),
+        txt("X", size, STAGE_COLORS[4], BOLD),
+    ).arrange(RIGHT, buff=0.045, aligned_edge=DOWN)
+    return letters
+
+
+def expansion(size: float = 0.26) -> VGroup:
+    """Retrieval of Music with Instruction Xpression — initials coloured to match
+    the wordmark, so the acronym is legible without a caption explaining it.
+
+    Built word by word: manim collapses trailing spaces, so a single Text with
+    "etrieval of " loses the gap and the line runs together.
+    """
+    def word(head: str | None, head_color: str, rest: str) -> VGroup:
+        parts = []
+        if head:
+            parts.append(txt(head, size, head_color, BOLD))
+        if rest:
+            parts.append(txt(rest, size, MUTED, NORMAL))
+        g = VGroup(*parts)
+        if len(g) > 1:
+            g.arrange(RIGHT, buff=0.012, aligned_edge=DOWN)
+        return g
+
+    words = VGroup(
+        word("R", STAGE_COLORS[0], "etrieval"),
+        word(None, MUTED, "of"),
+        word("M", STAGE_COLORS[1], "usic"),
+        word(None, MUTED, "with"),
+        word("I", STAGE_COLORS[3], "nstruction"),
+        word("X", STAGE_COLORS[4], "pression"),
+    )
+    words.arrange(RIGHT, buff=size * 0.42, aligned_edge=DOWN)
+    return words
+
+
+def _icon_paper(color: str) -> VGroup:
+    page = RoundedRectangle(width=0.17, height=0.22, corner_radius=0.03,
+                            fill_color=PAPER, fill_opacity=1, stroke_color=color, stroke_width=1.6)
+    lines = VGroup(*[
+        Line(ORIGIN, RIGHT * 0.09, color=color, stroke_width=1.2) for _ in range(3)
+    ]).arrange(DOWN, buff=0.04).move_to(page.get_center())
+    return VGroup(page, lines)
+
+
+def _icon_dataset(color: str) -> VGroup:
+    return _cyl_icon(color)
+
+
+def _cyl_icon(color: str, w: float = 0.19, h: float = 0.16) -> VGroup:
+    body = Rectangle(width=w, height=h, fill_color=PAPER, fill_opacity=1, stroke_width=0)
+    top = Ellipse(width=w, height=w * 0.4, fill_color=PAPER, fill_opacity=1,
+                  stroke_color=color, stroke_width=1.5).move_to(body.get_top())
+    bot = Arc(radius=w / 2, start_angle=PI, angle=PI, color=color, stroke_width=1.5)
+    bot.stretch(0.4, 1).move_to(body.get_bottom())
+    l = Line(body.get_corner(UL), body.get_corner(DL), color=color, stroke_width=1.5)
+    r = Line(body.get_corner(UR), body.get_corner(DR), color=color, stroke_width=1.5)
+    return VGroup(body, l, r, bot, top)
+
+
+def _icon_code(color: str) -> VGroup:
+    left = VGroup(
+        Line(RIGHT * 0.05 + UP * 0.09, LEFT * 0.05, color=color, stroke_width=1.8),
+        Line(LEFT * 0.05, RIGHT * 0.05 + DOWN * 0.09, color=color, stroke_width=1.8),
+    )
+    right = left.copy().rotate(PI).shift(RIGHT * 0.19)
+    return VGroup(left, right)
+
+
+def link_pill(label: str, kind: str, color: str = INK) -> VGroup:
+    """A sleek pill with an icon, matching the website's link buttons."""
+    icon = {"paper": _icon_paper, "dataset": _icon_dataset, "code": _icon_code}[kind](color)
+    t = txt(label, T_SMALL * 0.92, color)
+    row = VGroup(icon, t).arrange(RIGHT, buff=0.13)
+    bg = RoundedRectangle(
+        width=row.width + 0.44, height=row.height + 0.26,
+        corner_radius=(row.height + 0.26) / 2,
+        fill_color=PAPER, fill_opacity=1, stroke_color=FAINT, stroke_width=1.6,
+    )
+    row.move_to(bg.get_center())
+    return VGroup(bg, row)
 
 
 def caption(scene: Scene, text: str, at=DOWN * 3.1, size: float = T_SMALL) -> Text:
