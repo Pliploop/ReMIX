@@ -58,9 +58,10 @@ Y_STAGE_BOT = -1.5  # ...nor below this
 Y_EXPLAIN = -2.15   # the one explanatory sentence
 Y_FIGURES = -2.95   # the numbers
 
-# The rail of finished stages: padded from the top, tighter to the right.
-RAIL_TOP = 3.55
-RAIL_LEFT = -6.55
+# The rail of finished stages. Pulled down clear of the frame edge so the patches
+# read as floating cards rather than tabs stuck to the top.
+RAIL_TOP = 3.05
+RAIL_LEFT = -6.45
 
 
 def tint(color: str, alpha: float = 0.10) -> str:

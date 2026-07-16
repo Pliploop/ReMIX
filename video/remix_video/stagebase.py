@@ -18,11 +18,11 @@ from .theme import (
     T_SMALL, T_TINY, Y_EXPLAIN, Y_FIGURES, Y_HEADER, txt,
 )
 
-# Where finished stages stack: a discreet rail, padded down from the top edge and
-# kept tight to the left so it never crowds the stage content.
-SLOT_W = 1.62
-SLOT_H = 0.9
-SLOT_GAP = 0.1
+# Where finished stages stack: a discreet rail of square cards, padded down from
+# the top edge and kept tight to the left so it never crowds the stage content.
+SLOT_W = 1.15
+SLOT_H = 1.15
+SLOT_GAP = 0.16
 
 
 def slot_position(i: int) -> np.ndarray:

@@ -180,16 +180,41 @@ class StageRail(VGroup):
         return AnimationGroup(*anims, run_time=0.5)
 
 
-class SpeechBubble(VGroup):
-    """A bubble that actually reads as one: rounded body, a tail pointing down-left,
-    and two lines of 'text'. The first draft's plain rounded rectangle did not."""
+def _arrow_tip(at, direction, color: str, size: float = 0.13) -> Triangle:
+    angle = np.arctan2(direction[1], direction[0])
+    return (
+        Triangle(fill_color=color, fill_opacity=1, stroke_width=0)
+        .scale(size)
+        .rotate(angle - PI / 2)
+        .move_to(at)
+    )
 
-    def __init__(self, w: float = 0.62, h: float = 0.42, color: str = INK, **kwargs):
+
+class SpeechBubble(VGroup):
+    """A bubble that reads as one: rounded body, a tail pointing down-left, and two
+    lines of 'text'. Glassy -- a colour wash under a translucent body with a gleam
+    across the top, the same trick the track cards use."""
+
+    def __init__(self, w: float = 0.62, h: float = 0.42, color: str = INK,
+                 wash: str = "#7B3FF2", **kwargs):
         super().__init__(**kwargs)
+        shadow = RoundedRectangle(
+            width=w, height=h, corner_radius=0.11,
+            fill_color="#000000", fill_opacity=0.06, stroke_width=0,
+        ).shift(DOWN * 0.03)
+        tintwash = RoundedRectangle(
+            width=w, height=h, corner_radius=0.11,
+            fill_color=wash, fill_opacity=0.16, stroke_width=0,
+        )
         body = RoundedRectangle(
             width=w, height=h, corner_radius=0.11,
-            fill_color=PAPER, fill_opacity=1, stroke_color=color, stroke_width=2.2,
+            fill_color=PAPER, fill_opacity=0.66, stroke_color=color, stroke_width=2.2,
         )
+        gleam = RoundedRectangle(
+            width=w - 0.13, height=h * 0.4, corner_radius=0.08,
+            fill_color=PAPER, fill_opacity=0.4, stroke_width=0,
+        ).move_to(body.get_top() + DOWN * (h * 0.23))
+        self.add(shadow, tintwash)
         # Tail: a triangle overlapping the body, with a white patch hiding the seam.
         tail = Polygon(
             body.get_bottom() + LEFT * w * 0.24 + UP * 0.01,
@@ -206,7 +231,7 @@ class SpeechBubble(VGroup):
             Line(ORIGIN, RIGHT * w * 0.42, color=color, stroke_width=1.8),
             Line(ORIGIN, RIGHT * w * 0.26, color=color, stroke_width=1.8),
         ).arrange(DOWN, buff=0.09, aligned_edge=LEFT).move_to(body.get_center())
-        self.add(body, tail, seam, lines)
+        self.add(body, gleam, tail, seam, lines)
 
 
 class Logo(VGroup):
@@ -224,21 +249,27 @@ class Logo(VGroup):
             for h, c in zip(heights, STAGE_COLORS)
         ]).arrange(RIGHT, buff=0.07, aligned_edge=DOWN)
 
-        bubble = SpeechBubble(0.62, 0.42, INK)
-        bubble.next_to(bars, UR, buff=0.04).shift(RIGHT * 0.06)
+        # A real loop: an almost-closed circular arrow *around* the waveform, with
+        # the bubble sitting in its gap. The previous arc started at the bubble
+        # and stopped in mid-air, so it read as a stray swoosh rather than a
+        # cycle. A loop says "do it again", which is the whole idea.
+        centre = bars.get_center()
+        radius = max(bars.width, bars.height) * 0.78
 
-        # The arrow leaves the bubble and comes back down into the first bar: the
-        # instruction re-shapes the waveform. The bow has to clear the tallest
-        # bar -- a shallow arc cuts straight through the middle of the mark.
-        loop = CurvedArrow(
-            bubble.get_left() + LEFT * 0.02 + DOWN * 0.04,
-            bars[0].get_top() + UP * 0.14,
-            angle=-TAU / 3.2,
-            color=INK,
-            stroke_width=2.4,
-            tip_length=0.13,
+        start_a = TAU * 0.07     # just below the bubble, on the right
+        sweep = TAU * 0.78       # counter-clockwise, leaving a gap top-right
+        loop = Arc(
+            radius=radius, start_angle=start_a, angle=sweep,
+            arc_center=centre, color=INK, stroke_width=2.4,
         )
-        self.add(bars, bubble, loop)
+        end_pt = loop.point_from_proportion(1.0)
+        prev_pt = loop.point_from_proportion(0.985)
+        tip = _arrow_tip(end_pt, end_pt - prev_pt, INK, 0.115)
+
+        bubble = SpeechBubble(0.6, 0.4, INK)
+        bubble.move_to(centre + np.array([np.cos(TAU * 0.075), np.sin(TAU * 0.075), 0]) * radius * 1.16)
+
+        self.add(loop, tip, bars, bubble)
         self.scale(scale_factor)
 
 

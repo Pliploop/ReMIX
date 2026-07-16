@@ -219,6 +219,24 @@ class StatBadge(VGroup):
         self.add(VGroup(v, l).arrange(DOWN, buff=0.09))
 
 
+# One graph, shared by the stage 2 and stage 3 icons. Deliberately dense with
+# crossing edges: a neighbourhood is overlapping, not a tidy tree.
+GRAPH_ICON_PTS = [
+    LEFT * 0.42 + UP * 0.06,
+    LEFT * 0.16 + UP * 0.26,
+    RIGHT * 0.16 + UP * 0.24,
+    LEFT * 0.26 + DOWN * 0.22,
+    RIGHT * 0.44 + UP * 0.02,
+    RIGHT * 0.06 + DOWN * 0.28,
+    RIGHT * 0.3 + DOWN * 0.1,
+    LEFT * 0.02 + UP * 0.02,
+]
+GRAPH_ICON_EDGES = [
+    (0, 1), (1, 2), (2, 4), (0, 3), (3, 5), (5, 6), (6, 4),
+    (1, 7), (7, 2), (3, 7), (7, 6), (0, 7), (5, 7), (2, 6),
+]
+
+
 def panel_icon(n: int, color: str, scale: float = 1.0) -> VGroup:
     """A tiny sketch of what a stage does, in straight lines.
 
@@ -235,24 +253,26 @@ def panel_icon(n: int, color: str, scale: float = 1.0) -> VGroup:
             for _ in range(4)
         ]).arrange(DOWN, buff=0.04)
         g.add(VGroup(cyl, rows).arrange(RIGHT, buff=0.2))
-    elif n == 2:  # graph
-        pts = [LEFT * 0.34 + UP * 0.1, ORIGIN + UP * 0.2, RIGHT * 0.34 + UP * 0.02,
-               LEFT * 0.16 + DOWN * 0.2, RIGHT * 0.2 + DOWN * 0.22]
-        for a, b in [(0, 1), (1, 2), (0, 3), (3, 4), (2, 4)]:
-            g.add(Line(pts[a], pts[b], color=color, stroke_width=1.1, stroke_opacity=0.55))
-        for p in pts:
-            g.add(Dot(p, radius=0.042, color=color))
-    elif n == 3:  # a walk over that same graph
-        pts = [LEFT * 0.34 + UP * 0.1, ORIGIN + UP * 0.2, RIGHT * 0.34 + UP * 0.02,
-               LEFT * 0.16 + DOWN * 0.2, RIGHT * 0.2 + DOWN * 0.22]
-        faint = [(1, 2), (2, 4)]
-        walk = [(0, 3), (3, 4), (0, 1)]
-        for a, b in faint:
-            g.add(Line(pts[a], pts[b], color=MUTED, stroke_width=0.9, stroke_opacity=0.3))
-        for a, b in walk:
-            g.add(Line(pts[a], pts[b], color=color, stroke_width=2.0))
-        for p in pts:
-            g.add(Dot(p, radius=0.042, color=color))
+    elif n in (2, 3):
+        # Stages 2 and 3 share one graph: stage 3 *is* stage 2 with a path picked
+        # out. Drawing two different graphs implied the chain lived somewhere
+        # else. Dense and overlapping, because that is what a neighbourhood is.
+        pts = GRAPH_ICON_PTS
+        walk = [(0, 3), (3, 6), (6, 4)]
+        for a, b in GRAPH_ICON_EDGES:
+            on_walk = (a, b) in walk or (b, a) in walk
+            if n == 2:
+                g.add(Line(pts[a], pts[b], color=color, stroke_width=1.0, stroke_opacity=0.6))
+            elif on_walk:
+                g.add(Line(pts[a], pts[b], color=color, stroke_width=2.4))
+            else:
+                g.add(Line(pts[a], pts[b], color=MUTED, stroke_width=0.8, stroke_opacity=0.22))
+        walk_nodes = {i for e in walk for i in e}
+        for i, p in enumerate(pts):
+            if n == 3 and i not in walk_nodes:
+                g.add(Dot(p, radius=0.03, color=MUTED, fill_opacity=0.3))
+            else:
+                g.add(Dot(p, radius=0.042, color=color))
     elif n == 4:  # instruction lines
         g.add(VGroup(*[
             RoundedRectangle(width=w, height=0.13, corner_radius=0.06,
@@ -312,8 +332,11 @@ class StagePanel(VGroup):
         **kwargs,
     ):
         super().__init__(**kwargs)
+        # Square-ish with a generous radius: the rounded-square card of the
+        # figure, not a wide tab.
+        side = min(width, height)
         bg = RoundedRectangle(
-            width=width, height=height, corner_radius=0.12,
+            width=width, height=height, corner_radius=side * 0.22,
             fill_color=tint(color, 0.07), fill_opacity=1,
             stroke_color=color, stroke_width=1.3, stroke_opacity=0.8,
         )
