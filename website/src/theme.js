@@ -79,6 +79,10 @@ export const LINKS = {
   video: '#',
 }
 
+// Render radius of the explorer's sphere. Lives here, not in Sphere.jsx, so the
+// page can use it without eagerly importing three.js and breaking the lazy chunk.
+export const SPHERE_RADIUS = 2
+
 export const hexToRgba = (hex, a) => {
   const h = hex.replace('#', '')
   const r = parseInt(h.slice(0, 2), 16)

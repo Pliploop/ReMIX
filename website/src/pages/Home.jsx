@@ -5,6 +5,7 @@ import Nav, { useActiveSection, useTheme } from '../components/Nav.jsx'
 import Pipeline from '../components/Pipeline.jsx'
 import ChainViewer from '../components/ChainViewer.jsx'
 import Logo from '../components/Logo.jsx'
+import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { LINKS, hexToRgba } from '../theme.js'
 
 // Recharts is ~100KB and lives below the fold; keep it out of the landing chunk.
@@ -175,13 +176,15 @@ export default function Home() {
           title="Real chains from the dataset."
           lede="Every chain below passed both LLM judges at every turn. Audio streams from Jamendo and Spotify — we redistribute none of it."
         >
-          {chains ? (
-            <ChainViewer data={chains} />
-          ) : (
-            <div className="rounded-2xl border border-dashed border-neutral-300 p-10 text-center text-sm text-neutral-500 dark:border-neutral-700">
-              Loading chains…
-            </div>
-          )}
+          <ErrorBoundary label="Chain viewer">
+            {chains ? (
+              <ChainViewer data={chains} />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-neutral-300 p-10 text-center text-sm text-neutral-500 dark:border-neutral-700">
+                Loading chains…
+              </div>
+            )}
+          </ErrorBoundary>
         </Section>
 
         <Section
@@ -190,13 +193,15 @@ export default function Home() {
           title="Two open catalogs, one recipe."
           lede="ReMIX is built over Music4All and MTG-Jamendo. Same pipeline, same instruction grammar, two very different musical distributions."
         >
-          {stats ? (
-            <Suspense fallback={<ChartFallback />}>
-              <DatasetStats stats={stats} dark={dark} />
-            </Suspense>
-          ) : (
-            <ChartFallback />
-          )}
+          <ErrorBoundary label="Dataset charts">
+            {stats ? (
+              <Suspense fallback={<ChartFallback />}>
+                <DatasetStats stats={stats} dark={dark} />
+              </Suspense>
+            ) : (
+              <ChartFallback />
+            )}
+          </ErrorBoundary>
         </Section>
 
         <Section
@@ -205,13 +210,15 @@ export default function Home() {
           title="Two judges, one rubric, one gate."
           lede="Every instruction variant is scored by Qwen3.6-27B and Gemma-4-31B against the same rubric a human rater sees. Only variants that pass become part of ReMIX."
         >
-          {stats ? (
-            <Suspense fallback={<ChartFallback />}>
-              <ValidationStats stats={stats} dark={dark} />
-            </Suspense>
-          ) : (
-            <ChartFallback />
-          )}
+          <ErrorBoundary label="Validation charts">
+            {stats ? (
+              <Suspense fallback={<ChartFallback />}>
+                <ValidationStats stats={stats} dark={dark} />
+              </Suspense>
+            ) : (
+              <ChartFallback />
+            )}
+          </ErrorBoundary>
         </Section>
 
         <footer className="border-t border-neutral-200 py-10 text-sm dark:border-neutral-800">
