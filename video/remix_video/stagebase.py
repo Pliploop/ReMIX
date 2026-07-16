@@ -107,10 +107,12 @@ class StageScene(Scene):
 
 
 def stat_row(pairs: List[tuple[str, str]], color: str = INK, buff: float = 1.1) -> VGroup:
-    """A row of figures. Numbers only where we actually have them."""
+    """A row of figures, parked on the figures band so it can never land on the
+    explain line. Numbers only where we actually have them."""
     from .glass import StatBadge
 
-    return VGroup(*[StatBadge(v, l, color, 0.46) for v, l in pairs]).arrange(RIGHT, buff=buff)
+    g = VGroup(*[StatBadge(v, l, color, 0.46) for v, l in pairs]).arrange(RIGHT, buff=buff)
+    return g.move_to(UP * Y_FIGURES)
 
 
 def explain(text: str, at=None, size: float = T_SMALL) -> Text:

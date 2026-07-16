@@ -104,53 +104,60 @@ def elbow_link(
     width: float = 2.6,
     radius: float = 0.16,
     tip: bool = True,
-    first: str = "h",
+    mid: float | None = None,
 ) -> VGroup:
-    """An orthogonal connector with rounded elbows: out horizontally, turn, in.
+    """A three-segment orthogonal connector with rounded elbows: out, across, in.
 
     This is the paper figure's language -- diagram plumbing is elbowed, not
-    curved. Curves are reserved for the graph and the chain, where the bend
-    actually means something.
+    curved. Curves are reserved for the graph and the chain, where the bend means
+    something.
+
+    Three segments, not two: a two-segment L runs to the target's x and then turns,
+    so it arrives from underneath with the arrowhead pointing up. Boxes want to be
+    entered from the side they face.
     """
     a = np.array(a, dtype=float)
     b = np.array(b, dtype=float)
     dx, dy = b[0] - a[0], b[1] - a[1]
 
-    if abs(dy) < 1e-3 or abs(dx) < 1e-3:
+    if abs(dy) < 1e-3:
         path = Line(a, b, color=color, stroke_width=width)
         g = VGroup(path)
         if tip:
-            g.add(_tip_dir(b, np.array([dx, dy, 0.0]), color))
+            g.add(_tip_dir(b, np.array([np.sign(dx) or 1.0, 0.0, 0.0]), color))
         return g
 
-    if first == "h":
-        corner = np.array([b[0], a[1], 0.0])
-        indir = np.array([0.0, np.sign(dy), 0.0])
-    else:
-        corner = np.array([a[0], b[1], 0.0])
-        indir = np.array([np.sign(dx), 0.0, 0.0])
+    mx = a[0] + dx * (0.5 if mid is None else mid)
+    c1 = np.array([mx, a[1], 0.0])
+    c2 = np.array([mx, b[1], 0.0])
+    r = min(radius, abs(mx - a[0]) * 0.9, abs(b[0] - mx) * 0.9, abs(dy) / 2)
 
-    r = min(radius, abs(dx) / 2, abs(dy) / 2)
-    to_corner = (corner - a) / max(np.linalg.norm(corner - a), 1e-6)
-    from_corner = (b - corner) / max(np.linalg.norm(b - corner), 1e-6)
-    p1 = corner - to_corner * r
-    p2 = corner + from_corner * r
+    hdir = np.sign(dx) or 1.0
+    vdir = np.sign(dy)
 
     path = VMobject(color=color, stroke_width=width)
-    path.set_points_as_corners([a, p1])
-    arc = ArcBetweenPoints(p1, p2, angle=PI / 2 * _turn_sign(to_corner, from_corner))
-    path.append_points(arc.points)
+    path.set_points_as_corners([a, c1 - np.array([hdir * r, 0, 0])])
+    path.append_points(
+        ArcBetweenPoints(
+            c1 - np.array([hdir * r, 0, 0]),
+            c1 + np.array([0, vdir * r, 0]),
+            angle=-PI / 2 * hdir * vdir,
+        ).points
+    )
+    path.add_points_as_corners([c2 - np.array([0, vdir * r, 0])])
+    path.append_points(
+        ArcBetweenPoints(
+            c2 - np.array([0, vdir * r, 0]),
+            c2 + np.array([hdir * r, 0, 0]),
+            angle=PI / 2 * hdir * vdir,
+        ).points
+    )
     path.add_points_as_corners([b])
 
     g = VGroup(path)
     if tip:
-        g.add(_tip_dir(b, indir, color))
+        g.add(_tip_dir(b, np.array([hdir, 0.0, 0.0]), color))
     return g
-
-
-def _turn_sign(a_dir, b_dir) -> float:
-    cross = a_dir[0] * b_dir[1] - a_dir[1] * b_dir[0]
-    return -1.0 if cross > 0 else 1.0
 
 
 def _tip_dir(at, direction, color: str, size: float = 0.13) -> Triangle:
