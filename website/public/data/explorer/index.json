@@ -3,18 +3,20 @@
   {
    "key": "mtg_jamendo",
    "label": "MTG-Jamendo",
-   "tracks": 6777,
-   "chains": 2186,
+   "tracks": 29109,
+   "chains": 14564,
    "method": "reused",
-   "max_variants": 5
+   "max_variants": 5,
+   "validated_only": false
   },
   {
    "key": "music4all",
    "label": "Music4All",
-   "tracks": 22329,
-   "chains": 7906,
+   "tracks": 60560,
+   "chains": 29719,
    "method": "reused",
-   "max_variants": 5
+   "max_variants": 5,
+   "validated_only": false
   }
  ]
 }
