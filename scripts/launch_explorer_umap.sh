@@ -21,7 +21,13 @@ CPUS="${CPUS:-16}"
 
 mkdir -p "${REPO}/logs"
 
+# --no-filter-chains: ship every resolvable chain (the page has the rating
+# toggle + slider). FILTER=1 flips back to validated-only if you ever want the
+# small curated export instead.
 ARGS="--method umap"
+if [[ "${FILTER:-0}" != "1" ]]; then
+  ARGS="${ARGS} --no-filter-chains"
+fi
 if [[ -n "${ONLY}" ]]; then
   ARGS="${ARGS} --only ${ONLY}"
 fi

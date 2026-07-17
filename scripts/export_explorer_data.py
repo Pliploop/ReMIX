@@ -19,13 +19,21 @@ Outputs, per dataset, under website/public/data/explorer/<key>/:
   pos.bin      int16 xyz triples, unit sphere scaled by 32767
   chains.json  every chain, referencing tracks by index
 
+By default only chains the judges validated are kept, and the cloud is subset to
+the tracks those chains touch, so the explorer ships a vetted subset rather than
+the raw corpus. Each rated chain carries `js` (per-judge mean step score); the
+rating threshold is a slider on the page, not baked in here. Pass
+--no-filter-chains for the whole corpus. As validation runs at larger scale, the
+same command re-run simply keeps more.
+
 Usage:
-  python scripts/export_explorer_data.py --method pca
   python scripts/export_explorer_data.py --method umap        # submit via SLURM
 
-  # Text-only refresh: keeps the existing projection, so no embeddings and no
-  # UMAP. This is the cheap way to change what the explorer says about a step.
-  python scripts/export_explorer_data.py --reuse-positions --max-variants 5
+  # Cheap refresh: keep the existing projection, re-apply the current filter, and
+  # subset the cloud to what survives. No embeddings, no UMAP.
+  python scripts/export_explorer_data.py --reuse-positions
+
+  python scripts/export_explorer_data.py --no-filter-chains   # whole corpus
 """
 
 from __future__ import annotations
@@ -43,6 +51,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from export_website_data import (  # noqa: E402  (reuse: single source of truth for audio refs)
     INSTR_FOLDER,
+    JUDGE_FILES,
     M4A_RAW,
     MTG_RAW,
     _compact,
@@ -50,6 +59,7 @@ from export_website_data import (  # noqa: E402  (reuse: single source of truth 
     build_track,
     load_jamendo_licenses,
     load_m4a_metadata,
+    load_ratings,
 )
 
 csv.field_size_limit(10 ** 9)
@@ -89,6 +99,41 @@ def load_chain_steps(instr_path: Path, max_variants: int) -> Dict[str, Dict[int,
             variants.sort(key=lambda r: int(r.get("variant_index") or 0))
             del variants[max_variants:]
     return out
+
+
+def load_judge_scores(val_dir: Path, names: Tuple[str, ...]) -> List[Dict[Tuple[str, int, int], List[float]]]:
+    """One (chain, turn, variant) -> [scores] map per judge file.
+
+    load_ratings merges every path it is given into one map; calling it once per
+    judge keeps the judges apart, which is what "pass for both models" needs.
+    """
+    return [load_ratings([val_dir / name]) for name in names]
+
+
+def chain_model_means(
+    chain_id: str,
+    turns: Dict[int, List[Dict[str, Any]]],
+    judge_scores: List[Dict[Tuple[str, int, int], List[float]]],
+) -> Optional[List[float]]:
+    """Per-model mean over the primary variant of each turn.
+
+    Returns None if any turn is unrated by any judge -- which, with judges that
+    have only scored the validation sidecar, is how an unvalidated chain is
+    dropped rather than kept unseen. The primary variant is the one the explorer
+    displays (lowest variant_index), so we gate exactly what a visitor reads.
+    """
+    means: List[float] = []
+    for js in judge_scores:
+        vals: List[float] = []
+        for turn in sorted(turns):
+            primary = turns[turn][0]
+            key = (chain_id, turn, int(primary.get("variant_index") or 0))
+            got = js.get(key)
+            if not got:
+                return None
+            vals.append(sum(got) / len(got))
+        means.append(sum(vals) / len(vals))
+    return means
 
 
 def load_embedding_paths(lookup_csv: Path, wanted: set[str]) -> Dict[str, str]:
@@ -155,6 +200,30 @@ def export(label: str, key: str, root: Path, args, jamendo, m4a) -> Optional[Dic
 
     print("  reading chains ...")
     chains = load_chain_steps(instr_path, args.max_variants)
+
+    # Per-chain judge means, attached to each chain as `js` so the explorer can
+    # filter by rating in the browser. Filtering lives on the page, not here --
+    # but a chain with no rating has nothing for that slider to act on, and
+    # shipping the whole unrated corpus is ~30x the bytes, so by default we still
+    # keep only validated chains (and subset the cloud to what they touch).
+    means_by_chain: Dict[str, List[float]] = {}
+    val_dir = root / args.folder / "validation"
+    judge_scores = load_judge_scores(val_dir, JUDGE_FILES[key])
+    if any(judge_scores):
+        for cid, turns in chains.items():
+            m = chain_model_means(cid, turns, judge_scores)
+            if m is not None:
+                means_by_chain[cid] = [round(x, 2) for x in m]
+        if args.filter_chains:
+            before = len(chains)
+            chains = {c: t for c, t in chains.items() if c in means_by_chain}
+            print(f"  validated-only: {before:,} -> {len(chains):,} chains "
+                  f"(rated by all {len(JUDGE_FILES[key])} judges)")
+        else:
+            print(f"  scoring only, no filter: {len(means_by_chain):,}/{len(chains):,} chains are rated")
+    else:
+        print(f"  ! no judge ratings under {val_dir}; shipping chains unrated", file=sys.stderr)
+
     # Every variant of a turn shares the turn's endpoints, so variant 0 is enough.
     clip_ids = {
         c
@@ -165,23 +234,35 @@ def export(label: str, key: str, root: Path, args, jamendo, m4a) -> Optional[Dic
     print(f"  {len(chains):,} chains · {len(clip_ids):,} distinct clips")
 
     if args.reuse_positions:
-        # Re-exporting text (e.g. to add variants) must not pay for embeddings and
-        # UMAP again: nothing about the instructions moves a point. We adopt the
-        # previous run's track order verbatim -- it is what pos.bin is indexed by,
-        # so regenerating it here would silently misalign every coordinate.
-        prev = out_dir / "tracks.json"
-        if not prev.is_file():
-            print(f"  ! --reuse-positions needs an existing {prev}", file=sys.stderr)
+        # Re-exporting text (e.g. to add variants) or narrowing the chain set must
+        # not pay for embeddings and UMAP again: nothing here moves a point. We
+        # take the previous run's coordinates as-is and, if the chain set shrank,
+        # keep only the rows the surviving chains still touch -- in the previous
+        # order, since that is what pos.bin was indexed by.
+        prev_tracks = out_dir / "tracks.json"
+        prev_pos = out_dir / "pos.bin"
+        if not (prev_tracks.is_file() and prev_pos.is_file()):
+            print(f"  ! --reuse-positions needs existing {prev_tracks} and {prev_pos}", file=sys.stderr)
             return None
-        columnar = json.loads(prev.read_text(encoding="utf-8"))
-        usable = columnar["clip_id"]
+        prev_col = json.loads(prev_tracks.read_text(encoding="utf-8"))
+        prev_ids = prev_col["clip_id"]
+        prev_xyz = (np.frombuffer(prev_pos.read_bytes(), dtype="<i2").astype(np.float32) / 32767.0).reshape(-1, 3)
+
+        keep_rows = [i for i, cid in enumerate(prev_ids) if cid in clip_ids]
+        usable = [prev_ids[i] for i in keep_rows]
         index = {cid: i for i, cid in enumerate(usable)}
+        xyz = prev_xyz[keep_rows]
+        # Per-track columns are subset row-wise; the deduped licence table (whose
+        # length is not the track count) is carried through untouched.
+        columnar = {
+            k: ([v[i] for i in keep_rows] if isinstance(v, list) and len(v) == len(prev_ids) else v)
+            for k, v in prev_col.items()
+        }
         dropped = len(clip_ids - set(index))
-        print(f"  reusing {len(usable):,} positions from the previous export")
+        print(f"  reusing projection: {len(prev_ids):,} -> {len(usable):,} positions kept")
         if dropped:
-            print(f"  ! {dropped:,} clips are new since it and will be dropped; "
-                  f"re-run without --reuse-positions to include them", file=sys.stderr)
-        xyz = None
+            print(f"  ! {dropped:,} clips referenced by kept chains are absent from the "
+                  f"previous export; re-run without --reuse-positions to include them", file=sys.stderr)
     else:
         manifest = load_manifest_rows(root / "ingest" / "normalized_track_manifest.csv", clip_ids)
         emb_paths = load_embedding_paths(root / "embeddings" / "embedding_lookup_manifest.csv", clip_ids)
@@ -284,18 +365,22 @@ def export(label: str, key: str, root: Path, args, jamendo, m4a) -> Optional[Dic
                 ]
             steps.append(step)
         if steps:
-            out_chains.append({"id": chain_id, "sp": turns[sorted(turns)[0]][0].get("split", ""), "st": steps})
-    out_chains.sort(key=lambda c: c["id"])
+            out_chain = {"id": chain_id, "sp": turns[sorted(turns)[0]][0].get("split", ""), "st": steps}
+            if chain_id in means_by_chain:
+                out_chain["js"] = means_by_chain[chain_id]  # per-judge mean step score
+            out_chains.append(out_chain)
+    # Best-rated first, so the default view opens on strong examples.
+    out_chains.sort(key=lambda c: (-min(c.get("js") or [0]), c["id"]))
     print(f"  chains with all clips resolved: {len(out_chains):,}")
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    if not args.reuse_positions:
-        # int16 keeps the cloud tiny; 1/32767 is far finer than a pixel on screen.
-        (out_dir / "pos.bin").write_bytes(
-            np.clip(xyz * 32767, -32767, 32767).astype("<i2").tobytes()
-        )
-        (out_dir / "tracks.json").write_text(json.dumps(columnar, ensure_ascii=False), encoding="utf-8")
+    # Both paths now hold xyz + columnar (the reuse path subset them), and the
+    # kept point set can differ from the previous export, so always rewrite all
+    # three files together -- they must stay indexed by the same track order.
+    # int16 keeps the cloud tiny; 1/32767 is far finer than a pixel on screen.
+    (out_dir / "pos.bin").write_bytes(np.clip(xyz * 32767, -32767, 32767).astype("<i2").tobytes())
+    (out_dir / "tracks.json").write_text(json.dumps(columnar, ensure_ascii=False), encoding="utf-8")
     (out_dir / "chains.json").write_text(json.dumps(out_chains, ensure_ascii=False), encoding="utf-8")
 
     sizes = {p.name: p.stat().st_size / 1024 for p in out_dir.iterdir()}
@@ -310,6 +395,9 @@ def export(label: str, key: str, root: Path, args, jamendo, m4a) -> Optional[Dic
         # claiming args.method here would misreport how the sphere was built.
         "method": "reused" if args.reuse_positions else args.method,
         "max_variants": args.max_variants,
+        # Whether the corpus was pre-narrowed to validated chains. The rating
+        # threshold itself now lives on the page, driven by each chain's `js`.
+        "validated_only": bool(args.filter_chains),
     }
 
 
@@ -329,9 +417,18 @@ def main() -> None:
     ap.add_argument(
         "--reuse-positions",
         action="store_true",
-        help="Rewrite chains.json only, keeping the existing pos.bin/tracks.json. "
-             "Skips embeddings and the projection entirely, so re-exporting text "
-             "(e.g. --max-variants) takes minutes instead of a UMAP run.",
+        help="Keep the previous run's projection instead of recomputing it: adopts "
+             "its coordinates and subsets them to whatever chains survive. Skips "
+             "embeddings and UMAP entirely, so a re-export takes minutes.",
+    )
+    ap.add_argument(
+        "--filter-chains",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Ship only validated chains (rated by every judge) and subset the "
+             "cloud to the tracks they touch. Default on. --no-filter-chains ships "
+             "the whole corpus, rated where possible. Either way each rated chain "
+             "carries its per-judge mean score; the threshold slider is on the page.",
     )
     args = ap.parse_args()
 
