@@ -43,7 +43,7 @@ function TrackCard({ track, badge, accent }) {
       )}
 
       <div className="mt-4">
-        <AudioPlayer audio={track.audio} accent={accent} compact />
+        <AudioPlayer audio={track.audio} accent={accent} clipId={track.clip_id} compact />
       </div>
       <div className="mt-2">
         <Attribution track={track} />
