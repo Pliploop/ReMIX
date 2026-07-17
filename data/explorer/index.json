@@ -5,14 +5,16 @@
    "label": "MTG-Jamendo",
    "tracks": 6777,
    "chains": 2186,
-   "method": "umap"
+   "method": "reused",
+   "max_variants": 5
   },
   {
    "key": "music4all",
    "label": "Music4All",
    "tracks": 22329,
-   "chains": 7554,
-   "method": "umap"
+   "chains": 7906,
+   "method": "reused",
+   "max_variants": 5
   }
  ]
 }
