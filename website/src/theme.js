@@ -71,17 +71,34 @@ export const GENRE_COLORS = {
   Other: '#C3C7CD',
 }
 
-// Placeholders — fill in once the paper and dataset are public.
+// `null` means "not public yet" and renders as a disabled pill rather than a
+// dead link. Do not use '#' as a placeholder: HashRouter owns the hash, so '#'
+// is a real navigation that blanks the page.
 export const LINKS = {
-  paper: '#',
-  huggingface: '#',
+  paper: null,
+  huggingface: null,
   github: 'https://github.com/Pliploop/ReMIX',
-  video: '#',
 }
 
 // Render radius of the explorer's sphere. Lives here, not in Sphere.jsx, so the
 // page can use it without eagerly importing three.js and breaking the lazy chunk.
 export const SPHERE_RADIUS = 2
+
+/**
+ * The window of a track the pipeline actually analysed, parsed out of the clip id
+ * ("track_0177826::0-30::1" -> {start: 0, end: 30}).
+ *
+ * Every clip in both catalogs is currently the first 30 seconds, but the id is
+ * the authority, not that assumption -- so we read it rather than hard-coding 30.
+ * Returns null for ids that carry no window.
+ */
+export function clipWindow(clipId) {
+  const m = /::(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)::/.exec(clipId ?? '')
+  if (!m) return null
+  const start = Number(m[1])
+  const end = Number(m[2])
+  return end > start ? { start, end } : null
+}
 
 export const hexToRgba = (hex, a) => {
   const h = hex.replace('#', '')

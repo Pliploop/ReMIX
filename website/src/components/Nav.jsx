@@ -41,6 +41,22 @@ export function useActiveSection(ids) {
   return active
 }
 
+/**
+ * Scroll to a section without touching the URL hash.
+ *
+ * A plain `href="#pipeline"` cannot work here: HashRouter keeps the route in the
+ * hash (`#/`), so the browser rewriting it to `#pipeline` is read back as the
+ * route "/pipeline", which matches nothing and blanks the page. So we intercept
+ * the click and scroll ourselves. `html { scroll-behavior: smooth }` in index.css
+ * does the easing; scroll-mt-20 on each section clears the sticky nav.
+ */
+export function scrollToSection(e, id) {
+  const el = document.getElementById(id)
+  if (!el) return
+  e.preventDefault()
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 export default function Nav({ dark, setDark, sections = [], active }) {
   const { pathname } = useLocation()
 
@@ -57,6 +73,7 @@ export default function Nav({ dark, setDark, sections = [], active }) {
             <a
               key={s.id}
               href={`#${s.id}`}
+              onClick={(e) => scrollToSection(e, s.id)}
               className={
                 active === s.id
                   ? 'font-medium text-stage-validate'
