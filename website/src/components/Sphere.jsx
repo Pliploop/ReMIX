@@ -5,9 +5,9 @@ import * as THREE from 'three'
 import { SPHERE_RADIUS as RADIUS } from '../theme.js'
 
 // How far a dense neighbourhood lifts off the sphere, as a fraction of RADIUS.
-const RELIEF = 0.14
+const RELIEF = 0.17
 // The chain path floats above the tallest relief so it never dips into terrain.
-const PATH_LIFT = 1.0 + RELIEF + 0.04
+const PATH_LIFT = 1.0 + RELIEF + 0.05
 
 /** Great-circle (slerp) arc between two points, lifted clear of the relief. */
 export function arcPoints(a, b, segments = 64, lift = PATH_LIFT) {
@@ -34,37 +34,94 @@ export function arcPoints(a, b, segments = 64, lift = PATH_LIFT) {
 
 const lift = (p, k) => new THREE.Vector3(...p).normalize().multiplyScalar(RADIUS * k)
 
+const NLAT = 64
+const NLON = 128
+
+/** Separable box blur over the lat/long grid: wraps in longitude (it is periodic),
+ *  clamps in latitude. A few passes approximate a Gaussian, turning per-cell
+ *  spikes into rolling hills. */
+function blurGrid(grid, radius, passes) {
+  let cur = grid
+  const w = 2 * radius + 1
+  for (let p = 0; p < passes; p++) {
+    const tmp = new Float32Array(cur.length)
+    for (let y = 0; y < NLAT; y++) {
+      for (let x = 0; x < NLON; x++) {
+        let s = 0
+        for (let dx = -radius; dx <= radius; dx++) s += cur[y * NLON + (((x + dx) % NLON) + NLON) % NLON]
+        tmp[y * NLON + x] = s / w
+      }
+    }
+    const out = new Float32Array(cur.length)
+    for (let y = 0; y < NLAT; y++) {
+      for (let x = 0; x < NLON; x++) {
+        let s = 0
+        for (let dy = -radius; dy <= radius; dy++) {
+          const yy = Math.min(NLAT - 1, Math.max(0, y + dy))
+          s += tmp[yy * NLON + x]
+        }
+        out[y * NLON + x] = s / w
+      }
+    }
+    cur = out
+  }
+  return cur
+}
+
 /**
- * Turn the raw cloud into a relief map: bin points onto a lat/long grid, and
- * push each point outward in proportion to how crowded its cell is. Dense
- * regions of the embedding rise into ridges; sparse space stays near the
- * surface. Returns the displaced positions, a matching density in [0,1], and a
- * per-point colour warming with density — so the landscape reads even before a
- * chain is drawn on it.
+ * Turn the raw cloud into a *smooth* relief map.
+ *
+ * Binning alone gives blocky heights — adjacent points in different cells jump.
+ * So we bin, blur the grid into rolling hills, and then sample it back
+ * **bilinearly** at each point's exact lat/long. Bilinear sampling means two
+ * nearby points get near-equal heights, so the surface is continuous: it reads
+ * as terrain, not a bar chart. Dense regions of the embedding become mountains;
+ * sparse space stays low. Returns displaced positions, density in [0,1], and a
+ * per-point colour warming with height.
  */
 function useRelief(positions, dark) {
   return useMemo(() => {
     const n = positions.length / 3
-    const NLAT = 40
-    const NLON = 80
-    const bins = new Float32Array(NLAT * NLON)
-    const binOf = new Int32Array(n)
+    const grid = new Float32Array(NLAT * NLON)
+    // Cache each point's continuous grid coords so we bin and sample once each.
+    const gy = new Float32Array(n)
+    const gx = new Float32Array(n)
 
     for (let i = 0; i < n; i++) {
       const x = positions[i * 3]
       const y = positions[i * 3 + 1]
       const z = positions[i * 3 + 2]
       const r = Math.hypot(x, y, z) || 1
-      const lat = Math.acos(THREE.MathUtils.clamp(y / r, -1, 1)) / Math.PI
-      const lon = (Math.atan2(z, x) + Math.PI) / (2 * Math.PI)
-      const bi =
-        Math.min(NLAT - 1, Math.floor(lat * NLAT)) * NLON + Math.min(NLON - 1, Math.floor(lon * NLON))
-      bins[bi] += 1
-      binOf[i] = bi
+      const lat = Math.acos(THREE.MathUtils.clamp(y / r, -1, 1)) / Math.PI // 0..1
+      const lon = (Math.atan2(z, x) + Math.PI) / (2 * Math.PI) // 0..1
+      const fy = lat * NLAT
+      const fx = lon * NLON
+      gy[i] = fy
+      gx[i] = fx
+      grid[Math.min(NLAT - 1, fy | 0) * NLON + (Math.min(NLON - 1, fx | 0))] += 1
     }
 
+    const field = blurGrid(grid, 2, 3)
     let max = 0
-    for (const b of bins) if (b > max) max = b
+    for (const v of field) if (v > max) max = v
+    const inv = max > 0 ? 1 / max : 0
+
+    // Bilinear sample of the blurred field, wrapping longitude, clamping latitude.
+    const sample = (fy, fx) => {
+      const py = fy - 0.5
+      const px = fx - 0.5
+      const y0 = Math.floor(py)
+      const x0 = Math.floor(px)
+      const ty = py - y0
+      const tx = px - x0
+      const yA = Math.min(NLAT - 1, Math.max(0, y0))
+      const yB = Math.min(NLAT - 1, Math.max(0, y0 + 1))
+      const xA = ((x0 % NLON) + NLON) % NLON
+      const xB = ((x0 + 1) % NLON + NLON) % NLON
+      const a = field[yA * NLON + xA] + (field[yA * NLON + xB] - field[yA * NLON + xA]) * tx
+      const b = field[yB * NLON + xA] + (field[yB * NLON + xB] - field[yB * NLON + xA]) * tx
+      return (a + (b - a) * ty) * inv
+    }
 
     const displaced = new Float32Array(n * 3)
     const density = new Float32Array(n)
@@ -74,9 +131,9 @@ function useRelief(positions, dark) {
     const c = new THREE.Color()
 
     for (let i = 0; i < n; i++) {
-      const d = max > 0 ? bins[binOf[i]] / max : 0
-      const eased = Math.pow(d, 0.6) // lift low-density areas a little off the floor
+      const d = THREE.MathUtils.clamp(sample(gy[i], gx[i]), 0, 1)
       density[i] = d
+      const eased = Math.pow(d, 0.85) // gentle: rounder hills, not cliffs
       const x = positions[i * 3]
       const y = positions[i * 3 + 1]
       const z = positions[i * 3 + 2]
