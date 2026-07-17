@@ -16,7 +16,11 @@ set -euo pipefail
 PYTHON="${PYTHON:-/data/home/acw749/conda-envs/instruct_embed/bin/python}"
 REPO="${REPO:-/data/home/acw749/Jamendo-Instruct}"
 ONLY="${ONLY:-}"
-TIME_LIMIT="${TIME_LIMIT:-04:00:00}"
+# computeshort (1h cap, usually near-empty) backfills far sooner than `compute`
+# when a big long-running array is hogging the main partition. A single-dataset
+# UMAP finishes in ~10 min, so the cap is not a constraint.
+PARTITION="${PARTITION:-computeshort}"
+TIME_LIMIT="${TIME_LIMIT:-00:45:00}"
 CPUS="${CPUS:-16}"
 
 mkdir -p "${REPO}/logs"
@@ -34,7 +38,7 @@ fi
 
 sbatch \
   -J remix_umap \
-  -p compute \
+  -p "${PARTITION}" \
   -n 1 \
   --cpus-per-task="${CPUS}" \
   --mem=48G \
