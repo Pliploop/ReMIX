@@ -354,7 +354,12 @@ def export(label: str, key: str, root: Path, args, jamendo, m4a) -> Optional[Dic
                 "ax": best.get("selected_change_axes") or [],
                 "sc": round(float(best.get("transition_score") or 0), 3),
             }
-            if len(variants) > 1:
+            # The variant dropdown ships only for rated chains. On the ~30k
+            # unrated chains the extra four phrasings are unvetted text nobody
+            # asked to compare, and at 5x per step they are what turns the export
+            # from ~30MB into ~100MB. Rated chains keep them, since that is where
+            # comparing phrasings is worth the bytes.
+            if len(variants) > 1 and chain_id in means_by_chain:
                 step["v"] = [
                     {
                         "i": v.get("history_unaware_instruction") or "",
