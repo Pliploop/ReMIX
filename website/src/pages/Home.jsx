@@ -5,6 +5,7 @@ import Nav, { useActiveSection, useTheme } from '../components/Nav.jsx'
 import Pipeline from '../components/Pipeline.jsx'
 import ChainViewer from '../components/ChainViewer.jsx'
 import Logo from '../components/Logo.jsx'
+import VideoFigure from '../components/VideoFigure.jsx'
 import ErrorBoundary from '../components/ErrorBoundary.jsx'
 import { LINKS, hexToRgba } from '../theme.js'
 
@@ -53,6 +54,30 @@ function ChartFallback() {
         <div key={i} className="h-64 animate-pulse rounded-2xl border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/50" />
       ))}
     </div>
+  )
+}
+
+/**
+ * A release link, or an honest disabled chip when there is nothing to link to yet.
+ * `LINKS.paper`/`huggingface` are null until publication -- rendering them as
+ * `href="#"` would look live and then dead-end the reader.
+ */
+function LinkPill({ href, children, soon }) {
+  if (!href) {
+    return (
+      <span
+        className="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-dashed border-neutral-300 px-4 py-2 text-sm text-neutral-400 dark:border-neutral-700 dark:text-neutral-500"
+        title={`${soon} — not public yet`}
+      >
+        {children}
+        <span className="text-[10px] uppercase tracking-wide">soon</span>
+      </span>
+    )
+  }
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className="pill">
+      {children}
+    </a>
   )
 }
 
@@ -106,8 +131,8 @@ export default function Home() {
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2.5">
-              <a href={LINKS.paper} className="pill">Paper</a>
-              <a href={LINKS.huggingface} className="pill">Dataset</a>
+              <LinkPill href={LINKS.paper} soon="Paper">Paper</LinkPill>
+              <LinkPill href={LINKS.huggingface} soon="Dataset">Dataset</LinkPill>
               <a href={LINKS.github} target="_blank" rel="noreferrer" className="pill">Code</a>
               <Link
                 to="/explore"
@@ -133,6 +158,13 @@ export default function Home() {
             </div>
           </motion.div>
         </section>
+
+        <div className="pb-4">
+          <VideoFigure
+            src={`${import.meta.env.BASE_URL}remix.mp4`}
+            poster={`${import.meta.env.BASE_URL}remix-poster.jpg`}
+          />
+        </div>
 
         <Section
           id="idea"
