@@ -22,6 +22,10 @@ Outputs, per dataset, under website/public/data/explorer/<key>/:
 Usage:
   python scripts/export_explorer_data.py --method pca
   python scripts/export_explorer_data.py --method umap        # submit via SLURM
+
+  # Text-only refresh: keeps the existing projection, so no embeddings and no
+  # UMAP. This is the cheap way to change what the explorer says about a step.
+  python scripts/export_explorer_data.py --reuse-positions --max-variants 5
 """
 
 from __future__ import annotations
@@ -57,9 +61,14 @@ DATASETS = [
 ]
 
 
-def load_chain_steps(instr_path: Path) -> Dict[str, Dict[int, Dict[str, Any]]]:
-    """chain -> turn -> the single best variant we will show (lowest variant_index)."""
-    best: Dict[str, Dict[int, Dict[str, Any]]] = defaultdict(dict)
+def load_chain_steps(instr_path: Path, max_variants: int) -> Dict[str, Dict[int, List[Dict[str, Any]]]]:
+    """chain -> turn -> variants, ordered by variant_index (best first).
+
+    Every surviving variant is kept, not just the best one: the explorer's dropdown
+    exists to show that a step has several valid phrasings. `max_variants` caps how
+    many reach the browser, since each one is text we ship to every visitor.
+    """
+    out: Dict[str, Dict[int, List[Dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
     with instr_path.open(encoding="utf-8", errors="replace") as f:
         for line in f:
             line = line.strip()
@@ -73,12 +82,13 @@ def load_chain_steps(instr_path: Path) -> Dict[str, Dict[int, Dict[str, Any]]]:
                 continue
             if not (rec.get("history_unaware_instruction") or "").strip():
                 continue
-            turn = int(rec.get("turn_index", 0))
-            vi = int(rec.get("variant_index", 0))
-            cur = best[rec["chain_id"]].get(turn)
-            if cur is None or vi < int(cur.get("variant_index", 0)):
-                best[rec["chain_id"]][turn] = _compact(rec)
-    return best
+            out[rec["chain_id"]][int(rec.get("turn_index", 0))].append(_compact(rec))
+
+    for turns in out.values():
+        for turn, variants in turns.items():
+            variants.sort(key=lambda r: int(r.get("variant_index") or 0))
+            del variants[max_variants:]
+    return out
 
 
 def load_embedding_paths(lookup_csv: Path, wanted: set[str]) -> Dict[str, str]:
@@ -141,115 +151,151 @@ def export(label: str, key: str, root: Path, args, jamendo, m4a) -> Optional[Dic
         print(f"  ! missing {instr_path}", file=sys.stderr)
         return None
 
+    out_dir = (REPO / args.out / "explorer" / key).resolve()
+
     print("  reading chains ...")
-    chains = load_chain_steps(instr_path)
+    chains = load_chain_steps(instr_path, args.max_variants)
+    # Every variant of a turn shares the turn's endpoints, so variant 0 is enough.
     clip_ids = {
         c
         for turns in chains.values()
-        for s in turns.values()
-        for c in (s["source_clip_id"], s["target_clip_id"])
+        for variants in turns.values()
+        for c in (variants[0]["source_clip_id"], variants[0]["target_clip_id"])
     }
     print(f"  {len(chains):,} chains · {len(clip_ids):,} distinct clips")
 
-    manifest = load_manifest_rows(root / "ingest" / "normalized_track_manifest.csv", clip_ids)
-    emb_paths = load_embedding_paths(root / "embeddings" / "embedding_lookup_manifest.csv", clip_ids)
-    usable = sorted(clip_ids & set(manifest) & set(emb_paths))
-    print(f"  usable (manifest + embedding): {len(usable):,}")
-    if not usable:
-        return None
+    if args.reuse_positions:
+        # Re-exporting text (e.g. to add variants) must not pay for embeddings and
+        # UMAP again: nothing about the instructions moves a point. We adopt the
+        # previous run's track order verbatim -- it is what pos.bin is indexed by,
+        # so regenerating it here would silently misalign every coordinate.
+        prev = out_dir / "tracks.json"
+        if not prev.is_file():
+            print(f"  ! --reuse-positions needs an existing {prev}", file=sys.stderr)
+            return None
+        columnar = json.loads(prev.read_text(encoding="utf-8"))
+        usable = columnar["clip_id"]
+        index = {cid: i for i, cid in enumerate(usable)}
+        dropped = len(clip_ids - set(index))
+        print(f"  reusing {len(usable):,} positions from the previous export")
+        if dropped:
+            print(f"  ! {dropped:,} clips are new since it and will be dropped; "
+                  f"re-run without --reuse-positions to include them", file=sys.stderr)
+        xyz = None
+    else:
+        manifest = load_manifest_rows(root / "ingest" / "normalized_track_manifest.csv", clip_ids)
+        emb_paths = load_embedding_paths(root / "embeddings" / "embedding_lookup_manifest.csv", clip_ids)
+        usable = sorted(clip_ids & set(manifest) & set(emb_paths))
+        print(f"  usable (manifest + embedding): {len(usable):,}")
+        if not usable:
+            return None
 
-    print("  loading embeddings ...")
-    vecs = np.zeros((len(usable), 512), dtype=np.float32)
-    missing = 0
-    for i, cid in enumerate(usable):
-        try:
-            vecs[i] = np.load(emb_paths[cid])
-        except OSError:
-            missing += 1
-        if i and i % 5000 == 0:
-            print(f"    {i:,}/{len(usable):,}")
-    if missing:
-        print(f"  ! {missing} embeddings failed to load", file=sys.stderr)
+        print("  loading embeddings ...")
+        vecs = np.zeros((len(usable), 512), dtype=np.float32)
+        missing = 0
+        for i, cid in enumerate(usable):
+            try:
+                vecs[i] = np.load(emb_paths[cid])
+            except OSError:
+                missing += 1
+            if i and i % 5000 == 0:
+                print(f"    {i:,}/{len(usable):,}")
+        if missing:
+            print(f"  ! {missing} embeddings failed to load", file=sys.stderr)
 
-    print(f"  projecting ({args.method}) ...")
-    xyz = project(vecs, args.method, args.seed)
+        print(f"  projecting ({args.method}) ...")
+        xyz = project(vecs, args.method, args.seed)
 
-    index = {cid: i for i, cid in enumerate(usable)}
+        index = {cid: i for i, cid in enumerate(usable)}
 
-    tracks = [build_track(cid, manifest, dataset=key, jamendo=jamendo, m4a=m4a) for cid in usable]
+    if not args.reuse_positions:
+        tracks = [build_track(cid, manifest, dataset=key, jamendo=jamendo, m4a=m4a) for cid in usable]
 
-    # Columnar, and audio refs are reduced to their identifying id: the Jamendo
-    # stream/page URLs are templated client-side and the licence strings are
-    # deduped into a table. Inlining them per track tripled the file.
-    licenses: List[Dict[str, str]] = []
-    lic_index: Dict[Tuple[str, str], int] = {}
-    kinds: List[int] = []       # 0 none, 1 jamendo, 2 spotify
-    audio_ids: List[str] = []
-    lic_refs: List[int] = []
+        # Columnar, and audio refs are reduced to their identifying id: the Jamendo
+        # stream/page URLs are templated client-side and the licence strings are
+        # deduped into a table. Inlining them per track tripled the file.
+        licenses: List[Dict[str, str]] = []
+        lic_index: Dict[Tuple[str, str], int] = {}
+        kinds: List[int] = []       # 0 none, 1 jamendo, 2 spotify
+        audio_ids: List[str] = []
+        lic_refs: List[int] = []
 
-    for t in tracks:
-        a = t["audio"]
-        if a["kind"] == "jamendo":
-            kinds.append(1)
-            # ".../?trackid=214&format=mp31" -> "214"
-            audio_ids.append(a["url"].split("trackid=")[1].split("&")[0])
-            lk = (a.get("license") or "", a.get("license_url") or "")
-            if lk not in lic_index:
-                lic_index[lk] = len(licenses)
-                licenses.append({"name": lk[0], "url": lk[1]})
-            lic_refs.append(lic_index[lk])
-        elif a["kind"] == "spotify":
-            kinds.append(2)
-            audio_ids.append(a.get("id") or "")
-            lic_refs.append(-1)
-        else:
-            kinds.append(0)
-            audio_ids.append("")
-            lic_refs.append(-1)
+        for t in tracks:
+            a = t["audio"]
+            if a["kind"] == "jamendo":
+                kinds.append(1)
+                # ".../?trackid=214&format=mp31" -> "214"
+                audio_ids.append(a["url"].split("trackid=")[1].split("&")[0])
+                lk = (a.get("license") or "", a.get("license_url") or "")
+                if lk not in lic_index:
+                    lic_index[lk] = len(licenses)
+                    licenses.append({"name": lk[0], "url": lk[1]})
+                lic_refs.append(lic_index[lk])
+            elif a["kind"] == "spotify":
+                kinds.append(2)
+                audio_ids.append(a.get("id") or "")
+                lic_refs.append(-1)
+            else:
+                kinds.append(0)
+                audio_ids.append("")
+                lic_refs.append(-1)
 
-    columnar = {
-        "clip_id": [t["clip_id"] for t in tracks],
-        "title": [t["title"] for t in tracks],
-        "artist": [t["artist"] for t in tracks],
-        "tags": [t["tags"][:3] for t in tracks],
-        "split": [manifest[cid].get("split", "") for cid in usable],
-        "audio_kind": kinds,
-        "audio_id": audio_ids,
-        "license_ref": lic_refs,
-        "licenses": licenses,
-    }
+        columnar = {
+            "clip_id": [t["clip_id"] for t in tracks],
+            "title": [t["title"] for t in tracks],
+            "artist": [t["artist"] for t in tracks],
+            "tags": [t["tags"][:3] for t in tracks],
+            "split": [manifest[cid].get("split", "") for cid in usable],
+            "audio_kind": kinds,
+            "audio_id": audio_ids,
+            "license_ref": lic_refs,
+            "licenses": licenses,
+        }
 
     out_chains = []
     for chain_id, turns in chains.items():
         steps = []
         for turn in sorted(turns):
-            s = turns[turn]
-            si, ti = index.get(s["source_clip_id"]), index.get(s["target_clip_id"])
+            variants = turns[turn]
+            best = variants[0]
+            si, ti = index.get(best["source_clip_id"]), index.get(best["target_clip_id"])
             if si is None or ti is None:
                 steps = []
                 break
-            steps.append({
+            step = {
                 "s": si,
                 "t": ti,
-                "i": s.get("history_unaware_instruction") or "",
-                "c": s.get("history_aware_instruction") or "",
-                "e": s.get("_primary_edit") or "",
-                "ax": s.get("selected_change_axes") or [],
-                "sc": round(float(s.get("transition_score") or 0), 3),
-            })
+                # i/c stay the best variant: the sphere labels and any older client
+                # read them directly and must not have to understand `v`.
+                "i": best.get("history_unaware_instruction") or "",
+                "c": best.get("history_aware_instruction") or "",
+                "e": best.get("_primary_edit") or "",
+                "ax": best.get("selected_change_axes") or [],
+                "sc": round(float(best.get("transition_score") or 0), 3),
+            }
+            if len(variants) > 1:
+                step["v"] = [
+                    {
+                        "i": v.get("history_unaware_instruction") or "",
+                        "c": v.get("history_aware_instruction") or "",
+                        "vb": v.get("verbosity") or "",
+                    }
+                    for v in variants
+                ]
+            steps.append(step)
         if steps:
-            out_chains.append({"id": chain_id, "sp": turns[sorted(turns)[0]].get("split", ""), "st": steps})
+            out_chains.append({"id": chain_id, "sp": turns[sorted(turns)[0]][0].get("split", ""), "st": steps})
     out_chains.sort(key=lambda c: c["id"])
     print(f"  chains with all clips resolved: {len(out_chains):,}")
 
-    out_dir = (REPO / args.out / "explorer" / key).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # int16 keeps the cloud tiny; 1/32767 is far finer than a pixel on screen.
-    (out_dir / "pos.bin").write_bytes(
-        np.clip(xyz * 32767, -32767, 32767).astype("<i2").tobytes()
-    )
-    (out_dir / "tracks.json").write_text(json.dumps(columnar, ensure_ascii=False), encoding="utf-8")
+    if not args.reuse_positions:
+        # int16 keeps the cloud tiny; 1/32767 is far finer than a pixel on screen.
+        (out_dir / "pos.bin").write_bytes(
+            np.clip(xyz * 32767, -32767, 32767).astype("<i2").tobytes()
+        )
+        (out_dir / "tracks.json").write_text(json.dumps(columnar, ensure_ascii=False), encoding="utf-8")
     (out_dir / "chains.json").write_text(json.dumps(out_chains, ensure_ascii=False), encoding="utf-8")
 
     sizes = {p.name: p.stat().st_size / 1024 for p in out_dir.iterdir()}
@@ -260,7 +306,10 @@ def export(label: str, key: str, root: Path, args, jamendo, m4a) -> Optional[Dic
         "label": label,
         "tracks": len(usable),
         "chains": len(out_chains),
-        "method": args.method,
+        # Reusing positions leaves whatever projection produced them in place, so
+        # claiming args.method here would misreport how the sphere was built.
+        "method": "reused" if args.reuse_positions else args.method,
+        "max_variants": args.max_variants,
     }
 
 
@@ -271,10 +320,28 @@ def main() -> None:
     ap.add_argument("--out", default="website/public/data")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--only", default=None, help="Restrict to one dataset key.")
+    ap.add_argument(
+        "--max-variants",
+        type=int,
+        default=5,
+        help="Instruction variants to ship per step (1 = the old best-only export).",
+    )
+    ap.add_argument(
+        "--reuse-positions",
+        action="store_true",
+        help="Rewrite chains.json only, keeping the existing pos.bin/tracks.json. "
+             "Skips embeddings and the projection entirely, so re-exporting text "
+             "(e.g. --max-variants) takes minutes instead of a UMAP run.",
+    )
     args = ap.parse_args()
 
-    jamendo = load_jamendo_licenses(MTG_RAW / "audio_licenses.txt")
-    m4a = load_m4a_metadata(M4A_RAW)
+    if args.max_variants < 1:
+        sys.exit("--max-variants must be >= 1")
+
+    # Neither licence table is read when positions are reused: they only feed
+    # tracks.json, which that path does not rewrite.
+    jamendo = {} if args.reuse_positions else load_jamendo_licenses(MTG_RAW / "audio_licenses.txt")
+    m4a = {} if args.reuse_positions else load_m4a_metadata(M4A_RAW)
 
     manifest_out = []
     for label, key, root in DATASETS:

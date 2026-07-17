@@ -169,6 +169,8 @@ _COMPACT_KEYS = (
     "chain_id", "turn_index", "variant_index", "source_clip_id", "target_clip_id",
     "history_unaware_instruction", "history_aware_instruction", "hardness",
     "transition_score", "selected_change_axes", "selected_preservation_axes", "split",
+    # Short label distinguishing the variants of one step in the explorer's dropdown.
+    "verbosity",
 )
 
 
