@@ -313,7 +313,7 @@ function CameraRig({ target, flyKey, controls }) {
   return null
 }
 
-function Scene({ positions, chainNodes, activeStep, focus, flyKey, dark, onPick, tooltipFor, cards }) {
+function Scene({ positions, pointIds, chainNodes, activeStep, focus, flyKey, dark, onPick, tooltipFor, cards }) {
   const controls = useRef()
   const { gl, raycaster } = useThree()
   const [hover, setHover] = useState(-1)
@@ -330,13 +330,16 @@ function Scene({ positions, chainNodes, activeStep, focus, flyKey, dark, onPick,
     raycaster.params.Points.threshold = 0.05
   }, [raycaster])
 
+  // `hover` indexes the drawn cloud (a subset); pointIds maps it back to the
+  // global track index the tooltip and pick callbacks speak in.
+  const toGlobal = (i) => (pointIds ? pointIds[i] : i)
   const hoverPos = hover >= 0 ? [displaced[hover * 3], displaced[hover * 3 + 1], displaced[hover * 3 + 2]] : null
-  const tip = hover >= 0 ? tooltipFor(hover) : null
+  const tip = hover >= 0 ? tooltipFor(toGlobal(hover)) : null
 
   return (
     <>
       <Globe dark={dark} />
-      <Cloud displaced={displaced} colors={colors} onHover={setHover} onPick={onPick} />
+      <Cloud displaced={displaced} colors={colors} onHover={setHover} onPick={(i) => onPick(toGlobal(i))} />
       {chainNodes?.length > 1 && <ChainPath nodes={chainNodes} activeStep={activeStep} dark={dark} />}
       <HoverMarker position={hoverPos} />
 

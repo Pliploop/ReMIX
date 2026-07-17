@@ -17,6 +17,22 @@ const DATASETS = [
  *  [qwen_mean, gemma_mean]; a chain with no ratings returns null. */
 const chainFloor = (c) => (Array.isArray(c?.js) && c.js.length ? Math.min(...c.js) : null)
 
+// The unfiltered cloud is capped here: 60k dots renders heavy and reads as noise,
+// and a uniform sample keeps the landscape's shape.
+const CLOUD_CAP = 20000
+
+/** A uniform sample of k distinct indices in [0, n) via Floyd's algorithm — O(k),
+ *  no 60k-length shuffle. Returns all of them when n <= k. */
+function sampleIndices(n, k) {
+  if (n <= k) return Int32Array.from({ length: n }, (_, i) => i)
+  const chosen = new Set()
+  for (let i = n - k; i < n; i++) {
+    const j = Math.floor(Math.random() * (i + 1))
+    chosen.add(chosen.has(j) ? i : j)
+  }
+  return Int32Array.from(chosen)
+}
+
 const START = '#1FA347'
 const MID = '#2E6FD6'
 const END = '#7B3FF2'
@@ -279,6 +295,37 @@ export default function Explore() {
     return m
   }, [data, chains])
 
+  // Which track indices the cloud actually draws. Filter on: only the tracks the
+  // visible chains touch. Filter off: a 20k random sample of the whole corpus,
+  // because 60k points renders heavy and reads as mush. `ids[j]` maps a cloud
+  // point back to its global track index, so hover/click still resolve correctly.
+  const visible = useMemo(() => {
+    if (!data) return { positions: new Float32Array(0), ids: new Int32Array(0) }
+    const P = data.positions
+    const n = P.length / 3
+    let ids
+    if (filterOn && hasRatings) {
+      const set = new Set()
+      chains.forEach((ch) =>
+        ch.st.forEach((s) => {
+          set.add(s.s)
+          set.add(s.t)
+        }),
+      )
+      ids = Int32Array.from(set)
+    } else {
+      ids = sampleIndices(n, CLOUD_CAP)
+    }
+    const positions = new Float32Array(ids.length * 3)
+    for (let j = 0; j < ids.length; j++) {
+      const i = ids[j]
+      positions[j * 3] = P[i * 3]
+      positions[j * 3 + 1] = P[i * 3 + 1]
+      positions[j * 3 + 2] = P[i * 3 + 2]
+    }
+    return { positions, ids }
+  }, [data, chains, filterOn, hasRatings])
+
   // Node indices along the chain: source of each step, plus the final target.
   const nodeIdx = useMemo(() => {
     if (!steps.length) return []
@@ -427,7 +474,8 @@ export default function Explore() {
             <ErrorBoundary label="Sphere">
               <Suspense fallback={null}>
                 <SphereView
-                  positions={data.positions}
+                  positions={visible.positions}
+                  pointIds={visible.ids}
                   chainNodes={nodePositions}
                   activeStep={stepIdx}
                   focus={focus}
@@ -593,7 +641,7 @@ export default function Explore() {
 
         {/* Detail panel */}
         {src && tgt && (
-          <div className="pointer-events-none absolute right-3 top-16 bottom-24 flex w-full max-w-[21rem] items-start justify-end">
+          <div className="pointer-events-none absolute right-3 top-16 bottom-24 flex w-full max-w-[27rem] items-start justify-end">
             <AnimatePresence initial={false} mode="wait">
               {panelOpen ? (
                 <motion.div
