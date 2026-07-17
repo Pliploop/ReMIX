@@ -155,7 +155,10 @@ function DeltaList({ title, items, color }) {
 
 export default function ChainViewer({ data }) {
   const datasets = data?.datasets ?? []
-  const [dsIdx, setDsIdx] = useState(0)
+  // Open on Music4All — its chains are the stronger showcase — wherever it sits
+  // in the exported order.
+  const defaultIdx = Math.max(0, datasets.findIndex((d) => d.key === 'music4all'))
+  const [dsIdx, setDsIdx] = useState(defaultIdx)
   const [chainIdx, setChainIdx] = useState(0)
   const [openStep, setOpenStep] = useState(0)
 

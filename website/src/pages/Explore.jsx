@@ -7,10 +7,15 @@ import { SPHERE_RADIUS as RADIUS, hexToRgba } from '../theme.js'
 
 const SphereView = lazy(() => import('../components/Sphere.jsx'))
 
+// Music4All first: its chains are the stronger showcase, so it is the default.
 const DATASETS = [
-  { key: 'mtg_jamendo', label: 'MTG-Jamendo' },
   { key: 'music4all', label: 'Music4All' },
+  { key: 'mtg_jamendo', label: 'MTG-Jamendo' },
 ]
+
+/** A chain's rating floor: the lower of the two judges' mean step scores. `js` is
+ *  [qwen_mean, gemma_mean]; a chain with no ratings returns null. */
+const chainFloor = (c) => (Array.isArray(c?.js) && c.js.length ? Math.min(...c.js) : null)
 
 const START = '#1FA347'
 const MID = '#2E6FD6'
@@ -151,6 +156,31 @@ function SphereCard({ track, role, color }) {
  * player in both places would give one track two unsynchronised play buttons that
  * happily talk over each other, and would decode the audio twice.
  */
+/** The instruction floating over the arc. Truncated at rest; hover reveals it all. */
+function InstructionBubble({ text }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      className="cursor-default rounded-2xl border px-3 py-1.5 text-center shadow-xl backdrop-blur-xl transition-all duration-200"
+      style={{
+        borderColor: hexToRgba(INSTRUCT, 0.6),
+        backgroundColor: hexToRgba(INSTRUCT, 0.16),
+        maxWidth: open ? '24rem' : '13rem',
+      }}
+    >
+      <p
+        className={`text-[11px] font-semibold leading-snug text-neutral-900 dark:text-neutral-100 ${
+          open ? '' : 'truncate'
+        }`}
+      >
+        “{text}”
+      </p>
+    </div>
+  )
+}
+
 function TrackPane({ track, role, color }) {
   const onSphere = track.audio.kind === 'jamendo'
   return (
@@ -195,11 +225,39 @@ export default function Explore() {
   const [contextual, setContextual] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
   const [homeTick, setHomeTick] = useState(0)
+  const [filterOn, setFilterOn] = useState(true)
+  const [minRating, setMinRating] = useState(4)
 
   const ds = DATASETS[dsIdx]
   const { data, error } = useExplorerData(ds.key)
 
-  const chain = data?.chains?.[chainIdx]
+  // How many chains carry ratings at all — if none do (older export), the whole
+  // rating control is meaningless and hides itself.
+  const ratedCount = useMemo(
+    () => (data ? data.chains.reduce((n, c) => n + (chainFloor(c) != null ? 1 : 0), 0) : 0),
+    [data],
+  )
+  const hasRatings = ratedCount > 0
+
+  // The chains actually shown: when the filter is on, only those both judges
+  // scored at or above the threshold. The whole app navigates this list, so
+  // chainIdx always indexes something visible.
+  const chains = useMemo(() => {
+    if (!data) return []
+    if (!filterOn || !hasRatings) return data.chains
+    return data.chains.filter((c) => {
+      const f = chainFloor(c)
+      return f != null && f >= minRating
+    })
+  }, [data, filterOn, hasRatings, minRating])
+
+  // Tightening the filter can shrink the list past the current index.
+  useEffect(() => {
+    setChainIdx((i) => (i < chains.length ? i : 0))
+    setStepIdx(0)
+  }, [chains.length])
+
+  const chain = chains[chainIdx]
   const steps = chain?.st ?? []
   const step = steps[stepIdx]
 
@@ -207,18 +265,19 @@ export default function Explore() {
   const variant = variants[Math.min(variantIdx, variants.length - 1)] ?? null
   const instruction = variant ? (contextual && variant.c ? variant.c : variant.i) : ''
 
-  // Which chain (and turn) each track belongs to, so a click on the cloud can open it.
+  // Which chain (and turn) each track belongs to, so a click on the cloud can open
+  // it. Built over the visible list, so a click never jumps to a hidden chain.
   const trackIndex = useMemo(() => {
     if (!data) return null
     const m = new Map()
-    data.chains.forEach((ch, ci) => {
+    chains.forEach((ch, ci) => {
       ch.st.forEach((s, si) => {
         if (!m.has(s.s)) m.set(s.s, { chain: ci, step: si })
         if (!m.has(s.t)) m.set(s.t, { chain: ci, step: si })
       })
     })
     return m
-  }, [data])
+  }, [data, chains])
 
   // Node indices along the chain: source of each step, plus the final target.
   const nodeIdx = useMemo(() => {
@@ -258,13 +317,13 @@ export default function Explore() {
       if (next < 0) {
         if (chainIdx > 0) goChain(chainIdx - 1, 0)
       } else if (next >= steps.length) {
-        if (chainIdx < (data?.chains?.length ?? 1) - 1) goChain(chainIdx + 1, 0)
+        if (chainIdx < chains.length - 1) goChain(chainIdx + 1, 0)
       } else {
         setStepIdx(next)
         setVariantIdx(0)
       }
     },
-    [stepIdx, steps.length, chainIdx, data, goChain],
+    [stepIdx, steps.length, chainIdx, chains.length, goChain],
   )
 
   useEffect(() => {
@@ -321,13 +380,13 @@ export default function Explore() {
       {
         key: `s-${chainIdx}-${stepIdx}`,
         position: a,
-        k: 1.06,
+        k: 1.2,
         node: <SphereCard track={src} role={stepIdx === 0 ? 'Start' : `Turn ${stepIdx}`} color={stepIdx === 0 ? START : MID} />,
       },
       {
         key: `t-${chainIdx}-${stepIdx}`,
         position: b,
-        k: 1.06,
+        k: 1.2,
         node: (
           <SphereCard
             track={tgt}
@@ -339,17 +398,8 @@ export default function Explore() {
       {
         key: `i-${chainIdx}-${stepIdx}`,
         position: mid,
-        k: 1.3,
-        node: (
-          <div
-            className="max-w-[15rem] rounded-full border px-3 py-1.5 text-center shadow-xl backdrop-blur-xl"
-            style={{ borderColor: hexToRgba(INSTRUCT, 0.6), backgroundColor: hexToRgba(INSTRUCT, 0.14) }}
-          >
-            <p className="truncate text-[11px] font-semibold text-neutral-900 dark:text-neutral-100">
-              “{instruction}”
-            </p>
-          </div>
-        ),
+        k: 1.34,
+        node: <InstructionBubble text={instruction} />,
       },
     ]
   }, [src, tgt, nodePositions, stepIdx, chainIdx, steps.length, instruction])
@@ -418,8 +468,51 @@ export default function Explore() {
             {data && (
               <GlassCard className="px-3 py-1.5">
                 <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                  {data.chains.length.toLocaleString()} chains · {data.tracks.clip_id.length.toLocaleString()} tracks
+                  {chains.length.toLocaleString()}
+                  {filterOn && hasRatings && chains.length !== data.chains.length && (
+                    <span className="text-neutral-400"> / {data.chains.length.toLocaleString()}</span>
+                  )}{' '}
+                  chains · {data.tracks.clip_id.length.toLocaleString()} tracks
                 </span>
+              </GlassCard>
+            )}
+
+            {data && hasRatings && (
+              <GlassCard className="inline-flex items-center gap-2.5 px-3 py-1.5">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={filterOn}
+                  onClick={() => setFilterOn((v) => !v)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300"
+                  title="Show only chains both judges rated at or above the threshold"
+                >
+                  <span
+                    className="relative h-4 w-7 rounded-full transition-colors"
+                    style={{ backgroundColor: filterOn ? INSTRUCT : hexToRgba('#71717a', 0.4) }}
+                  >
+                    <span
+                      className="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all"
+                      style={{ left: filterOn ? 14 : 2 }}
+                    />
+                  </span>
+                  validated
+                </button>
+                {filterOn && (
+                  <label className="flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+                    <span className="tabular-nums">≥ {minRating.toFixed(1)}</span>
+                    <input
+                      type="range"
+                      min={1}
+                      max={5}
+                      step={0.5}
+                      value={minRating}
+                      onChange={(e) => setMinRating(Number(e.target.value))}
+                      className="h-1 w-20 cursor-pointer accent-stage-instruct"
+                      aria-label="Minimum judge rating"
+                    />
+                  </label>
+                )}
               </GlassCard>
             )}
 
@@ -477,21 +570,21 @@ export default function Explore() {
                 <input
                   type="range"
                   min={0}
-                  max={Math.max(0, data.chains.length - 1)}
+                  max={Math.max(0, chains.length - 1)}
                   value={chainIdx}
                   onChange={(e) => goChain(Number(e.target.value))}
                   className="h-1 w-40 cursor-pointer accent-stage-validate"
                   aria-label="Jump to chain"
                 />
                 <IconButton
-                  onClick={() => goChain(Math.min(data.chains.length - 1, chainIdx + 1))}
+                  onClick={() => goChain(Math.min(chains.length - 1, chainIdx + 1))}
                   label="Next chain"
-                  disabled={chainIdx >= data.chains.length - 1}
+                  disabled={chainIdx >= chains.length - 1}
                 >
                   →
                 </IconButton>
                 <span className="whitespace-nowrap text-xs tabular-nums text-neutral-500 dark:text-neutral-400">
-                  {(chainIdx + 1).toLocaleString()}/{data.chains.length.toLocaleString()}
+                  {(chainIdx + 1).toLocaleString()}/{chains.length.toLocaleString()}
                 </span>
               </div>
             </GlassCard>
