@@ -51,9 +51,13 @@ esac
 # Forward everything the worker reads. Unset optional vars become empty and the
 # worker falls back to its own defaults.
 EXPORTS="ALL"
+# OUTPUT_NAME is safety-critical here: two judges on the same dataset are kept
+# apart only by their output name (and hence their <name>.parts dir), so forward
+# it explicitly rather than trusting --export=ALL to carry it.
 for var in RUN_ROOT MODEL_ID BACKEND INSTRUCTION_FOLDER INSTRUCTION_FIELD \
            TENSOR_PARALLEL_SIZE GPU_MEMORY_UTILIZATION MAX_MODEL_LEN BATCH_SIZE \
-           MAX_NEW_TOKENS TEMPERATURE MAX_CHAINS LIMIT ASSIGNMENT_JSONL FROZEN_SIDECAR_JSON; do
+           MAX_NEW_TOKENS TEMPERATURE MAX_CHAINS LIMIT ASSIGNMENT_JSONL FROZEN_SIDECAR_JSON \
+           OUTPUT_NAME STEP_JSON_DIR QUANTIZATION KV_CACHE_DTYPE; do
   if [[ -n "${!var:-}" ]]; then
     EXPORTS="${EXPORTS},${var}=${!var}"
   fi

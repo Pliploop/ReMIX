@@ -20,9 +20,12 @@ chat LLMs work by swapping ``--model-id``.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -405,6 +408,39 @@ def load_samples(args: argparse.Namespace) -> tuple[DemoDataset, List[Dict[str, 
 
 
 # --------------------------------------------------------------------------- #
+# Per-item atomic output (mirrors stages/instructions.py)
+#
+# Each rating is written as its own <chain>__turn_NNNNNN__variant_NNN__<sha>.json
+# via a temp file + os.replace, so independent judge jobs never corrupt a shared
+# file and a killed job leaves only whole records behind. A job skips any item
+# whose part already exists, which is the resume + "don't step on each other"
+# mechanism -- the same one instruction generation uses. scripts/merge_llm_ratings.py
+# folds the parts into the canonical llm_ratings*.jsonl; scripts/validation_breakdown.py
+# reads the filenames. The filename scheme is identical to the instruction stage's
+# so both breakdowns share one regex.
+# --------------------------------------------------------------------------- #
+def _rating_part_name(chain_id: str, turn_index: int, variant_index: int) -> str:
+    raw = f"{chain_id}::{int(turn_index)}::{int(variant_index)}"
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+    safe_chain = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(chain_id or "chain")).strip("_")[:80]
+    return f"{safe_chain}__turn_{int(turn_index):06d}__variant_{int(variant_index):03d}__{digest}.json"
+
+
+def _write_rating_part(part_dir: Path, record: Dict[str, Any]) -> None:
+    part_dir.mkdir(parents=True, exist_ok=True)
+    final_path = part_dir / _rating_part_name(
+        str(record.get("chain_id", "")),
+        int(record.get("turn_index", 0) or 0),
+        int(record.get("variant_index", 0) or 0),
+    )
+    tmp_path = final_path.with_name(f"{final_path.name}.tmp.{os.getpid()}.{time.time_ns()}")
+    with tmp_path.open("w", encoding="utf-8") as f:
+        json.dump(record, f, ensure_ascii=True, sort_keys=True)
+        f.write("\n")
+    os.replace(tmp_path, final_path)
+
+
+# --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -464,6 +500,14 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     out = parser.add_argument_group("output")
     out.add_argument("--output-dir", help="Override output dir (default: dataset validation dir).")
     out.add_argument("--output-name", default="llm_ratings.jsonl")
+    out.add_argument(
+        "--step-json-dir",
+        default=None,
+        help="Write each rating as an atomic per-item JSON here instead of appending to the "
+        "monolithic JSONL. Skips items whose part already exists, so independent judge jobs "
+        "resume and never step on each other. Default: <output-name>.parts next to the JSONL. "
+        "Pass 'none' to force the legacy single-file append.",
+    )
     out.add_argument("--annotator-id", default=None, help="Override annotator id (default: llm:<model_id>).")
     out.add_argument(
         "--emit-validated",
@@ -491,29 +535,58 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / str(args.output_name)
 
+    # Per-item atomic parts (default) vs legacy single-file append. In parts mode
+    # a job resumes off the part files on disk, so independent judge jobs sharing
+    # a part dir never redo each other's items and never share a file handle.
+    step_arg = args.step_json_dir
+    if step_arg is not None and str(step_arg).strip().lower() == "none":
+        part_dir = None
+    elif step_arg:
+        part_dir = Path(step_arg).expanduser().resolve()
+    else:
+        part_dir = output_dir / f"{Path(str(args.output_name)).stem}.parts"
+
     already_done: set = set()
+    existing_parts: set = set()
     if not args.overwrite:
-        already_done = _answered_rating_keys(_read_jsonl_records(output_path), annotator_id)
+        # Skip anything already in the canonical JSONL too, so a parts-mode run
+        # *extends* an existing sidecar (the 450-chain slice) instead of re-judging
+        # it -- this is what "add onto the existing sidecar" means.
+        if output_path.is_file():
+            already_done = _answered_rating_keys(_read_jsonl_records(output_path), annotator_id)
+        if part_dir is not None:
+            existing_parts = {p.name for p in part_dir.glob("*.json")}
+    if part_dir is not None:
+        part_dir.mkdir(parents=True, exist_ok=True)
 
     pending: List[Dict[str, Any]] = []
+    skipped = 0
     for sample in samples:
+        chain_id = sample["chain"].chain_id
+        turn_index = sample["step"].turn_index
+        variant_index = _record_variant_index(sample["record"])
         item_key = _rating_item_key(
             {
-                "chain_id": sample["chain"].chain_id,
-                "turn_index": sample["step"].turn_index,
-                "variant_index": _record_variant_index(sample["record"]),
+                "chain_id": chain_id,
+                "turn_index": turn_index,
+                "variant_index": variant_index,
                 "instruction_field": instruction_field,
             }
         )
         if item_key in already_done:
+            skipped += 1
+            continue
+        if part_dir is not None and _rating_part_name(chain_id, turn_index, variant_index) in existing_parts:
+            skipped += 1
             continue
         pending.append(sample)
     if int(args.limit) > 0:
         pending = pending[: int(args.limit)]
 
+    dest = part_dir if part_dir is not None else output_path
     print(
-        f"[llm-judge] items: {len(samples)} total, {len(already_done)} already rated by {annotator_id}, "
-        f"{len(pending)} to judge -> {output_path}",
+        f"[llm-judge] items: {len(samples)} total, {skipped} already done, "
+        f"{len(pending)} to judge -> {dest}",
         flush=True,
     )
     if not pending:
@@ -525,7 +598,8 @@ def main() -> None:
 
     written = 0
     parse_failures = 0
-    with output_path.open("a", encoding="utf-8") as out_f:
+    out_f = output_path.open("a", encoding="utf-8") if part_dir is None else None
+    try:
         for start in range(0, len(pending), batch_size):
             batch = pending[start : start + batch_size]
             messages_batch: List[List[Dict[str, str]]] = []
@@ -581,49 +655,59 @@ def main() -> None:
 
                 source_row = dataset.manifest_by_clip.get(step.source_clip_id)
                 target_row = dataset.manifest_by_clip.get(step.target_clip_id)
-                out_f.write(
-                    json.dumps(
-                        {
-                            "annotation_type": "llm_single_variant_rating",
-                            "annotated_at_utc": datetime.now(timezone.utc).isoformat(),
-                            "annotator_id": annotator_id,
-                            "judge_model_id": str(args.model_id),
-                            "judge_backend": str(judge.backend),
-                            "modality": "text_only",
-                            "audio_available": False,
-                            "instruction_field": instruction_field,
-                            **_sample_identity(chain, step, record),
-                            "source_label": _clip_label(source_row, step.source_clip_id),
-                            "target_label": _clip_label(target_row, step.target_clip_id),
-                            "source_metadata": _metadata_view(source_row),
-                            "target_metadata": _metadata_view(target_row),
-                            "source_caption": source["caption"],
-                            "target_caption": target["caption"],
-                            "assignment": sample.get("assignment"),
-                            "instruction": sample["instruction"],
-                            "answers": scored_answers,
-                            "issue_tags": issue_tags,
-                            "notes": notes,
-                            "parse_ok": parse_ok,
-                            "unparsed_questions": unparsed,
-                            "parse_error": last_error if not parse_ok else "",
-                        },
-                        ensure_ascii=True,
-                    )
-                    + "\n"
-                )
-                out_f.flush()
+                record_out = {
+                    "annotation_type": "llm_single_variant_rating",
+                    "annotated_at_utc": datetime.now(timezone.utc).isoformat(),
+                    "annotator_id": annotator_id,
+                    "judge_model_id": str(args.model_id),
+                    "judge_backend": str(judge.backend),
+                    "modality": "text_only",
+                    "audio_available": False,
+                    "instruction_field": instruction_field,
+                    **_sample_identity(chain, step, record),
+                    "source_label": _clip_label(source_row, step.source_clip_id),
+                    "target_label": _clip_label(target_row, step.target_clip_id),
+                    "source_metadata": _metadata_view(source_row),
+                    "target_metadata": _metadata_view(target_row),
+                    "source_caption": source["caption"],
+                    "target_caption": target["caption"],
+                    "assignment": sample.get("assignment"),
+                    "instruction": sample["instruction"],
+                    "answers": scored_answers,
+                    "issue_tags": issue_tags,
+                    "notes": notes,
+                    "parse_ok": parse_ok,
+                    "unparsed_questions": unparsed,
+                    "parse_error": last_error if not parse_ok else "",
+                }
+                # Same record either way; parts mode just gives it its own atomic file.
+                if part_dir is not None:
+                    _write_rating_part(part_dir, record_out)
+                else:
+                    out_f.write(json.dumps(record_out, ensure_ascii=True) + "\n")
+                    out_f.flush()
                 written += 1
 
             print(f"[llm-judge] {written}/{len(pending)} judged", flush=True)
+    finally:
+        if out_f is not None:
+            out_f.close()
 
     print(
-        f"[llm-judge] done. wrote {written} ratings to {output_path} "
+        f"[llm-judge] done. wrote {written} ratings to {dest} "
         f"({parse_failures} items with parse issues).",
         flush=True,
     )
 
     if args.emit_validated:
+        if part_dir is not None:
+            # The gate grades the full ratings file, which parts mode has not built.
+            # Merge first (scripts/merge_llm_ratings.py), then re-run the gate against
+            # the merged JSONL with --step-json-dir none.
+            raise SystemExit(
+                "[llm-judge] --emit-validated needs the merged JSONL; it is unavailable in "
+                "per-item parts mode. Merge the parts first, then grade the merged file."
+            )
         from jamendo_instruct.validation_gate import GateConfig, grade_records, select_chain_variants
 
         all_ratings = _read_jsonl_records(output_path)

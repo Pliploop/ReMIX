@@ -68,6 +68,12 @@ CMD=(
   --limit "${LIMIT}"
 )
 
+# Default: atomic per-item parts next to the JSONL (concurrency-safe, resumable).
+# Set STEP_JSON_DIR to override, or STEP_JSON_DIR=none for legacy single-file append.
+if [[ -n "${STEP_JSON_DIR:-}" ]]; then
+  CMD+=(--step-json-dir "${STEP_JSON_DIR}")
+fi
+
 if [[ -n "${KV_CACHE_DTYPE}" ]]; then
   CMD+=(--kv-cache-dtype "${KV_CACHE_DTYPE}")
 fi
