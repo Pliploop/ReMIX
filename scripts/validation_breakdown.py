@@ -98,10 +98,14 @@ def main() -> None:
         val_dir = folder / "validation"
         total = scan_variants(folder / "step_json")  # instruction variants = judging universe
 
-        # One judge per <name>.parts dir. Report against the merged <name>.jsonl.
+        # A judge shows up as an unmerged <name>.parts dir, a merged <name>.jsonl,
+        # or both. Union the two so already-merged sidecars are reported even before
+        # anything runs in parts mode.
+        canonical_files = sorted(p for p in val_dir.glob("llm_ratings*.jsonl") if p.is_file()) if val_dir.is_dir() else []
         parts_dirs = sorted(val_dir.glob("*.parts")) if val_dir.is_dir() else []
-        if not parts_dirs:
-            console.print(f"[yellow]! {label}: no *.parts under {val_dir}[/yellow]")
+        stems = sorted({p.stem for p in canonical_files} | {d.name[: -len(".parts")] for d in parts_dirs})
+        if not stems:
+            console.print(f"[yellow]! {label}: no llm_ratings*.jsonl or *.parts under {val_dir}[/yellow]")
             continue
         found_any = True
 
@@ -113,27 +117,39 @@ def main() -> None:
             pad_edge=False,
         )
         t.add_column("Judge", style="bold")
-        t.add_column("Rated", justify="right")
-        t.add_column("Merged", justify="right")
+        t.add_column("Rated (parts)", justify="right")
+        t.add_column("Merged rows", justify="right")
         t.add_column("Coverage", justify="right")
         t.add_column("Pending merge", justify="right")
 
-        for parts_dir in parts_dirs:
-            stem = parts_dir.name[: -len(".parts")]
+        for stem in stems:
+            parts_dir = val_dir / f"{stem}.parts"
             canonical = val_dir / f"{stem}.jsonl"
-            rated = scan_variants(parts_dir) or 0
-            merged = jsonl_rows(canonical)
+            rated = scan_variants(parts_dir)  # None if no parts dir yet
+            merged = jsonl_rows(canonical)  # None if never merged
 
-            coverage = f"{100 * rated / total:.1f}% of {_fmt(total)}" if total else "[dim]?[/dim]"
-            if merged is None:
-                pending = f"[yellow]{_fmt(rated)}[/yellow]"  # nothing merged yet
+            # Best estimate of validated items: fresh parts if present, else merged.
+            validated = rated if rated is not None else (merged or 0)
+            coverage = f"{100 * validated / total:.1f}% of {_fmt(total)}" if total else "[dim]?[/dim]"
+
+            if rated is None:
+                pending = "[green]0[/green]"  # no parts to merge
+            elif merged is None:
+                pending = f"[yellow]{_fmt(rated)}[/yellow]"  # rated but never merged
             elif rated > merged:
                 pending = f"[yellow]{_fmt(rated - merged)}[/yellow]"
             else:
                 pending = "[green]0[/green]"
-            t.add_row(stem, _fmt(rated), _fmt(merged) if merged is not None else "[dim]none[/dim]", coverage, pending)
 
-            if args.commands or merged is None or rated > (merged or 0):
+            t.add_row(
+                stem,
+                _fmt(rated) if rated is not None else "[dim]—[/dim]",
+                _fmt(merged) if merged is not None else "[dim]none[/dim]",
+                coverage,
+                pending,
+            )
+
+            if rated is not None and (args.commands or merged is None or rated > merged):
                 pending_cmds.append(f"# {label} · {stem}\n{merge_command(parts_dir, canonical)}")
 
         console.print()
