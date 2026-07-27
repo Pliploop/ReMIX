@@ -12,6 +12,14 @@ set -euo pipefail
 
 export PATH="/data/home/acw749/conda-envs/instruct_embed/bin:${PATH}"
 
+# HF cache on scratch, where the judge models already live (~59G gemma-4-31B etc).
+# A batch job does not source ~/.bashrc, so without this HF_HOME is unset and the
+# job downloads into an empty ~/.cache -- and two concurrent gemma jobs then race
+# and corrupt that download. Point at the warm scratch cache instead.
+export HF_HOME="${HF_HOME:-/gpfs/scratch/acw749/hf_cache}"
+export HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE:-/gpfs/scratch/acw749/hf_cache/hub}"
+export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-/gpfs/scratch/acw749/hf_cache/transformers}"
+
 PROFILE="${PROFILE:-sae}"
 RUN_ROOT="${RUN_ROOT:-/gpfs/scratch/acw749/datasets/music4all_instruct/music4all_v1}"
 RUN_ROOT="${RUN_ROOT%/}"
