@@ -13,16 +13,16 @@ uniform; the key stays judge-agnostic on purpose, so passing an existing JSONL f
 the *same* judge lets a new at-scale run extend it in place. Later parts win ties,
 except a parse_ok record is never overwritten by a failed one.
 
-Examples:
-  # Extend the existing sidecar with a fresh at-scale run's parts:
-  python scripts/merge_llm_ratings.py \
-      /path/validation/llm_ratings.parts \
-      --existing /path/validation/llm_ratings.jsonl \
-      --output   /path/validation/llm_ratings.jsonl
+Output is a canonical <stem>.validated.jsonl next to the parts dir, and the raw
+<stem>.jsonl sidecar is auto-folded in read-only -- so the raw, instructed-but-
+unvalidated sidecar is never overwritten.
 
-  # First-time build from parts only:
-  python scripts/merge_llm_ratings.py /path/validation/llm_ratings_gemma_full.parts \
-      --output /path/validation/llm_ratings_gemma_full.jsonl
+Examples:
+  # Default: folds llm_ratings_qwen_full.jsonl + its .parts -> *.validated.jsonl
+  python scripts/merge_llm_ratings.py /path/validation/llm_ratings_qwen_full.parts
+
+  # Parts only, ignore any existing sidecar:
+  python scripts/merge_llm_ratings.py /path/validation/llm_ratings_gemma_full.parts --no-existing
 """
 
 from __future__ import annotations
@@ -125,25 +125,59 @@ def merge(
     }
 
 
+def _stem(part_dir: Path) -> str:
+    n = part_dir.name
+    return n[: -len(".parts")] if n.endswith(".parts") else n
+
+
 def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("part_dirs", nargs="+", type=Path, help="One or more <output-name>.parts directories.")
-    parser.add_argument("--output", required=True, type=Path, help="Canonical llm_ratings*.jsonl to write.")
+    parser.add_argument("part_dirs", nargs="+", type=Path, help="One or more <name>.parts directories.")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Canonical file to write. Default: <stem>.validated.jsonl next to the parts dir. "
+        "The default never equals the raw <stem>.jsonl, so the raw sidecar is never overwritten.",
+    )
     parser.add_argument(
         "--existing",
         nargs="*",
         type=Path,
-        default=[],
-        help="Existing ratings JSONL(s) to fold in first (e.g. the current sidecar). "
-        "Pass --output here too to extend it in place.",
+        default=None,
+        help="Ratings JSONL(s) to fold in first. Default: auto-fold the sibling raw <stem>.jsonl "
+        "if present. --no-existing to fold none.",
     )
+    parser.add_argument("--no-existing", action="store_true", help="Merge only the parts; fold in no existing JSONL.")
     return parser
 
 
 def main() -> None:
-    args = _build_arg_parser().parse_args()
-    stats = merge(args.part_dirs, args.output, existing=args.existing)
-    print(json.dumps({"status": "ok", **stats, "output": str(args.output)}, indent=2))
+    parser = _build_arg_parser()
+    args = parser.parse_args()
+    part_dirs = args.part_dirs
+
+    if args.output is not None:
+        output = args.output
+    elif len(part_dirs) == 1:
+        output = part_dirs[0].parent / f"{_stem(part_dirs[0])}.validated.jsonl"
+    else:
+        parser.error("--output is required when merging more than one parts dir")
+
+    if args.existing is not None:
+        existing = args.existing
+    elif args.no_existing:
+        existing = []
+    else:  # auto-fold each parts dir's sibling raw sidecar, if it exists
+        existing = [
+            raw for pd in part_dirs if (raw := pd.parent / f"{_stem(pd)}.jsonl").is_file()
+        ]
+
+    stats = merge(part_dirs, output, existing=existing)
+    print(json.dumps(
+        {"status": "ok", **stats, "existing": [str(e) for e in existing], "output": str(output)},
+        indent=2,
+    ))
 
 
 if __name__ == "__main__":

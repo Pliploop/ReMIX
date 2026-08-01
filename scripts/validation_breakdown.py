@@ -63,13 +63,9 @@ def _fmt(n: float, nd: int = 0) -> str:
 
 
 def merge_command(parts_dir: Path, canonical: Path) -> str:
-    """Copy-pasteable merge for one judge, extending its canonical file in place."""
-    return (
-        "python scripts/merge_llm_ratings.py \\\n"
-        f"    {shlex.quote(str(parts_dir))} \\\n"
-        f"    --existing {shlex.quote(str(canonical))} \\\n"
-        f"    --output {shlex.quote(str(canonical))}"
-    )
+    """Copy-pasteable merge for one judge. Writes <stem>.validated.jsonl and folds
+    the raw <stem>.jsonl in read-only -- the raw sidecar is never overwritten."""
+    return f"python scripts/merge_llm_ratings.py {shlex.quote(str(parts_dir))}"
 
 
 def main() -> None:

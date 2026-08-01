@@ -38,13 +38,13 @@ DATASETS: List[Dict[str, Any]] = [
         "key": "music4all",
         "label": "Music4All",
         "validation": "/gpfs/scratch/acw749/datasets/music4all_instruct/music4all_v1/instructions_axis_focused_5/validation",
-        "judges": {"Qwen3.6-27B": "llm_ratings.jsonl", "Gemma-4-31B": "llm_ratings_gemma_full.jsonl"},
+        "judges": {"Qwen3.6-27B": "llm_ratings_qwen_full.validated.jsonl", "Gemma-4-31B": "llm_ratings_gemma_full.validated.jsonl"},
     },
     {
         "key": "mtg_jamendo",
         "label": "MTG-Jamendo",
         "validation": "/gpfs/scratch/acw749/datasets/mtg_jamendo_instruct/v1/instructions_axis_focused_5/validation",
-        "judges": {"Qwen3.6-27B": "llm_ratings_qwen_full.jsonl", "Gemma-4-31B": "llm_ratings_gemma_full.jsonl"},
+        "judges": {"Qwen3.6-27B": "llm_ratings_qwen_full.validated.jsonl", "Gemma-4-31B": "llm_ratings_gemma_full.validated.jsonl"},
     },
 ]
 

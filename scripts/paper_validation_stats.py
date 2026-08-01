@@ -69,8 +69,8 @@ DATASETS: List[Dict[str, Any]] = [
             "/instructions_axis_focused_5/validation"
         ),
         "judges": {
-            QWEN: "llm_ratings.jsonl",
-            GEMMA: "llm_ratings_gemma_full.jsonl",
+            QWEN: "llm_ratings_qwen_full.validated.jsonl",
+            GEMMA: "llm_ratings_gemma_full.validated.jsonl",
         },
     },
     {
@@ -81,8 +81,8 @@ DATASETS: List[Dict[str, Any]] = [
             "/instructions_axis_focused_5/validation"
         ),
         "judges": {
-            QWEN: "llm_ratings_qwen_full.jsonl",
-            GEMMA: "llm_ratings_gemma_full.jsonl",
+            QWEN: "llm_ratings_qwen_full.validated.jsonl",
+            GEMMA: "llm_ratings_gemma_full.validated.jsonl",
         },
     },
 ]

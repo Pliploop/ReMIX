@@ -46,8 +46,8 @@ INSTR_FOLDER = "instructions_axis_focused_5"
 # The exact judge files the paper reports on (scripts/paper_validation_stats.py).
 # Globbing instead would sweep in smoke/partial runs and silently disagree with the paper.
 JUDGE_FILES: Dict[str, Tuple[str, ...]] = {
-    "mtg_jamendo": ("llm_ratings_qwen_full.jsonl", "llm_ratings_gemma_full.jsonl"),
-    "music4all": ("llm_ratings.jsonl", "llm_ratings_gemma_full.jsonl"),
+    "mtg_jamendo": ("llm_ratings_qwen_full.validated.jsonl", "llm_ratings_gemma_full.validated.jsonl"),
+    "music4all": ("llm_ratings_qwen_full.validated.jsonl", "llm_ratings_gemma_full.validated.jsonl"),
 }
 
 # Rubric question that carries the keep/reject decision.
