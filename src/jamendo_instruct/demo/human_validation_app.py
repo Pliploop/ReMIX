@@ -7,6 +7,7 @@ import os
 import random
 import sys
 import tempfile
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
@@ -753,6 +754,69 @@ def _short_model(annotator_id: str) -> str:
     return text.rsplit("/", 1)[-1] or text
 
 
+AVG_METRIC = "__avg__"  # gate on the mean over all rubric questions, not one
+
+
+def _item_model_metric(record: Dict[str, Any], metric: str) -> float | None:
+    """One scalar for this record on `metric`: a rubric question id, or AVG_METRIC
+    for the mean over all answered questions. cannot-judge / N-A / unparsed -> skip."""
+    answers = record.get("answers", {}) or {}
+
+    def _one(qid: str) -> float | None:
+        a = dict(answers.get(qid, {}) or {})
+        if bool(a.get("cannot_judge", False)) or bool(a.get("not_applicable", False)):
+            return None
+        s = a.get("score")
+        return float(s) if isinstance(s, int) else None
+
+    if metric != AVG_METRIC:
+        return _one(metric)
+    vals = [v for v in (_one(str(q["id"])) for q in RATING_QUESTIONS) if v is not None]
+    return sum(vals) / len(vals) if vals else None
+
+
+def _gate_item_keys(
+    records: Sequence[Dict[str, Any]],
+    metric: str,
+    agg: str,
+    threshold: float,
+    scope: str,
+) -> set[tuple[str, int, int, str]]:
+    """Item keys that survive a gating rule, so the analysis can preview a gate.
+
+    Per item, combine the judges' scores on `metric` (agg = mean/min/max across
+    judges; min = every judge must clear it). Then keep by scope:
+      item  -> the surviving items
+      step  -> every item of a (chain, turn) survives  (step gate)
+      chain -> every item of a chain survives          (chain gate, the real thing)
+    """
+    per_item: Dict[tuple[str, int, int, str], Dict[str, float]] = defaultdict(dict)
+    for record in records:
+        v = _item_model_metric(record, metric)
+        if v is not None:
+            per_item[_rating_item_key(record)][str(record.get("annotator_id", "") or "")] = v
+
+    def _agg(scores: Dict[str, float]) -> float:
+        vals = list(scores.values())
+        if agg == "min":
+            return min(vals)
+        if agg == "max":
+            return max(vals)
+        return sum(vals) / len(vals)
+
+    passed = {k for k, scores in per_item.items() if scores and _agg(scores) >= threshold}
+    if scope == "item":
+        return passed
+
+    groups: Dict[Any, set] = defaultdict(set)
+    for k in per_item:
+        group = k[0] if scope == "chain" else (k[0], k[1])
+        groups[group].add(k)
+    good = {g for g, ks in groups.items() if ks <= passed}  # every item in the group passed
+    keyfn = (lambda k: k[0]) if scope == "chain" else (lambda k: (k[0], k[1]))
+    return {k for k in per_item if keyfn(k) in good}
+
+
 def _paired_item_scores(
     recs_a: Sequence[Dict[str, Any]], recs_b: Sequence[Dict[str, Any]], qid: str
 ) -> tuple[List[float], List[float]]:
@@ -836,6 +900,33 @@ def _render_cross_llm_agreement_section(st: Any, output_dir: Path) -> None:
         return
     recs_a = [r for r in llm_records if str(r.get("annotator_id", "") or "") == model_a]
     recs_b = [r for r in llm_records if str(r.get("annotator_id", "") or "") == model_b]
+
+    # Gating preview: restrict the analysis to items/steps/chains that would survive
+    # a gate, so we can see the agreement *after* gating before committing to it.
+    with st.expander("Gating filter (preview a gate before applying it)", expanded=False):
+        on = st.checkbox("Apply gate to this analysis", value=False, key="gate_on")
+        metric_opts = [AVG_METRIC] + [str(q["id"]) for q in RATING_QUESTIONS]
+        metric_label = {AVG_METRIC: "average (all questions)", **{str(q["id"]): str(q["id"]) for q in RATING_QUESTIONS}}
+        c1, c2, c3, c4 = st.columns(4)
+        metric = c1.selectbox("Gate metric", options=metric_opts, format_func=metric_label.get, key="gate_metric")
+        agg = c2.selectbox("Across judges", options=["mean", "min", "max"], key="gate_agg",
+                           help="min = every judge must clear the threshold")
+        threshold = c3.slider("Threshold ≥", 1.0, 5.0, 4.0, 0.5, key="gate_thr")
+        scope = c4.selectbox("Keep by", options=["item", "step", "chain"], index=2, key="gate_scope",
+                             help="chain = drop the whole chain unless every rated item passes (the real gate)")
+
+    if on:
+        # Gate on ALL judges' ratings (both models decide), then filter the pair.
+        allowed = _gate_item_keys(llm_records, metric, agg, threshold, scope)
+        recs_a = [r for r in recs_a if _rating_item_key(r) in allowed]
+        recs_b = [r for r in recs_b if _rating_item_key(r) in allowed]
+        kept_chains = len({_rating_item_key(r)[0] for r in recs_a} | {_rating_item_key(r)[0] for r in recs_b})
+        total_chains = len({r.get("chain_id") for r in llm_records})
+        st.caption(
+            f"Gate: {metric_label.get(metric)} · {agg} across judges ≥ {threshold} · keep by {scope}. "
+            f"Kept {len(allowed):,} items across {kept_chains:,}/{total_chains:,} chains."
+        )
+
     rows = _agreement_rows(recs_a, recs_b, left_label=labels[model_a], right_label=labels[model_b])
     st.dataframe(rows, width="stretch", hide_index=True)
     st.caption(
