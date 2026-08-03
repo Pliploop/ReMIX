@@ -836,7 +836,6 @@ def _cross_llm_figures(
     label_b: str,
 ) -> None:
     """The paper's cross-judge agreement figures, in Plotly (see scripts/paper_validation_stats.py)."""
-    import numpy as np
     import plotly.graph_objects as go
 
     qids = [r["question_id"] for r in rows if r.get("n_items")]
@@ -865,21 +864,36 @@ def _cross_llm_figures(
                       xaxis_title="mean score (1-5)", margin=dict(l=8, r=8, t=48, b=8))
     st.plotly_chart(fig, use_container_width=True)
 
-    # 3) Joint score confusion (the paper's bubble scatter) for a chosen question.
-    qid = st.selectbox("Confusion matrix — question", options=qids, key="cross_llm_confusion_q")
+    # 3) Joint score bubble scatter (the paper's fig_joint_scatter) for a chosen question:
+    #    one bubble per (A, B) score cell, area and colour = count, dashed diagonal = exact agreement.
+    qid = st.selectbox("Joint scores — question", options=qids, key="cross_llm_confusion_q")
     xs, ys = _paired_item_scores(recs_a, recs_b, qid)
     if xs:
-        m = np.zeros((5, 5), dtype=int)  # rows = A score, cols = B score
+        counts: Dict[tuple[int, int], int] = defaultdict(int)
+        exact = 0
         for x, y in zip(xs, ys):
-            m[min(4, max(0, round(x) - 1))][min(4, max(0, round(y) - 1))] += 1
-        exact = int(np.trace(m)) / max(1, int(m.sum()))
-        fig = go.Figure(go.Heatmap(
-            z=m, x=[str(i) for i in range(1, 6)], y=[str(i) for i in range(1, 6)],
-            colorscale="Blues", text=m, texttemplate="%{text}", showscale=True,
+            a = min(5, max(1, round(x)))
+            b = min(5, max(1, round(y)))
+            counts[(a, b)] += 1
+            exact += a == b
+        cells = sorted(counts)
+        cx = [b for (_a, b) in cells]           # x = model B score
+        cy = [a for (a, _b) in cells]           # y = model A score
+        cc = [counts[k] for k in cells]
+        n = len(xs)
+        fig = go.Figure(go.Scatter(
+            x=cx, y=cy, mode="markers",
+            marker=dict(size=cc, sizemode="area", sizeref=2.0 * max(cc) / (46 ** 2), sizemin=4,
+                        color=cc, colorscale="Blues", showscale=True, line=dict(width=1, color="black")),
+            text=[f"{a}→{b}: {counts[(a, b)]}" for (a, b) in cells], hoverinfo="text",
         ))
-        fig.update_layout(height=420, title=f"{qid}: score confusion (exact agree {exact:.1%}, n={int(m.sum())})",
-                          xaxis_title=f"{label_b} score", yaxis_title=f"{label_a} score",
-                          margin=dict(l=8, r=8, t=48, b=8))
+        fig.add_shape(type="line", x0=0.5, y0=0.5, x1=5.5, y1=5.5, line=dict(dash="dash", color="gray"))
+        fig.update_layout(
+            height=460, title=f"{qid}: joint scores (exact agree {exact / n:.1%}, n={n})",
+            xaxis=dict(title=f"{label_b} score", range=[0.5, 5.5], dtick=1),
+            yaxis=dict(title=f"{label_a} score", range=[0.5, 5.5], dtick=1, scaleanchor="x"),
+            margin=dict(l=8, r=8, t=48, b=8),
+        )
         st.plotly_chart(fig, use_container_width=True)
 
 
