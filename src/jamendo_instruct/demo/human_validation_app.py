@@ -753,6 +753,72 @@ def _short_model(annotator_id: str) -> str:
     return text.rsplit("/", 1)[-1] or text
 
 
+def _paired_item_scores(
+    recs_a: Sequence[Dict[str, Any]], recs_b: Sequence[Dict[str, Any]], qid: str
+) -> tuple[List[float], List[float]]:
+    """Per-item mean score for one question, on items rated by both models."""
+    a = _item_mean_scores(recs_a, qid)
+    b = _item_mean_scores(recs_b, qid)
+    keys = sorted(set(a) & set(b))
+    return [a[k] for k in keys], [b[k] for k in keys]
+
+
+def _cross_llm_figures(
+    st: Any,
+    recs_a: Sequence[Dict[str, Any]],
+    recs_b: Sequence[Dict[str, Any]],
+    rows: Sequence[Dict[str, Any]],
+    label_a: str,
+    label_b: str,
+) -> None:
+    """The paper's cross-judge agreement figures, in Plotly (see scripts/paper_validation_stats.py)."""
+    import numpy as np
+    import plotly.graph_objects as go
+
+    qids = [r["question_id"] for r in rows if r.get("n_items")]
+    if not qids:
+        st.info("No items rated by both models yet.")
+        return
+
+    def col(key: str) -> List[float]:
+        return [r.get(key) for r in rows if r.get("n_items")]
+
+    # 1) Agreement by question: Gwet AC1, quadratic kappa, within-1 (the paper's AC1 bar, expanded).
+    fig = go.Figure()
+    for key, name in (("accept_ac1", "Gwet AC1 (accept)"),
+                      ("quadratic_kappa", "Quadratic κ"),
+                      ("within1_rate", "Within-1 rate")):
+        fig.add_bar(y=qids, x=col(key), name=name, orientation="h")
+    fig.update_layout(barmode="group", height=460, title=f"Cross-judge agreement — {label_a} vs {label_b}",
+                      xaxis_title="agreement", legend_title_text="", margin=dict(l=8, r=8, t=48, b=8))
+    st.plotly_chart(fig, use_container_width=True)
+
+    # 2) Judge leniency: mean score per question, one bar per judge (the mean dumbbell).
+    fig = go.Figure()
+    fig.add_bar(y=qids, x=col(f"{label_a}_mean"), name=label_a, orientation="h")
+    fig.add_bar(y=qids, x=col(f"{label_b}_mean"), name=label_b, orientation="h")
+    fig.update_layout(barmode="group", height=460, title="Mean score by question",
+                      xaxis_title="mean score (1-5)", margin=dict(l=8, r=8, t=48, b=8))
+    st.plotly_chart(fig, use_container_width=True)
+
+    # 3) Joint score confusion (the paper's bubble scatter) for a chosen question.
+    qid = st.selectbox("Confusion matrix — question", options=qids, key="cross_llm_confusion_q")
+    xs, ys = _paired_item_scores(recs_a, recs_b, qid)
+    if xs:
+        m = np.zeros((5, 5), dtype=int)  # rows = A score, cols = B score
+        for x, y in zip(xs, ys):
+            m[min(4, max(0, round(x) - 1))][min(4, max(0, round(y) - 1))] += 1
+        exact = int(np.trace(m)) / max(1, int(m.sum()))
+        fig = go.Figure(go.Heatmap(
+            z=m, x=[str(i) for i in range(1, 6)], y=[str(i) for i in range(1, 6)],
+            colorscale="Blues", text=m, texttemplate="%{text}", showscale=True,
+        ))
+        fig.update_layout(height=420, title=f"{qid}: score confusion (exact agree {exact:.1%}, n={int(m.sum())})",
+                          xaxis_title=f"{label_b} score", yaxis_title=f"{label_a} score",
+                          margin=dict(l=8, r=8, t=48, b=8))
+        st.plotly_chart(fig, use_container_width=True)
+
+
 def _render_cross_llm_agreement_section(st: Any, output_dir: Path) -> None:
     llm_records = _llm_rating_records(output_dir)
     st.markdown("**Cross-LLM agreement**")
@@ -770,17 +836,15 @@ def _render_cross_llm_agreement_section(st: Any, output_dir: Path) -> None:
         return
     recs_a = [r for r in llm_records if str(r.get("annotator_id", "") or "") == model_a]
     recs_b = [r for r in llm_records if str(r.get("annotator_id", "") or "") == model_b]
-    st.dataframe(
-        _agreement_rows(recs_a, recs_b, left_label=labels[model_a], right_label=labels[model_b]),
-        width="stretch",
-        hide_index=True,
-    )
+    rows = _agreement_rows(recs_a, recs_b, left_label=labels[model_a], right_label=labels[model_b])
+    st.dataframe(rows, width="stretch", hide_index=True)
     st.caption(
         "Over items rated by both models. mean_diff = B - A (+ = B more lenient); within1 = share within 1 point; "
         "accept = score >= 4. accept_kappa (Cohen) is deflated under high accept rates; "
         "accept_ac1 (Gwet) is prevalence-robust; quadratic_kappa weights near-misses; "
         "pearson_r / spearman_r over shared items."
     )
+    _cross_llm_figures(st, recs_a, recs_b, rows, labels[model_a], labels[model_b])
 
 
 def _llm_per_model_question_means(records: Sequence[Dict[str, Any]], models: Sequence[str]) -> List[Dict[str, Any]]:
