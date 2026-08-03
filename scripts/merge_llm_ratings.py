@@ -48,8 +48,11 @@ def _item_key(record: Dict[str, Any]) -> Key:
 
 
 def _iter_parts(part_dirs: Sequence[Path]) -> Iterable[Dict[str, Any]]:
+    from tqdm import tqdm
+
     for part_dir in part_dirs:
-        for path in sorted(part_dir.glob("*.json")):
+        files = sorted(part_dir.glob("*.json"))
+        for path in tqdm(files, desc=f"parts {part_dir.name}", unit="rec"):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except json.JSONDecodeError as exc:

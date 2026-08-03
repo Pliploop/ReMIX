@@ -8,8 +8,11 @@ from typing import Any, Dict, Iterable, Sequence, Tuple
 
 
 def _iter_records(input_dirs: Sequence[Path]) -> Iterable[Dict[str, Any]]:
+    from tqdm import tqdm
+
     for input_dir in input_dirs:
-        for path in sorted(input_dir.glob("*.json")):
+        files = sorted(input_dir.glob("*.json"))
+        for path in tqdm(files, desc=f"{input_dir.name}", unit="rec"):
             with path.open("r", encoding="utf-8") as f:
                 data = json.load(f)
             if not isinstance(data, dict):
