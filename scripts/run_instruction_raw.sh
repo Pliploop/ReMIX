@@ -4,6 +4,15 @@ set -euo pipefail
 
 export PATH="/data/home/acw749/conda-envs/instruct_embed/bin:${PATH}"
 
+# HF cache on scratch (models already there) + offline: compute nodes have no
+# internet, and HF otherwise probes the network for metadata and dies with
+# "Cannot send a request, as the client has been closed".
+export HF_HOME="${HF_HOME:-/gpfs/scratch/acw749/hf_cache}"
+export HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE:-/gpfs/scratch/acw749/hf_cache/hub}"
+export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-/gpfs/scratch/acw749/hf_cache/transformers}"
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
+
 PROFILE="${PROFILE:-andrena}"
 RUN_ROOT="${RUN_ROOT:-/gpfs/scratch/acw749/datasets/music4all_instruct/music4all_v1}"
 RUN_ROOT="${RUN_ROOT%/}"
@@ -73,7 +82,7 @@ CMD=(
   stage.runtime.vllm_quantization=fp8
   "stage.runtime.vllm_tensor_parallel_size=${TENSOR_PARALLEL_SIZE}"
   "stage.runtime.vllm_gpu_memory_utilization=${GPU_MEMORY_UTILIZATION}"
-  stage.runtime.vllm_max_model_len=12288
+  stage.runtime.vllm_max_model_len=16384
   "stage.runtime.vllm_enforce_eager=${ENFORCE_EAGER}"
   stage.runtime.vllm_gdn_prefill_backend=triton
   "stage.runtime.vllm_max_num_batched_tokens=${MAX_NUM_BATCHED_TOKENS}"
