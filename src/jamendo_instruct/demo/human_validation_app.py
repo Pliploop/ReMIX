@@ -892,6 +892,10 @@ def _render_llm_ratings_tab(
         with st.expander("Per-model mean score by question", expanded=True):
             st.dataframe(_llm_per_model_question_means(all_records, models), width="stretch", hide_index=True)
 
+    # Cross-LLM agreement (e.g. Qwen vs Gemma) -- the paper's judge-agreement table,
+    # distinct from the human-vs-LLM section in the admin tab. Its own model pickers.
+    _render_cross_llm_agreement_section(st, output_dir)
+
     with st.expander("Diagnostic issue tags (LLM judge)", expanded=True):
         st.dataframe(_issue_tag_rows(records), width="stretch", hide_index=True)
 
