@@ -19,6 +19,12 @@ export PATH="/data/home/acw749/conda-envs/instruct_embed/bin:${PATH}"
 export HF_HOME="${HF_HOME:-/gpfs/scratch/acw749/hf_cache}"
 export HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE:-/gpfs/scratch/acw749/hf_cache/hub}"
 export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-/gpfs/scratch/acw749/hf_cache/transformers}"
+# Compute nodes have no internet, but HF still probes the network for model
+# metadata and dies with "Cannot send a request, as the client has been closed".
+# Models are already cached above, so force cache-only. (If a NEW model is ever
+# used, download it once on a login node first.)
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
 
 PROFILE="${PROFILE:-sae}"
 RUN_ROOT="${RUN_ROOT:-/gpfs/scratch/acw749/datasets/music4all_instruct/music4all_v1}"
