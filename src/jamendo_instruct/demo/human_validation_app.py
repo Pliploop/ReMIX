@@ -189,71 +189,64 @@ _STAGES = [
 
 
 def _render_intro_tab(st: Any) -> None:
+    # The 20-second read: what ReMIX is, what we validate, why. Everything else is
+    # secondary and lives in the "More detail" dropdown below.
     st.markdown(
         """
         <section class="ji-card">
-          <div class="ji-section-label">What is this?</div>
-          <h2>Finding music is a conversation</h2>
-          <p>
-            You rarely find the right song in one search. You start close, then adjust.
-            <em>“Make it punchier.”</em> <em>“Keep the vocals but brighter.”</em>
-            <em>“Bring back that piano from before.”</em>
-          </p>
-          <p>
-            ReMIX is a big collection of these back-and-forth music searches. Every turn is a
-            small edit to the song you got last.
-          </p>
+          <h2>Read this first</h2>
+          <p><b>What is ReMIX?</b> A dataset of back-and-forth music searches. Someone looks for a song,
+             then keeps adjusting it: <em>“make it punchier”</em>, <em>“keep the vocals”</em>,
+             <em>“bring back the piano”</em>. For every adjustment, an AI wrote the instruction.</p>
+          <p><b>What are we validating?</b> Two AI judges scored whether each instruction correctly turns
+             the <b>before</b> song into the <b>after</b> song.</p>
+          <p><b>Why you?</b> We need people to check the judges. You look at a before track, an after track,
+             and the instruction, and say if it makes sense. If people and the AI judges agree, we can trust
+             the judges to build the dataset.</p>
         </section>
         """,
         unsafe_allow_html=True,
     )
+    st.success("👉 Ready? Click the **Rate** tab at the top to start rating.")
 
-    st.markdown("### How it is built, in five steps")
-    for title, body in _STAGES:
-        st.markdown(f"**{title}** {body}")
+    with st.expander("More detail — how it is built, examples, and the video"):
+        st.markdown("**How it is built, in five steps**")
+        for title, body in _STAGES:
+            st.markdown(f"**{title}** {body}")
 
-    st.markdown(
-        """
-        <section class="ji-card">
-          <div class="ji-section-label">Your job</div>
-          <h2>Are the machine judges right?</h2>
-          <p>
-            An instruction was written to turn one track (the <b>source</b>) into another (the
-            <b>target</b>). You see both tracks and the instruction. You say whether the instruction
-            makes sense. The LLM judges did the same thing. We check how often people and machines
-            give the same answer.
-          </p>
-          <p><b>Example</b></p>
-          <ul>
-            <li><b>Source:</b> mellow acoustic guitar, no drums.</li>
-            <li><b>Target:</b> slow electronic track with a steady club beat, still chill.</li>
-            <li><b>Instruction:</b> <em>“Add a slow club beat and go electronic, keep it laid-back.”</em></li>
-            <li><b>You would say yes.</b> It asks for a real change (add a beat, go electronic). It keeps
-                something real (the laid-back mood). Nothing in the evidence says it is wrong.</li>
-          </ul>
-        </section>
-        <section class="ji-card">
-          <div class="ji-section-label">Rules of thumb</div>
-          <ul>
-            <li>Judge from the evidence you can see: audio, captions, tags, metadata.</li>
-            <li>A good instruction says what changes. “Replace the rock drums with an electronic groove.”
-                A weak one just describes the end result. “Make it synth-pop.”</li>
-            <li>Can’t tell from the evidence? Pick <b>Cannot judge</b>. Missing evidence is fine.
-                Only mark a contradiction when the evidence shows a claim is actually false.</li>
-            <li>The target can differ from the source in ways the instruction never mentions. Only judge
-                what the instruction actually claims.</li>
-          </ul>
-        </section>
-        """,
-        unsafe_allow_html=True,
-    )
+        st.markdown(
+            """
+            <section class="ji-card">
+              <div class="ji-section-label">A worked example</div>
+              <ul>
+                <li><b>Before:</b> mellow acoustic guitar, no drums.</li>
+                <li><b>After:</b> slow electronic track with a steady club beat, still chill.</li>
+                <li><b>Instruction:</b> <em>“Add a slow club beat and go electronic, keep it laid-back.”</em></li>
+                <li><b>You would say yes.</b> It asks for a real change (add a beat, go electronic). It keeps
+                    something real (the laid-back mood). Nothing in the evidence says it is wrong.</li>
+              </ul>
+            </section>
+            <section class="ji-card">
+              <div class="ji-section-label">Rules of thumb</div>
+              <ul>
+                <li>Judge from the evidence you can see: audio, captions, tags, metadata.</li>
+                <li>A good instruction says what changes. “Replace the rock drums with an electronic groove.”
+                    A weak one just describes the end result. “Make it synth-pop.”</li>
+                <li>Can’t tell from the evidence? Pick <b>Cannot judge</b>. Missing evidence is fine.
+                    Only mark a contradiction when the evidence shows a claim is actually false.</li>
+                <li>The after track can differ from the before track in ways the instruction never mentions.
+                    Only judge what the instruction actually claims.</li>
+              </ul>
+            </section>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    st.markdown("### See the whole thing")
-    if REMIX_VIDEO.is_file():
-        st.video(str(REMIX_VIDEO))
-        st.caption("The full pipeline in about 90 seconds. No sound.")
+        if REMIX_VIDEO.is_file():
+            st.markdown("**The whole pipeline in about 90 seconds (no sound)**")
+            st.video(str(REMIX_VIDEO))
 
-    st.info("Rate tab: score one item against the checklist. Compare tab: pick the better of two phrasings for the same pair.")
+    st.caption("Rate tab: score one item against the checklist. Compare tab: pick the better of two phrasings for the same pair.")
 
 
 def _render_rater_instruction_block(st: Any) -> None:
