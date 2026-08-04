@@ -188,7 +188,7 @@ _STAGES = [
 ]
 
 
-def _render_intro_tab(st: Any) -> None:
+def _render_intro_tab(st: Any, rate_page: Any = None) -> None:
     # The 20-second read: what ReMIX is, what we validate, why. Everything else is
     # secondary and lives in the "More detail" dropdown below.
     st.markdown(
@@ -207,7 +207,11 @@ def _render_intro_tab(st: Any) -> None:
         """,
         unsafe_allow_html=True,
     )
-    st.success("👉 Ready? Click the **Rate** tab at the top to start rating.")
+    if rate_page is not None:
+        if st.button("👉 Start rating", type="primary"):
+            st.switch_page(rate_page)
+    else:
+        st.success("👉 Ready? Open the **Rate Variant** page to start.")
 
     with st.expander("More detail — how it is built, examples, and the video"):
         st.markdown("**How it is built, in five steps**")
@@ -1505,19 +1509,25 @@ def _render_streamlit_app(args: argparse.Namespace) -> None:
         unsafe_allow_html=True,
     )
 
-    intro_tab, rating_tab, pairwise_tab, admin_tab, llm_tab = st.tabs(
-        ["Intro", "Rate Variant", "Compare Variants", "Admin", "LLM Ratings"]
+    # Pages (st.navigation) instead of st.tabs, so the intro's CTA can jump
+    # straight to Rate via st.switch_page. Closures capture the loaded context.
+    rate_page = st.Page(
+        lambda: _render_rating_tab(st, dataset, samples, cache_dir=cache_dir, instruction_field=instruction_field),
+        title="Rate Variant", url_path="rate", icon="🎧",
     )
-    with intro_tab:
-        _render_intro_tab(st)
-    with rating_tab:
-        _render_rating_tab(st, dataset, samples, cache_dir=cache_dir, instruction_field=instruction_field)
-    with pairwise_tab:
-        _render_pairwise_tab(st, dataset, pairs, cache_dir=cache_dir, instruction_field=instruction_field)
-    with admin_tab:
-        _render_admin_tab(st, dataset, samples, pairs, args.admin_password)
-    with llm_tab:
-        _render_llm_ratings_tab(st, dataset, samples, args.admin_password)
+    pages = [
+        st.Page(lambda: _render_intro_tab(st, rate_page), title="Intro", url_path="intro", icon="👋", default=True),
+        rate_page,
+        st.Page(
+            lambda: _render_pairwise_tab(st, dataset, pairs, cache_dir=cache_dir, instruction_field=instruction_field),
+            title="Compare Variants", url_path="compare", icon="⚖️",
+        ),
+        st.Page(lambda: _render_admin_tab(st, dataset, samples, pairs, args.admin_password),
+                title="Admin", url_path="admin", icon="🛠️"),
+        st.Page(lambda: _render_llm_ratings_tab(st, dataset, samples, args.admin_password),
+                title="LLM Ratings", url_path="llm", icon="🤖"),
+    ]
+    st.navigation(pages, position="top").run()
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
