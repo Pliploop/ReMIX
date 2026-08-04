@@ -180,11 +180,11 @@ def _render_evidence_details(st: Any, dataset: DemoDataset, step: StepView, *, c
 REMIX_VIDEO = Path(__file__).resolve().parents[3] / "website" / "public" / "remix.mp4"
 
 _STAGES = [
-    ("1 · Enrich", "Take open music catalogs. For every track, auto-write a caption of how it sounds and transcribe its lyrics, so each song carries rich text, not just tags."),
-    ("2 · Connect", "Embed every track by sound and by description, then link tracks that are similar. Result: a map where near = musically alike."),
-    ("3 · Walk", "Take short walks across that map — each hop is a small, plausible musical change. A walk of 1-6 hops is a chain."),
-    ("4 · Instruct", "For each hop, an LLM writes the instruction that turns the first song into the next ('make it punchier, keep the vocals'). Five phrasings per hop."),
-    ("5 · Validate", "Two LLM judges score every instruction against a rubric. Only the good ones are kept. **You are checking those judges.**"),
+    ("1. Enrich", "Start with open music catalogs. For every track, a model writes a short description of how it sounds and types out the lyrics. Now each song has real words describing it, plus tags."),
+    ("2. Connect", "Turn every track into numbers from its sound and its description. Link tracks that come out similar. You get a map where close means musically alike."),
+    ("3. Walk", "Take short walks across that map. Each hop is a small musical change. One walk of 1 to 6 hops is a chain."),
+    ("4. Instruct", "For each hop, an LLM writes the instruction that turns one song into the next. Like 'make it punchier, keep the vocals'. It writes five versions per hop."),
+    ("5. Validate", "Two LLM judges score every instruction against a checklist. Only the good ones stay. **You are checking those judges.**"),
 ]
 
 
@@ -193,64 +193,67 @@ def _render_intro_tab(st: Any) -> None:
         """
         <section class="ji-card">
           <div class="ji-section-label">What is this?</div>
-          <h2>Finding music is a conversation, not one search</h2>
+          <h2>Finding music is a conversation</h2>
           <p>
-            You rarely find the right track in one go. You start close, then steer:
-            <em>“make it punchier”</em> … <em>“keep the vocals but brighten it”</em> …
-            <em>“actually, bring back that piano from before.”</em> ReMIX is a big dataset of
-            exactly these multi-turn music searches — each turn a small edit on the last result.
+            You rarely find the right song in one search. You start close, then adjust.
+            <em>“Make it punchier.”</em> <em>“Keep the vocals but brighter.”</em>
+            <em>“Bring back that piano from before.”</em>
+          </p>
+          <p>
+            ReMIX is a big collection of these back-and-forth music searches. Every turn is a
+            small edit to the song you got last.
           </p>
         </section>
         """,
         unsafe_allow_html=True,
     )
 
-    if REMIX_VIDEO.is_file():
-        st.video(str(REMIX_VIDEO))
-        st.caption("The whole pipeline in 90s (silent). Details below.")
-    else:
-        st.info("Pipeline video not found; see the stage cards below.")
-
-    st.markdown("### How ReMIX is built — in five steps")
+    st.markdown("### How it is built, in five steps")
     for title, body in _STAGES:
-        st.markdown(f"**{title}.** {body}")
+        st.markdown(f"**{title}** {body}")
 
     st.markdown(
         """
         <section class="ji-card">
-          <div class="ji-section-label">Your job (ELI5)</div>
+          <div class="ji-section-label">Your job</div>
           <h2>Are the machine judges right?</h2>
           <p>
-            An instruction was written to turn a <b>source</b> track into a <b>target</b> track.
-            You look at both tracks (audio + caption + tags) and the instruction, and rate whether
-            the instruction makes sense — mirroring what the LLM judges did. We then measure how
-            often humans and machines agree.
+            An instruction was written to turn one track (the <b>source</b>) into another (the
+            <b>target</b>). You see both tracks and the instruction. You say whether the instruction
+            makes sense. The LLM judges did the same thing. We check how often people and machines
+            give the same answer.
           </p>
-          <p><b>Worked example</b></p>
+          <p><b>Example</b></p>
           <ul>
             <li><b>Source:</b> mellow acoustic guitar, no drums.</li>
-            <li><b>Target:</b> slow electronic track, four-on-the-floor beat, same chill mood.</li>
+            <li><b>Target:</b> slow electronic track with a steady club beat, still chill.</li>
             <li><b>Instruction:</b> <em>“Add a slow club beat and go electronic, keep it laid-back.”</em></li>
-            <li><b>Good rating:</b> yes — it names a real change (add beat, go electronic), keeps a real
-                thing (laid-back mood), and nothing contradicts the evidence.</li>
+            <li><b>You would say yes.</b> It asks for a real change (add a beat, go electronic). It keeps
+                something real (the laid-back mood). Nothing in the evidence says it is wrong.</li>
           </ul>
         </section>
         <section class="ji-card">
           <div class="ji-section-label">Rules of thumb</div>
           <ul>
-            <li><b>Judge from evidence</b> — audio, captions, tags, metadata. Not vibes.</li>
-            <li><b>A good instruction describes a <em>change</em></b> ("replace rock drums with an electronic
-                groove"), not just the destination ("make it synth-pop").</li>
-            <li><b>Not enough to tell?</b> Pick <b>Cannot judge</b>. Missing evidence ≠ contradiction —
-                contradiction means the evidence shows a claim is false.</li>
-            <li>The target may differ from the source in ways the instruction never mentions. Only judge
-                what the instruction claims.</li>
+            <li>Judge from the evidence you can see: audio, captions, tags, metadata.</li>
+            <li>A good instruction says what changes. “Replace the rock drums with an electronic groove.”
+                A weak one just describes the end result. “Make it synth-pop.”</li>
+            <li>Can’t tell from the evidence? Pick <b>Cannot judge</b>. Missing evidence is fine.
+                Only mark a contradiction when the evidence shows a claim is actually false.</li>
+            <li>The target can differ from the source in ways the instruction never mentions. Only judge
+                what the instruction actually claims.</li>
           </ul>
         </section>
         """,
         unsafe_allow_html=True,
     )
-    st.info("Rate tab = score one item against the rubric. Compare tab = pick the better of two phrasings for the same pair.")
+
+    st.markdown("### See the whole thing")
+    if REMIX_VIDEO.is_file():
+        st.video(str(REMIX_VIDEO))
+        st.caption("The full pipeline in about 90 seconds. No sound.")
+
+    st.info("Rate tab: score one item against the checklist. Compare tab: pick the better of two phrasings for the same pair.")
 
 
 def _render_rater_instruction_block(st: Any) -> None:
