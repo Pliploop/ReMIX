@@ -94,10 +94,13 @@ def main() -> None:
         val_dir = folder / "validation"
         total = scan_variants(folder / "step_json")  # instruction variants = judging universe
 
-        # A judge shows up as an unmerged <name>.parts dir, a merged <name>.jsonl,
-        # or both. Union the two so already-merged sidecars are reported even before
-        # anything runs in parts mode.
-        canonical_files = sorted(p for p in val_dir.glob("llm_ratings*.jsonl") if p.is_file()) if val_dir.is_dir() else []
+        # A judge = a <name>.parts dir and/or a raw <name>.jsonl. Its MERGED output is
+        # <name>.validated.jsonl, which is not a judge of its own -- so exclude the
+        # .validated files from the judge list and count them as the merged total.
+        canonical_files = (
+            [p for p in val_dir.glob("llm_ratings*.jsonl") if p.is_file() and not p.name.endswith(".validated.jsonl")]
+            if val_dir.is_dir() else []
+        )
         parts_dirs = sorted(val_dir.glob("*.parts")) if val_dir.is_dir() else []
         stems = sorted({p.stem for p in canonical_files} | {d.name[: -len(".parts")] for d in parts_dirs})
         if not stems:
@@ -120,12 +123,16 @@ def main() -> None:
 
         for stem in stems:
             parts_dir = val_dir / f"{stem}.parts"
-            canonical = val_dir / f"{stem}.jsonl"
+            validated_path = val_dir / f"{stem}.validated.jsonl"
+            raw_path = val_dir / f"{stem}.jsonl"
             rated = scan_variants(parts_dir)  # None if no parts dir yet
-            merged = jsonl_rows(canonical)  # None if never merged
+            # Merged = the canonical validated file if it exists, else the raw sidecar.
+            merged = jsonl_rows(validated_path)
+            if merged is None:
+                merged = jsonl_rows(raw_path)
 
-            # Best estimate of validated items: fresh parts if present, else merged.
-            validated = rated if rated is not None else (merged or 0)
+            # Best estimate of validated items: the merged file if present, else parts.
+            validated = merged if merged is not None else (rated or 0)
             coverage = f"{100 * validated / total:.1f}% of {_fmt(total)}" if total else "[dim]?[/dim]"
 
             if rated is None:
@@ -146,7 +153,7 @@ def main() -> None:
             )
 
             if rated is not None and (args.commands or merged is None or rated > merged):
-                pending_cmds.append(f"# {label} · {stem}\n{merge_command(parts_dir, canonical)}")
+                pending_cmds.append(f"# {label} · {stem}\n{merge_command(parts_dir, validated_path)}")
 
         console.print()
         console.print(t)

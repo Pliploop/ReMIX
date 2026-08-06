@@ -152,7 +152,31 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "if present. --no-existing to fold none.",
     )
     parser.add_argument("--no-existing", action="store_true", help="Merge only the parts; fold in no existing JSONL.")
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="Append only parts not already in --output; no full rewrite of the (large) validated file. "
+        "Seeds keys from --output, so run a normal merge once first, then --append for increments.",
+    )
     return parser
+
+
+def _append(part_dirs: Sequence[Path], output: Path) -> Dict[str, int]:
+    seen = {_item_key(r) for r in _iter_jsonl(output)} if output.is_file() else set()
+    before = len(seen)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    appended = already = 0
+    with output.open("a", encoding="utf-8") as out_f:
+        for record in _iter_parts(part_dirs):
+            key = _item_key(record)
+            if key in seen:
+                already += 1
+                continue
+            seen.add(key)
+            out_f.write(json.dumps(record, ensure_ascii=True) + "\n")
+            out_f.flush()
+            appended += 1
+    return {"records_appended": appended, "already_present": already, "records_total": before + appended}
 
 
 def main() -> None:
@@ -166,6 +190,11 @@ def main() -> None:
         output = part_dirs[0].parent / f"{_stem(part_dirs[0])}.validated.jsonl"
     else:
         parser.error("--output is required when merging more than one parts dir")
+
+    if args.append:
+        stats = _append(part_dirs, output)
+        print(json.dumps({"status": "ok", **stats, "output": str(output)}, indent=2))
+        return
 
     if args.existing is not None:
         existing = args.existing
