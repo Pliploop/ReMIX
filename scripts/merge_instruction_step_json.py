@@ -28,9 +28,47 @@ def _record_key(record: Dict[str, Any]) -> Tuple[str, int, int]:
     )
 
 
-def merge_step_json(input_dirs: Sequence[Path], output_jsonl: Path, *, overwrite: bool = False) -> Dict[str, int]:
+def _existing_keys(output_jsonl: Path) -> set[Tuple[str, int, int]]:
+    keys: set[Tuple[str, int, int]] = set()
+    if not output_jsonl.is_file():
+        return keys
+    with output_jsonl.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                keys.add(_record_key(json.loads(line)))
+            except json.JSONDecodeError:
+                continue
+    return keys
+
+
+def merge_step_json(
+    input_dirs: Sequence[Path], output_jsonl: Path, *, overwrite: bool = False, append: bool = False
+) -> Dict[str, int]:
+    # Append: don't rewrite the (possibly huge) output; just append parts whose
+    # (chain, turn, variant) is not already in it. No error if it exists.
+    if append:
+        seen = _existing_keys(output_jsonl)
+        before = len(seen)
+        output_jsonl.parent.mkdir(parents=True, exist_ok=True)
+        appended = 0
+        already = 0
+        with output_jsonl.open("a", encoding="utf-8") as out_f:
+            for record in _iter_records(input_dirs):
+                key = _record_key(record)
+                if key in seen:
+                    already += 1
+                    continue
+                seen.add(key)
+                out_f.write(json.dumps(record, ensure_ascii=True) + "\n")
+                out_f.flush()
+                appended += 1
+        return {"records_appended": appended, "already_present": already, "records_total": before + appended}
+
     if output_jsonl.exists() and not overwrite:
-        raise FileExistsError(f"Output already exists: {output_jsonl}")
+        raise FileExistsError(f"Output already exists: {output_jsonl} (use --overwrite or --append)")
     records_by_key: Dict[Tuple[str, int, int], Dict[str, Any]] = {}
     duplicate_count = 0
     for record in _iter_records(input_dirs):
@@ -49,13 +87,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Merge per-step instruction JSON files into validation-ready JSONL.")
     parser.add_argument("input_dirs", nargs="+", type=Path, help="Directory or directories containing per-step *.json records.")
     parser.add_argument("--output", required=True, type=Path, help="Output chain_step_instructions.jsonl path.")
-    parser.add_argument("--overwrite", action="store_true", help="Overwrite the output JSONL if it already exists.")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--overwrite", action="store_true", help="Rewrite the output JSONL if it already exists.")
+    mode.add_argument("--append", action="store_true",
+                      help="Append only parts not already in the output (by chain/turn/variant); no error if it exists.")
     return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
-    stats = merge_step_json(args.input_dirs, args.output, overwrite=bool(args.overwrite))
+    stats = merge_step_json(args.input_dirs, args.output, overwrite=bool(args.overwrite), append=bool(args.append))
     print(json.dumps({"status": "ok", **stats, "output": str(args.output)}, indent=2))
 
 
