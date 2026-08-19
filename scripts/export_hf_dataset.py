@@ -29,14 +29,15 @@ import argparse
 import json
 import os
 import sys
+from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 import pandas as pd
+from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from export_website_data import (  # noqa: E402  (single source of truth for paths + track refs)
-    DECISION_Q,
     INSTR_FOLDER,
     JUDGE_FILES,
     M4A_RAW,
@@ -47,8 +48,10 @@ from export_website_data import (  # noqa: E402  (single source of truth for pat
     load_jamendo_licenses,
     load_m4a_metadata,
     load_manifest,
-    load_ratings,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from jamendo_instruct.demo.validation_rubric import RATING_QUESTIONS  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -57,15 +60,18 @@ DATASETS = {
     "music4all": {"root": M4A_ROOT, "label": "Music4All", "license": "other"},
 }
 
-# The two judges, in a stable order, keyed to their score column names.
-JUDGE_COLS = ("qwen_overall", "gemma_overall")
+# Every rubric question, scored per judge (columns like `qwen_overall_validity`).
+QUESTION_IDS = [str(q["id"]) for q in RATING_QUESTIONS]
+DECISION_Q = "overall_validity"
+# JUDGE_FILES[key] is (qwen_file, gemma_file), so these names align to that order.
+JUDGE_NAMES = ("qwen", "gemma")
 ACCEPT_THRESHOLD = 4.0
 
 
 def _read_instructions(path: Path) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     with path.open(encoding="utf-8", errors="replace") as f:
-        for line in f:
+        for line in tqdm(f, desc="  read instructions", unit="rec"):
             line = line.strip()
             if not line:
                 continue
@@ -86,25 +92,46 @@ def _delta(rec: Dict[str, Any]) -> Dict[str, List[str]]:
     return {k: list(d.get(k) or []) for k in ("lost", "new", "preserved")}
 
 
-def _mean_or_none(scores: Dict[Tuple[str, int, int], List[float]], key: Tuple[str, int, int]) -> float | None:
-    vals = scores.get(key)
-    return round(sum(vals) / len(vals), 3) if vals else None
+def _load_judge_scores(path: Path) -> Dict[Tuple[str, int, int], Dict[str, float]]:
+    """(chain, turn, variant) -> {question_id: score}, mean if a judge rated it twice."""
+    acc: Dict[Tuple[str, int, int], Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
+    if not path.is_file():
+        return {}
+    with path.open(encoding="utf-8", errors="replace") as f:
+        for line in tqdm(f, desc=f"  scores {path.name}", unit="rec", leave=False):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            key = (rec.get("chain_id"), int(rec.get("turn_index", 0)), int(rec.get("variant_index", 0)))
+            answers = rec.get("answers", {}) or {}
+            for qid in QUESTION_IDS:
+                a = answers.get(qid, {}) or {}
+                if a.get("cannot_judge") or a.get("not_applicable"):
+                    continue
+                s = a.get("score")
+                if isinstance(s, (int, float)):
+                    acc[key][qid].append(float(s))
+    return {k: {q: round(sum(v) / len(v), 3) for q, v in d.items()} for k, d in acc.items()}
 
 
-def build_rows(key: str, root: Path, jamendo, m4a) -> List[Dict[str, Any]]:
-    instr_path = root / INSTR_FOLDER / "chain_step_instructions.jsonl"
+def build_rows(key: str, root: Path, folder: str, jamendo, m4a) -> List[Dict[str, Any]]:
+    instr_path = root / folder / "chain_step_instructions.jsonl"
     if not instr_path.is_file():
         sys.exit(f"missing {instr_path}")
     records = _read_instructions(instr_path)
     print(f"  {len(records):,} instruction variants")
 
-    # Per-judge overall-validity score, keyed by (chain, turn, variant).
-    val_dir = root / INSTR_FOLDER / "validation"
-    judge_score: List[Dict[Tuple[str, int, int], List[float]]] = []
+    # Per-judge, per-question scores, keyed by (chain, turn, variant).
+    val_dir = root / folder / "validation"
+    judge_score: List[Dict[Tuple[str, int, int], Dict[str, float]]] = []
     for name in JUDGE_FILES[key]:
         # Prefer the merged .validated.jsonl (full run); fall back to the raw sidecar.
         validated = val_dir / name.replace(".jsonl", ".validated.jsonl")
-        judge_score.append(load_ratings([validated if validated.is_file() else val_dir / name]))
+        judge_score.append(_load_judge_scores(validated if validated.is_file() else val_dir / name))
     rated = len(set().union(*[set(js) for js in judge_score])) if judge_score else 0
     print(f"  {rated:,} steps carry at least one judge score")
 
@@ -113,14 +140,21 @@ def build_rows(key: str, root: Path, jamendo, m4a) -> List[Dict[str, Any]]:
     tracks = {cid: build_track(cid, manifest, dataset=key, jamendo=jamendo, m4a=m4a) for cid in clip_ids}
 
     rows: List[Dict[str, Any]] = []
-    for r in records:
+    for r in tqdm(records, desc="  build rows", unit="row"):
         k = (r["chain_id"], int(r.get("turn_index", 0)), int(r.get("variant_index", 0)))
         src = tracks.get(r["source_clip_id"], {})
         tgt = tracks.get(r["target_clip_id"], {})
         delta = _delta(r)
-        scores = {col: _mean_or_none(js, k) for col, js in zip(JUDGE_COLS, judge_score)}
-        have_all = all(v is not None for v in scores.values())
-        validated = have_all and all(v >= ACCEPT_THRESHOLD for v in scores.values())
+        # Every question's score for every judge: <judge>_<question_id>.
+        score_cols: Dict[str, Any] = {}
+        overalls: List[float] = []
+        for jname, js in zip(JUDGE_NAMES, judge_score):
+            qmap = js.get(k, {})
+            for qid in QUESTION_IDS:
+                score_cols[f"{jname}_{qid}"] = qmap.get(qid)
+            if qmap.get(DECISION_Q) is not None:
+                overalls.append(qmap[DECISION_Q])
+        validated = len(overalls) == len(JUDGE_NAMES) and all(v >= ACCEPT_THRESHOLD for v in overalls)
         rows.append({
             "chain_id": r["chain_id"],
             "turn_index": k[1],
@@ -150,8 +184,8 @@ def build_rows(key: str, root: Path, jamendo, m4a) -> List[Dict[str, Any]]:
             "target_tags": tgt.get("tags", []),
             "target_caption": tgt.get("caption", ""),
             "target_audio_url": (tgt.get("audio", {}) or {}).get("url", ""),
-            # judge scores + gate
-            **{col: scores[col] for col in JUDGE_COLS},
+            # per-judge, per-question scores + the gate
+            **score_cols,
             "validated": validated,
         })
     return rows
@@ -162,12 +196,17 @@ DATASET_CARD = """\
 license: {license}
 task_categories:
 - text-retrieval
+language:
+- en
 tags:
 - music
 - music-information-retrieval
 - instruction-following
 - multi-turn
+- compositional-retrieval
 pretty_name: {pretty}
+size_categories:
+- {size_cat}
 configs:
 - config_name: default
   data_files:
@@ -181,31 +220,109 @@ configs:
 
 # {pretty}
 
-Multi-turn, compositional, instruction-based music retrieval. Each row is one
-instruction variant of a chain step: an instruction that edits a **source** track
-toward a **target** track, with both tracks' metadata, the semantic delta, and
-each LLM judge's overall-validity score.
+**ReMIX** is a large-scale dataset of **multi-turn, compositional, instruction-based
+music retrieval**: finding a track is a conversation, not a single query. You start
+close to what you want, then steer — *"make it punchier"*, *"keep the vocals but
+brighten it"*, *"bring back that piano from before"*. Each turn is an **edit** on the
+previous result, and instructions may refer back to earlier turns.
 
-`validated = true` marks steps both judges scored >= {threshold} on overall
-validity. Every step is included so the un-gated data is available too.
+This is the **{label}** split of ReMIX ({total:,} instruction variants over
+{n_chains:,} chains).
 
-**No audio is distributed.** `*_audio_url` points at the {audio_source}.
+## How it was built
 
-## Columns
-`chain_id, turn_index, variant_index, split, instruction, instruction_contextual,
-change_axes, preservation_axes, delta_{{lost,new,preserved}}, transition_score,
-source_*/target_* (title, artist, tags, caption, audio_url), {judge_cols},
-validated`.
+1. **Enrich** — open music catalogs; every clip is captioned (how it sounds) and its
+   lyrics transcribed, so each track carries rich text alongside its tags.
+2. **Connect** — every clip is embedded by audio and by description; similar clips are
+   linked into a graph of plausible transitions.
+3. **Walk** — a stochastic weighted walk over that graph draws multi-turn chains of
+   1–6 steps; each hop is a small, plausible musical change.
+4. **Instruct** — each hop is diffed into a semantic delta, and an LLM writes the
+   instruction that turns one track into the next. Up to five variants per step.
+5. **Validate** — two LLM judges score every instruction against an 8-question rubric.
+   `validated = true` marks steps both judges scored ≥ {threshold} on overall validity.
+
+Every step is included (validated or not) so the un-gated data is available for study.
+
+## Dataset structure
+
+One row per **instruction variant of a chain step**. Splits: `train`, `validation`,
+`test` ({train:,} / {val:,} / {test:,} rows; {validated:,} validated).
+
+### Columns
+
+**Identity** — `chain_id`, `turn_index`, `variant_index`, `split`, `seed_clip_id`.
+
+**Instruction** — `instruction` (standalone), `instruction_contextual` (may refer to
+earlier turns), `hardness`, `verbosity`, `transition_score`, `change_axes`,
+`preservation_axes`, `delta_lost` / `delta_new` / `delta_preserved` (the semantic diff).
+
+**Tracks** — for `source_` and `target_`: `clip_id`, `title`, `artist`, `tags`,
+`caption`, `audio_url`. **No audio is distributed**; `audio_url` references the
+{audio_source}.
+
+**Judge scores** (1–5, `null` if not yet judged or the judge abstained) — every rubric
+question from each judge ({judges}):
+
+{score_cols_block}
+
+**Gate** — `validated` (bool): both judges scored `overall_validity` ≥ {threshold}.
+
+## Load
+
+```python
+from datasets import load_dataset
+ds = load_dataset("{repo_hint}")
+# validated subset only:
+val = ds["train"].filter(lambda r: r["validated"])
+```
+
+## Licensing
+
+Only the underlying **audio** is redistribution-restricted, and **this dataset
+contains no audio** — only text (instructions, captions, tags, metadata) and
+reference URLs. {license_note}
+
+## Citation
+
+_Paper forthcoming._
 """
 
 
-def write_card(out_dir: Path, key: str, meta: Dict[str, Any]) -> None:
+def _size_category(n: int) -> str:
+    for cutoff, label in ((1_000, "n<1K"), (10_000, "1K<n<10K"), (100_000, "10K<n<100K"),
+                          (1_000_000, "100K<n<1M"), (10_000_000, "1M<n<10M")):
+        if n < cutoff:
+            return label
+    return "10M<n<100M"
+
+
+def write_card(out_dir: Path, key: str, meta: Dict[str, Any], repo_hint: str, stats: Dict[str, int]) -> None:
+    score_cols_block = "\n".join(
+        f"- `{jname}_*`: " + ", ".join(f"`{jname}_{qid}`" for qid in QUESTION_IDS)
+        for jname in JUDGE_NAMES
+    )
+    license_note = (
+        "MTG-Jamendo tracks are Creative Commons; `audio_url` points at the Jamendo CDN."
+        if key == "mtg_jamendo"
+        else "The source audio (Music4All) is under a non-redistribution agreement and is not "
+        "included here; only text and identifiers are provided."
+    )
     card = DATASET_CARD.format(
         license=meta["license"],
         pretty=f"ReMIX — {meta['label']}",
+        label=meta["label"],
         threshold=ACCEPT_THRESHOLD,
         audio_source="Jamendo CDN (Creative Commons)" if key == "mtg_jamendo" else "original catalog (not redistributed)",
-        judge_cols=", ".join(JUDGE_COLS),
+        judges=" and ".join(JUDGE_NAMES),
+        score_cols_block=score_cols_block,
+        total=stats["total"],
+        n_chains=stats["chains"],
+        train=stats["train"], val=stats["validation"], test=stats["test"],
+        validated=stats["validated"],
+        size_cat=_size_category(stats["total"]),
+        repo_hint=repo_hint,
+        license_note=license_note,
     )
     (out_dir / "README.md").write_text(card, encoding="utf-8")
 
@@ -213,6 +330,8 @@ def write_card(out_dir: Path, key: str, meta: Dict[str, Any]) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dataset", choices=list(DATASETS), default="mtg_jamendo")
+    ap.add_argument("--folder", default=INSTR_FOLDER,
+                    help=f"Instructions folder under the run root (default: {INSTR_FOLDER}, the canonical one).")
     ap.add_argument("--out", default="hf_export", help="Output dir (a repo-shaped folder).")
     ap.add_argument("--push", default=None, metavar="REPO_ID",
                     help="Also push to this HF dataset repo (needs HF_TOKEN). Omit to only write locally.")
@@ -226,8 +345,8 @@ def main() -> None:
     jamendo = load_jamendo_licenses(MTG_RAW / "audio_licenses.txt") if key == "mtg_jamendo" else {}
     m4a = load_m4a_metadata(M4A_RAW) if key == "music4all" else {}
 
-    print(f"{meta['label']}:")
-    rows = build_rows(key, meta["root"], jamendo, m4a)
+    print(f"{meta['label']} ({args.folder}):")
+    rows = build_rows(key, meta["root"], args.folder, jamendo, m4a)
     df = pd.DataFrame(rows)
 
     out_dir = (REPO / args.out / key).resolve()
@@ -239,8 +358,14 @@ def main() -> None:
         sub = df[df["split"].map(lambda s: split_map.get(str(s), "train")) == split]
         sub.to_parquet(data_dir / f"{split}.parquet", index=False)
         counts[split] = len(sub)
-    write_card(out_dir, key, meta)
-    print(f"  wrote {out_dir.relative_to(REPO)}  splits={counts}  validated={int(df['validated'].sum()):,}/{len(df):,}")
+    stats = {
+        **counts,
+        "total": len(df),
+        "chains": int(df["chain_id"].nunique()),
+        "validated": int(df["validated"].sum()),
+    }
+    write_card(out_dir, key, meta, args.push or f"<user>/ReMIX-{key}", stats)
+    print(f"  wrote {out_dir.relative_to(REPO)}  splits={counts}  validated={stats['validated']:,}/{len(df):,}")
 
     if args.push:
         from huggingface_hub import HfApi
@@ -249,7 +374,12 @@ def main() -> None:
             sys.exit("--push needs HF_TOKEN in the environment.")
         api = HfApi(token=token)
         api.create_repo(args.push, repo_type="dataset", private=not args.public, exist_ok=True)
-        api.upload_folder(folder_path=str(out_dir), repo_id=args.push, repo_type="dataset")
+        # upload_folder is content-addressed: unchanged files (same hash) are skipped,
+        # so re-running only uploads what actually changed. No delete_patterns, so
+        # nothing already on the repo is removed.
+        print("  syncing to HF (unchanged files skipped) ...")
+        api.upload_folder(folder_path=str(out_dir), repo_id=args.push, repo_type="dataset",
+                          commit_message=f"Sync {meta['label']} ({args.folder})")
         vis = "public" if args.public else "private"
         print(f"  pushed ({vis}) -> https://huggingface.co/datasets/{args.push}")
 
