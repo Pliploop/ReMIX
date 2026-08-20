@@ -166,7 +166,9 @@ def main() -> None:
         console.rule("[bold]Merge parts into the canonical JSONL")
         for cmd in pending_cmds:
             console.print()
-            console.print(cmd, highlight=False)
+            # soft_wrap: never fold the long paths onto a new line, so the command
+            # stays copy-pasteable as a single line.
+            console.print(cmd, highlight=False, soft_wrap=True)
 
 
 if __name__ == "__main__":
