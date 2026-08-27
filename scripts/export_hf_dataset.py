@@ -369,9 +369,9 @@ def main() -> None:
 
     if args.push:
         from huggingface_hub import HfApi
+        # Use HF_TOKEN if set, else the token from `hf auth login` (HfApi(token=None)
+        # picks up the cached login automatically).
         token = os.environ.get("HF_TOKEN", "").strip() or None
-        if not token:
-            sys.exit("--push needs HF_TOKEN in the environment.")
         api = HfApi(token=token)
         api.create_repo(args.push, repo_type="dataset", private=not args.public, exist_ok=True)
         # upload_folder is content-addressed: unchanged files (same hash) are skipped,
