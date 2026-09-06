@@ -32,6 +32,9 @@ BACKEND="${BACKEND:-vllm}"
 TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-2}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-8192}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.92}"
+# gemma-31B bf16 tp=2 on 2x40GB has little KV headroom; cap concurrent seqs so the
+# vLLM sampler warmup does not OOM (default 256 is too many).
+MAX_NUM_SEQS="${MAX_NUM_SEQS:-16}"
 MAX_STEPS="${MAX_STEPS:-0}"   # 0 = all; set small for a smoke run
 
 module load cuda/12.6.2-gcc-12.2.0
@@ -60,6 +63,7 @@ CMD=(
   "stage.runtime.backend=${BACKEND}"
   "stage.runtime.vllm_tensor_parallel_size=${TENSOR_PARALLEL_SIZE}"
   "stage.runtime.vllm_max_model_len=${MAX_MODEL_LEN}"
+  "stage.runtime.vllm_max_num_seqs=${MAX_NUM_SEQS}"
   "stage.runtime.vllm_gpu_memory_utilization=${GPU_MEMORY_UTILIZATION}"
 )
 if [[ "${MAX_STEPS}" != "0" ]]; then

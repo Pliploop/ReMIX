@@ -235,6 +235,9 @@ def _build_llm_judge(cfg: DictConfig):
             kv_cache_dtype=kv_cache_dtype,
             gpu_memory_utilization=float(getattr(cfg.stage.runtime, "vllm_gpu_memory_utilization", 0.9)),
             max_model_len=int(getattr(cfg.stage.runtime, "vllm_max_model_len", 0) or 0),
+            # Cap concurrent seqs: gemma-31B bf16 on 2x40GB leaves little KV, and
+            # vLLM's default 256-seq sampler warmup then OOMs. 0 = vLLM default.
+            max_num_seqs=int(getattr(cfg.stage.runtime, "vllm_max_num_seqs", 0) or 0),
             trust_remote_code=bool(getattr(cfg.stage.runtime, "vllm_trust_remote_code", False)),
             enforce_eager=bool(getattr(cfg.stage.runtime, "vllm_enforce_eager", False)),
         )
