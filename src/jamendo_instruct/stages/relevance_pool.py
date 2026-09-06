@@ -729,7 +729,12 @@ def _candidate_llm_judge_prompt(
 
 def _run_candidate_llm_judge(ctx: Any, cfg: DictConfig, **kwargs: Any) -> Dict[str, Any]:
     raw = _decode_judge_response(ctx, cfg, _candidate_llm_judge_prompt(**kwargs))
-    parsed = _extract_json_object(raw)
+    try:
+        parsed = _extract_json_object(raw)
+    except (json.JSONDecodeError, ValueError):
+        # One unparseable model response must not kill the whole run. Abstain and
+        # let the caller keep the deterministic label for this candidate.
+        return {"parse_ok": False}
     pool_type = str(parsed.get("pool_type", "") or "").strip()
     grade = int(parsed.get("grade", 0) or 0)
     satisfied = parsed.get("satisfied_constraints", [])
@@ -742,6 +747,7 @@ def _run_candidate_llm_judge(ctx: Any, cfg: DictConfig, **kwargs: Any) -> Dict[s
         "reason": str(parsed.get("reason", "") or "").strip(),
         "satisfied_constraints": [str(x) for x in satisfied if str(x).strip()] if isinstance(satisfied, list) else [],
         "failed_constraints": [str(x) for x in failed if str(x).strip()] if isinstance(failed, list) else [],
+        "parse_ok": True,
     }
 
 
@@ -1423,6 +1429,10 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                                     candidate_row=candidate_row,
                                 )
                                 counts["candidate_llm_judge_calls"] += 1
+                                if not judge.get("parse_ok", True):
+                                    # Model gave no parseable verdict; keep the deterministic label.
+                                    counts["candidate_llm_judge_parse_failures"] = counts.get("candidate_llm_judge_parse_failures", 0) + 1
+                                    continue
                                 judged_pool_type = str(judge.get("pool_type", "") or "").strip() or original_pool_type
                                 default_grade, default_failure_category = _pool_type_defaults(judged_pool_type)
                                 judged_grade = int(judge.get("grade", default_grade) or default_grade)
