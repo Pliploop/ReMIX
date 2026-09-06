@@ -35,6 +35,10 @@ GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.92}"
 # gemma-31B bf16 tp=2 on 2x40GB has little KV headroom; cap concurrent seqs so the
 # vLLM sampler warmup does not OOM (default 256 is too many).
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-16}"
+# The EmbeddingGemma text encoder follows stage.runtime.device. The vLLM judge
+# manages its own GPUs regardless, and gemma-31B leaves no GPU room for a second
+# model, so run the (tiny) text encoder on CPU to avoid an OOM collision.
+DEVICE="${DEVICE:-cpu}"
 MAX_STEPS="${MAX_STEPS:-0}"   # 0 = all; set small for a smoke run
 
 module load cuda/12.6.2-gcc-12.2.0
@@ -61,6 +65,7 @@ CMD=(
   "stage.io.output_dir=${FOLDER_DIR}/relevance_pool"
   "stage.models.judge_model_id=${JUDGE_MODEL_ID}"
   "stage.runtime.backend=${BACKEND}"
+  "stage.runtime.device=${DEVICE}"
   "stage.runtime.vllm_tensor_parallel_size=${TENSOR_PARALLEL_SIZE}"
   "stage.runtime.vllm_max_model_len=${MAX_MODEL_LEN}"
   "stage.runtime.vllm_max_num_seqs=${MAX_NUM_SEQS}"
