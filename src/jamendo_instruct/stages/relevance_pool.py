@@ -15,6 +15,7 @@ from jamendo_instruct.llm_backends import (
     build_vllm_offline_chat_model,
     decode_openai_chat_completion,
     decode_vllm_chat_completion,
+    decode_vllm_chat_completions,
     load_chat_processor_and_model,
     resolve_backend_name,
 )
@@ -727,8 +728,25 @@ def _candidate_llm_judge_prompt(
     ]
 
 
-def _run_candidate_llm_judge(ctx: Any, cfg: DictConfig, **kwargs: Any) -> Dict[str, Any]:
-    raw = _decode_judge_response(ctx, cfg, _candidate_llm_judge_prompt(**kwargs))
+def _decode_judge_batch(ctx: Any, cfg: DictConfig, messages_list: Sequence[List[Dict[str, str]]]) -> List[str]:
+    """Decode many judge prompts at once. vLLM batches them (huge speedup over
+    one-prompt-at-a-time); other backends fall back to a sequential loop."""
+    if not messages_list:
+        return []
+    backend = str(getattr(ctx, "backend", "transformers"))
+    if backend == "vllm":
+        return decode_vllm_chat_completions(
+            ctx,
+            messages_batch=[list(m) for m in messages_list],
+            max_tokens=int(getattr(cfg.stage.judge, "max_new_tokens", 256)),
+            temperature=float(getattr(cfg.stage.judge, "temperature", 0.0)),
+            top_p=float(getattr(cfg.stage.judge, "top_p", 1.0)),
+            enable_thinking=bool(getattr(cfg.stage.runtime, "enable_thinking", False)),
+        )
+    return [_decode_judge_response(ctx, cfg, list(m)) for m in messages_list]
+
+
+def _parse_candidate_judge(raw: str) -> Dict[str, Any]:
     try:
         parsed = _extract_json_object(raw)
     except (json.JSONDecodeError, ValueError):
@@ -1407,17 +1425,19 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
 
                         target_split = str(target_row.get("split", "") or "")
                         if llm_judge_ctx is not None and (not candidate_judge_splits or target_split in candidate_judge_splits):
+                            # Build one prompt per judgeable candidate, then decode the
+                            # whole step's candidates in a single batch (vLLM batches
+                            # them) instead of one 7s call at a time.
+                            judge_items: List[Dict[str, Any]] = []
+                            judge_prompts: List[List[Dict[str, str]]] = []
                             for item in all_scored_candidates:
                                 if bool(item.get("is_exact_target", False)):
                                     continue
                                 candidate_row = structured_by_clip.get(str(item["clip_id"]))
                                 if candidate_row is None:
                                     continue
-                                original_pool_type = str(item.get("pool_type", "") or "")
-                                original_grade = int(item.get("grade", 0) or 0)
-                                judge = _run_candidate_llm_judge(
-                                    llm_judge_ctx,
-                                    cfg,
+                                judge_items.append(item)
+                                judge_prompts.append(_candidate_llm_judge_prompt(
                                     candidate_clip_id=str(item["clip_id"]),
                                     semantic_delta_verbalized=semantic_verbalized,
                                     semantic_delta_verbalized_typed=semantic_verbalized_typed,
@@ -1427,7 +1447,12 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                                     source_row=source_row,
                                     target_row=target_row,
                                     candidate_row=candidate_row,
-                                )
+                                ))
+                            judge_raws = _decode_judge_batch(llm_judge_ctx, cfg, judge_prompts)
+                            for item, raw in zip(judge_items, judge_raws):
+                                original_pool_type = str(item.get("pool_type", "") or "")
+                                original_grade = int(item.get("grade", 0) or 0)
+                                judge = _parse_candidate_judge(raw)
                                 counts["candidate_llm_judge_calls"] += 1
                                 if not judge.get("parse_ok", True):
                                     # Model gave no parseable verdict; keep the deterministic label.
