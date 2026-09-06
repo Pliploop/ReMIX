@@ -51,6 +51,7 @@ runtime:
   vllm_enforce_eager: false
   vllm_gpu_memory_utilization: 0.9
   vllm_max_model_len: 32768
+  vllm_max_num_seqs: 0   # 0 = vLLM default; cap it (e.g. 16) for tight-KV models like gemma-31B tp=2
   sglang_host: 127.0.0.1
   sglang_port: 30000
   sglang_api_key: EMPTY
