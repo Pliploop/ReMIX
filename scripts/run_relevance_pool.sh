@@ -20,21 +20,23 @@ export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-/gpfs/scratch/acw749/hf_cache/t
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
 
-PROFILE="${PROFILE:-andrena}"
+PROFILE="${PROFILE:-sae}"
 RUN_ROOT="${RUN_ROOT:-/gpfs/scratch/acw749/datasets/music4all_instruct/music4all_v1}"
 RUN_ROOT="${RUN_ROOT%/}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-${RUN_ROOT%/*}}"
 RUN_NAME="${RUN_NAME:-${RUN_ROOT##*/}}"
 FOLDER="${FOLDER:-instructions_axis_focused_5}"
 
-JUDGE_MODEL_ID="${JUDGE_MODEL_ID:-google/gemma-4-31B-it}"
+# Qwen3.6-27B-FP8: fits one A100 (tp=1, run on sae), ~5x gemma-31B throughput.
+JUDGE_MODEL_ID="${JUDGE_MODEL_ID:-Qwen/Qwen3.6-27B-FP8}"
 BACKEND="${BACKEND:-vllm}"
-TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-2}"
+TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-1}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-8192}"
-GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.92}"
+GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
+RESUME="${RESUME:-true}"
 # gemma-31B bf16 tp=2 on 2x40GB has little KV headroom; cap concurrent seqs so the
 # vLLM sampler warmup does not OOM (default 256 is too many).
-MAX_NUM_SEQS="${MAX_NUM_SEQS:-16}"
+MAX_NUM_SEQS="${MAX_NUM_SEQS:-64}"
 # The EmbeddingGemma text encoder follows stage.runtime.device. The vLLM judge
 # manages its own GPUs regardless, and gemma-31B leaves no GPU room for a second
 # model, so run the (tiny) text encoder on CPU to avoid an OOM collision.
@@ -74,6 +76,7 @@ CMD=(
   "stage.behavior.shard_index=${SHARD_INDEX}"
   "stage.behavior.run_solvability_audit=${RUN_SOLVABILITY}"
   "stage.behavior.use_text_encoder_audit=${RUN_SOLVABILITY}"
+  "stage.behavior.resume=${RESUME}"
   "stage.models.judge_model_id=${JUDGE_MODEL_ID}"
   "stage.runtime.backend=${BACKEND}"
   "stage.runtime.device=${DEVICE}"

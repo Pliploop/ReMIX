@@ -1138,12 +1138,7 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
     nodes_by_idx = _node_index(nodes_path)
     clip_to_node = _clip_to_node_index(nodes_by_idx)
     edges_by_source = _edges_by_source(edges_path)
-    prepared_by_key = {_key(record): record for record in _read_jsonl(prepared_path)}
-    validation_by_key = _validation_record_index(validation_path) if validation_path.exists() else {}
-    lookup_by_clip = _lookup_manifest_index(lookup_manifest_path) if lookup_manifest_path.exists() else {}
-    text_embedding_cache: Dict[str, Any] = {}
-    chains = list(_read_jsonl(chains_path))
-    max_steps = cfg.stage.behavior.max_steps
+
     # Sharding: independent jobs take disjoint chains by a stable hash of chain_id,
     # each writing its own output file. Split filter restricts the pool to given
     # splits (e.g. ["test"] for the benchmark). Both are off by default.
@@ -1156,6 +1151,22 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
             return True
         h = int(hashlib.md5(str(cid).encode("utf-8")).hexdigest(), 16)
         return h % num_shards == shard_index
+
+    # Keep only this shard's chains when loading the (multi-GB) prepared/validation
+    # indexes, so N concurrent jobs do not each hold the whole file in RAM.
+    prepared_by_key = {
+        _key(record): record
+        for record in _read_jsonl(prepared_path)
+        if _in_shard(str(record.get("chain_id", "") or ""))
+    }
+    validation_by_key = {
+        k: v for k, v in (_validation_record_index(validation_path) if validation_path.exists() else {}).items()
+        if _in_shard(str(k[0]))
+    }
+    lookup_by_clip = _lookup_manifest_index(lookup_manifest_path) if lookup_manifest_path.exists() else {}
+    text_embedding_cache: Dict[str, Any] = {}
+    chains = list(_read_jsonl(chains_path))
+    max_steps = cfg.stage.behavior.max_steps
     max_candidates = max(1, int(cfg.stage.pool.max_candidates_per_step))
     min_rerank = cfg.stage.pool.min_rerank_score
     min_rerank_score = None if min_rerank in (None, "") else float(min_rerank)
@@ -1211,9 +1222,19 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
         "candidate_llm_judge_label_changes": 0,
     }
 
+    # Resume: skip (chain, turn) steps already in the output and append, so a job
+    # killed by the walltime picks up where it stopped instead of restarting.
+    resume = bool(getattr(cfg.stage.behavior, "resume", False))
+    done_keys: set = set()
+    if resume and out_jsonl.exists():
+        for rec in _read_jsonl(out_jsonl):
+            done_keys.add((str(rec.get("chain_id", "") or ""), int(rec.get("turn_index", 0) or 0)))
+        _log(cfg, f"resume: {len(done_keys):,} steps already in {out_jsonl.name}")
+    open_mode = "a" if (resume and out_jsonl.exists()) else "w"
+
     tracker.step("Construct candidate pools", detail=f"max_steps={max_steps if max_steps is not None else 'all'}")
-    with out_jsonl.open("w", encoding="utf-8") as out_f:
-        reason_f = reason_labels_jsonl.open("w", encoding="utf-8") if write_full_dataset_labels else None
+    with out_jsonl.open(open_mode, encoding="utf-8") as out_f:
+        reason_f = reason_labels_jsonl.open(open_mode, encoding="utf-8") if write_full_dataset_labels else None
         try:
             total_hint = None if max_steps is None else int(max_steps)
             with rich_tqdm(cfg, total=total_hint, desc="Relevance pools", unit="step") as progress:
@@ -1230,6 +1251,10 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                             break
                         counts["steps_seen"] += 1
                         key = (chain_id, turn_index)
+                        if key in done_keys:
+                            counts["steps_skipped_resume"] = counts.get("steps_skipped_resume", 0) + 1
+                            progress.update(1)
+                            continue
                         prepared = prepared_by_key.get(key)
                         if prepared is None:
                             counts["steps_skipped_missing_prepared"] += 1

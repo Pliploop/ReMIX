@@ -18,6 +18,7 @@ behavior:
   num_shards: 1        # >1: independent jobs take disjoint chains by hash(chain_id)
   shard_index: 0       # this job's shard, in [0, num_shards)
   pool_splits: []      # restrict to these splits, e.g. ["test"]; [] = all
+  resume: false        # skip (chain,turn) steps already in the output and append
   require_validated_instructions: true
   only_keep_validation_passed: true
   write_full_dataset_labels: false
