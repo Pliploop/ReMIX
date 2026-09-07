@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import math
 import os
@@ -1143,6 +1144,18 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
     text_embedding_cache: Dict[str, Any] = {}
     chains = list(_read_jsonl(chains_path))
     max_steps = cfg.stage.behavior.max_steps
+    # Sharding: independent jobs take disjoint chains by a stable hash of chain_id,
+    # each writing its own output file. Split filter restricts the pool to given
+    # splits (e.g. ["test"] for the benchmark). Both are off by default.
+    num_shards = max(1, int(getattr(cfg.stage.behavior, "num_shards", 1) or 1))
+    shard_index = int(getattr(cfg.stage.behavior, "shard_index", 0) or 0)
+    pool_splits = {str(s) for s in (getattr(cfg.stage.behavior, "pool_splits", []) or [])}
+
+    def _in_shard(cid: str) -> bool:
+        if num_shards <= 1:
+            return True
+        h = int(hashlib.md5(str(cid).encode("utf-8")).hexdigest(), 16)
+        return h % num_shards == shard_index
     max_candidates = max(1, int(cfg.stage.pool.max_candidates_per_step))
     min_rerank = cfg.stage.pool.min_rerank_score
     min_rerank_score = None if min_rerank in (None, "") else float(min_rerank)
@@ -1207,6 +1220,8 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                 stop = False
                 for chain in chains:
                     chain_id = str(chain.get("chain_id", "") or "")
+                    if not _in_shard(chain_id):
+                        continue
                     seed_clip_id = str(chain.get("seed", {}).get("clip_id", "") or "")
                     seed_node_idx = clip_to_node.get(seed_clip_id)
                     for turn_index, step in enumerate(list(chain.get("steps", [])), start=1):
@@ -1234,6 +1249,10 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                         target_row = structured_by_clip.get(target_clip_id)
                         source_row = structured_by_clip.get(source_clip_id)
                         if target_row is None or source_row is None:
+                            progress.update(1)
+                            continue
+                        if pool_splits and str(target_row.get("split", "") or "") not in pool_splits:
+                            counts["steps_skipped_split"] = counts.get("steps_skipped_split", 0) + 1
                             progress.update(1)
                             continue
                         target_lookup = lookup_by_clip.get(target_clip_id, {})
