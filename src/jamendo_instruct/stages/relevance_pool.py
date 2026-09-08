@@ -1145,6 +1145,7 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
     num_shards = max(1, int(getattr(cfg.stage.behavior, "num_shards", 1) or 1))
     shard_index = int(getattr(cfg.stage.behavior, "shard_index", 0) or 0)
     pool_splits = {str(s) for s in (getattr(cfg.stage.behavior, "pool_splits", []) or [])}
+    max_judge_candidates = int(getattr(cfg.stage.behavior, "max_judge_candidates", 0) or 0)
 
     def _in_shard(cid: str) -> bool:
         if num_shards <= 1:
@@ -1474,12 +1475,21 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                             # them) instead of one 7s call at a time.
                             judge_items: List[Dict[str, Any]] = []
                             judge_prompts: List[List[Dict[str, str]]] = []
-                            for item in all_scored_candidates:
-                                if bool(item.get("is_exact_target", False)):
-                                    continue
+                            # Judge only the top-K candidates by deterministic score:
+                            # clear negatives are grade 0 whether judged or not, so
+                            # LLM-verifying only the plausibly-relevant ones costs far
+                            # less and changes no benchmark-relevant label. 0 = all.
+                            judgeable = [
+                                item for item in all_scored_candidates
+                                if not bool(item.get("is_exact_target", False))
+                                and structured_by_clip.get(str(item["clip_id"])) is not None
+                            ]
+                            if max_judge_candidates > 0 and len(judgeable) > max_judge_candidates:
+                                judgeable = sorted(
+                                    judgeable, key=lambda it: float(it.get("final_score", 0.0) or 0.0), reverse=True
+                                )[:max_judge_candidates]
+                            for item in judgeable:
                                 candidate_row = structured_by_clip.get(str(item["clip_id"]))
-                                if candidate_row is None:
-                                    continue
                                 judge_items.append(item)
                                 judge_prompts.append(_candidate_llm_judge_prompt(
                                     candidate_clip_id=str(item["clip_id"]),

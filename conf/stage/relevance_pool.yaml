@@ -19,6 +19,7 @@ behavior:
   shard_index: 0       # this job's shard, in [0, num_shards)
   pool_splits: []      # restrict to these splits, e.g. ["test"]; [] = all
   resume: false        # skip (chain,turn) steps already in the output and append
+  max_judge_candidates: 0   # LLM-judge only top-K candidates by deterministic score; 0 = all
   require_validated_instructions: true
   only_keep_validation_passed: true
   write_full_dataset_labels: false
@@ -66,7 +67,7 @@ text:
 judge:
   temperature: 0.0
   top_p: 1.0
-  max_new_tokens: 256
+  max_new_tokens: 288
 
 pool:
   construction_mode: constructive

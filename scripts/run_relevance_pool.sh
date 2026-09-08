@@ -46,6 +46,9 @@ NUM_SHARDS="${NUM_SHARDS:-1}"
 SHARD_INDEX="${SHARD_INDEX:-0}"
 SPLITS="${SPLITS:-test}"                 # benchmark = test split; set "" for all
 RUN_SOLVABILITY="${RUN_SOLVABILITY:-false}"   # naive baseline; a separate step does baselines
+# LLM-judge only the top-K candidates by deterministic score (clear negatives stay
+# grade 0 either way); the main speed lever. 0 = judge all.
+MAX_JUDGE_CANDIDATES="${MAX_JUDGE_CANDIDATES:-24}"
 # Each shard writes its own output so parallel jobs never clobber one file.
 OUTPUT_POOLS_JSONL="${OUTPUT_POOLS_JSONL:-chain_step_relevance_pools.shard${SHARD_INDEX}.jsonl}"
 
@@ -77,6 +80,7 @@ CMD=(
   "stage.behavior.run_solvability_audit=${RUN_SOLVABILITY}"
   "stage.behavior.use_text_encoder_audit=${RUN_SOLVABILITY}"
   "stage.behavior.resume=${RESUME}"
+  "stage.behavior.max_judge_candidates=${MAX_JUDGE_CANDIDATES}"
   "stage.models.judge_model_id=${JUDGE_MODEL_ID}"
   "stage.runtime.backend=${BACKEND}"
   "stage.runtime.device=${DEVICE}"
