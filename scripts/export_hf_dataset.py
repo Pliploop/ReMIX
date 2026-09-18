@@ -365,7 +365,11 @@ def main() -> None:
         "validated": int(df["validated"].sum()),
     }
     write_card(out_dir, key, meta, args.push or f"<user>/ReMIX-{key}", stats)
-    print(f"  wrote {out_dir.relative_to(REPO)}  splits={counts}  validated={stats['validated']:,}/{len(df):,}")
+    try:
+        shown = out_dir.relative_to(REPO)  # nice short path when --out is under the repo
+    except ValueError:
+        shown = out_dir  # --out on scratch etc.
+    print(f"  wrote {shown}  splits={counts}  validated={stats['validated']:,}/{len(df):,}")
 
     if args.push:
         from huggingface_hub import HfApi
