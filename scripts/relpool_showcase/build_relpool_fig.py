@@ -1,83 +1,102 @@
 import json, html, hashlib, sys
-d=json.load(open(sys.argv[1]))
-OUT=sys.argv[2]
-GC={5:("#0E7A3B","EXACT MATCH"),4:("#1FA347","STRONG"),2:("#E8871E","PARTIAL"),1:("#D9662B","NEAR MISS"),0:("#8A9099","HARD NEGATIVE")}
+d=json.load(open(sys.argv[1])); OUT=sys.argv[2]
+CHAIN="#1FA347"; INSTRUCT="#FB8B24"; SEEDC="#2E6FD6"
+# grade -> (color, label). Palette from website theme.js (site-consistent).
+GC={5:("#0E7A3B","EXACT MATCH"),4:("#1FA347","STRONG"),2:("#FB8B24","PARTIAL"),
+    1:("#E2843B","NEAR MISS"),0:("#9AA0A6","HARD NEGATIVE")}
 def esc(s): return html.escape(str(s or ""))
-def clip(s,n): s=str(s or "").strip(); return esc(s[:n].rsplit(" ",1)[0]+"…") if len(s)>n else esc(s)
-def hue(cid): return int(hashlib.md5(cid.encode()).hexdigest()[:6],16)%360
-def art(cid,big=False):
-    h=hue(cid); sz="92px" if big else "58px"
-    bars="".join(f'<span style="height:{20+ (i*7)%26}px"></span>' for i in range(5))
-    return f'''<div class="art" style="width:{sz};height:{sz};background:
-      linear-gradient(135deg,hsl({h} 70% 62%),hsl({(h+40)%360} 72% 46%))">
-      <svg class="play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      <div class="eq">{bars}</div></div>'''
-def chips(items,kind):
-    return "".join(f'<span class="chip {kind}">{esc(t)}</span>' for t in items if t)
-def playcard(c,big=False):
-    return f'''<div class="pc">{art(c["clip_id"],big)}
-      <div class="meta"><div class="ttl">{esc(c.get("title") or "Untitled")}</div>
-      <div class="art-name">{esc(c.get("artist") or "Unknown artist")}</div>
-      <div class="tagline">{chips(c.get("tags",[])[:4],"tag")}</div></div></div>'''
-cands=""
-for p in d["candidates"]:
-    col,lbl=GC.get(p["grade"],("#888","?"))
-    cands+=f'''<div class="cand" style="--gc:{col}">
-      <div class="chead">{playcard(p["clip"])}
-        <div class="badge" style="background:{col}">{lbl}<b>{p["grade"]}</b></div></div>
-      <div class="ptype">{esc(p["pool_type"])}</div>
-      <p class="reason">{clip(p["reason"],230)}</p>
-      <div class="cons">{chips(p.get("satisfied",[])[:3],"ok")}{chips([f for f in p.get("failed",[]) if f not in set(p.get("satisfied",[]))][:3],"no")}</div>
-    </div>'''
+def clip(s,n):
+    s=str(s or "").strip()
+    return esc(s[:n].rsplit(" ",1)[0]+"…") if len(s)>n else esc(s)
+def rgba(hexc,a):
+    h=hexc.lstrip("#"); return f"rgba({int(h[0:2],16)},{int(h[2:4],16)},{int(h[4:6],16)},{a})"
+def wave(cid,accent):
+    hh=hashlib.md5(cid.encode()).hexdigest()
+    bars="".join(f'<span style="height:{6+int(hh[i%32],16)*1.5:.0f}px"></span>' for i in range(38))
+    return f'<div class="wave" style="--wc:{accent}">{bars}</div>'
+def tags(ts):
+    return "".join(f'<span class="tag">{esc(t)}</span>' for t in (ts or [])[:4] if t)
+def cons(sat,fail):
+    return ("".join(f'<span class="c ok">{esc(t)}</span>' for t in (sat or [])[:3])
+          + "".join(f'<span class="c no">{esc(t)}</span>' for t in (fail or [])[:3]))
+def trackcard(c,accent,badge,cls="src"):
+    return f'''<div class="card {cls}" style="--ac:{accent}">
+      <div class="chead"><span class="badge" style="background:{accent}">{badge}</span>
+        <div class="tt"><div class="ttl">{esc(c.get("title") or "Untitled")}</div>
+        <div class="art">{esc(c.get("artist") or "Unknown artist")}</div></div></div>
+      <div class="tags">{tags(c.get("tags"))}</div>
+      {wave(c["clip_id"],accent)}</div>'''
+def candcard(p):
+    col,lbl=GC.get(p["grade"],("#888","?")); c=p["clip"]
+    return f'''<div class="card cand" style="--ac:{col}">
+      <div class="chead"><div class="tt"><div class="ttl">{esc(c.get("title") or "Untitled")}</div>
+        <div class="art">{esc(c.get("artist") or "Unknown artist")}</div></div>
+        <span class="gbadge" style="background:{col}">{lbl}<b>{p["grade"]}</b></span></div>
+      <div class="tags">{tags(c.get("tags"))}</div>
+      {wave(c["clip_id"],col)}
+      <div class="ptype" style="color:{col}">{esc(p["pool_type"])}</div>
+      <p class="reason">{clip(p["reason"],210)}</p>
+      <div class="conswrap">{cons(p.get("satisfied"),p.get("failed"))}</div></div>'''
+def example(e):
+    cands=[c for c in e["candidates"]]
+    sel=cands[:3]+[c for c in cands if c["grade"]==0][:1]
+    seen=set(); sel=[c for c in sel if not (id(c) in seen or seen.add(id(c)))][:4]
+    row="".join(candcard(p) for p in sel)
+    return f'''<section class="ex">
+      <div class="qrow">
+        {trackcard(e["source"],SEEDC,"SEED")}
+        <div class="arrow">→</div>
+        <div class="instr"><div class="ilabel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="{INSTRUCT}" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8z"/></svg>
+          COMPOSED EDIT INSTRUCTION</div>
+          <div class="itext">“{esc(e["instruction"])}”</div></div>
+      </div>
+      <div class="poollabel">Graded relevance pool <span>· LLM-verified over the heuristic score</span></div>
+      <div class="crow">{row}</div>
+    </section>'''
+body="".join(example(e) for e in d["examples"])
 HTML=f'''<!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-*{{box-sizing:border-box;margin:0;font-family:Inter,system-ui,sans-serif}}
-body{{background:radial-gradient(1200px 600px at 15% -10%,#dfe9ff,transparent),
- radial-gradient(1000px 500px at 110% 10%,#ffe8f0,transparent),linear-gradient(160deg,#eef2f8,#e7ecf5);padding:44px;width:1480px}}
-.glass{{background:rgba(255,255,255,.55);backdrop-filter:blur(16px);
- border:1px solid rgba(255,255,255,.7);border-radius:22px;
- box-shadow:0 12px 40px rgba(30,50,90,.13),inset 0 1px 0 rgba(255,255,255,.6)}}
-.query{{padding:26px 30px;display:flex;align-items:center;gap:28px;margin-bottom:12px}}
-.qlabel{{font-size:13px;font-weight:700;letter-spacing:.14em;color:#5566aa;text-transform:uppercase;margin-bottom:14px}}
-.qsrc{{flex:0 0 auto}}
-.instr{{flex:1;display:flex;align-items:center;gap:18px}}
-.arrow{{font-size:34px;color:#7d8bbf}}
-.pill{{background:linear-gradient(135deg,#3a57d6,#6a3ad6);color:#fff;padding:16px 24px;border-radius:16px;
- font-size:23px;font-weight:700;box-shadow:0 8px 24px rgba(70,60,200,.32);line-height:1.25}}
-.pill small{{display:block;font-size:12px;font-weight:600;opacity:.8;letter-spacing:.12em;margin-bottom:4px}}
-.pc{{display:flex;gap:14px;align-items:center}}
-.art{{position:relative;border-radius:14px;flex:0 0 auto;box-shadow:0 6px 16px rgba(0,0,0,.18);overflow:hidden}}
-.art .play{{position:absolute;left:50%;top:50%;transform:translate(-50%,-60%);width:40%;fill:rgba(255,255,255,.92);filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}}
-.art .eq{{position:absolute;bottom:7px;left:0;right:0;display:flex;gap:3px;justify-content:center;align-items:flex-end;height:26px;opacity:.9}}
-.art .eq span{{width:4px;background:rgba(255,255,255,.85);border-radius:2px}}
-.meta .ttl{{font-weight:700;font-size:18px;color:#1a2338;line-height:1.15}}
-.art-name{{font-size:14px;color:#5b6480;font-weight:500;margin-top:1px}}
-.tagline{{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}}
-.chip{{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap}}
-.chip.tag{{background:rgba(90,110,170,.13);color:#41507f}}
-.chip.ok{{background:rgba(20,120,60,.14);color:#0e7a3b}}
-.chip.ok:before{{content:"✓ "}}
-.chip.no{{background:rgba(200,60,60,.13);color:#c0392b}}
-.chip.no:before{{content:"✕ "}}
-.row{{display:flex;gap:16px}}
-.cand{{flex:1;padding:18px 18px 16px;border-top:5px solid var(--gc)}}
-.chead{{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}}
-.badge{{color:#fff;font-size:10px;font-weight:800;letter-spacing:.08em;padding:6px 10px;border-radius:11px;text-align:center;line-height:1.1;box-shadow:0 4px 10px rgba(0,0,0,.16);flex:0 0 auto}}
-.badge b{{display:block;font-size:17px;margin-top:2px}}
-.ptype{{font-size:11px;font-weight:700;letter-spacing:.1em;color:#8a90a0;margin:12px 0 8px}}
-.reason{{font-size:12.5px;line-height:1.5;color:#39415a;margin-bottom:11px}}
-.cons{{display:flex;flex-wrap:wrap;gap:5px}}
-.title{{font-size:15px;font-weight:700;color:#5566aa;letter-spacing:.14em;text-transform:uppercase;margin:22px 4px 12px}}
-</style></head><body>
-<div class="glass query">
-  <div class="qsrc"><div class="qlabel">Seed track</div>{playcard(d["source"],big=True)}</div>
-  <div class="instr"><div class="arrow">→</div>
-    <div class="pill"><small>COMPOSED EDIT INSTRUCTION</small>{esc(d["instruction"])}</div>
-  <div class="arrow">→</div></div>
-</div>
-<div class="title">Graded relevance pool · LLM-verified over the heuristic score</div>
-<div class="row">{cands}</div>
-</body></html>'''
-open(OUT,"w").write(HTML)
-print("wrote", OUT)
+*{{box-sizing:border-box;margin:0;font-family:Inter,'Helvetica Neue',Arial,system-ui,sans-serif}}
+body{{background:#fff;padding:40px;width:1360px;color:#171717}}
+.ex{{margin-bottom:30px;padding-bottom:26px;border-bottom:1px solid #ececec}}
+.ex:last-child{{border-bottom:none;margin-bottom:0}}
+.qrow{{display:flex;align-items:center;gap:18px;margin-bottom:18px}}
+.card{{border-radius:16px;border:1px solid var(--ac);border-color:{rgba('#000000',0)};
+ border:1px solid;padding:16px}}
+.card{{border:1px solid;border-color:color-mix(in srgb,var(--ac) 35%,transparent);
+ background:color-mix(in srgb,var(--ac) 5%,#fff)}}
+.src{{flex:0 0 340px}}
+.cand{{flex:1;min-width:0}}
+.chead{{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}}
+.badge{{color:#fff;font-size:11px;font-weight:600;letter-spacing:.06em;padding:4px 11px;border-radius:999px;flex:0 0 auto}}
+.tt{{min-width:0}}
+.ttl{{font-size:15px;font-weight:700;color:#171717;line-height:1.2}}
+.art{{font-size:12.5px;color:#666;margin-top:2px}}
+.tags{{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}}
+.tag{{font-size:11px;font-weight:500;color:#374151;background:#fff;border:1px solid #e5e7eb;padding:3px 9px;border-radius:999px}}
+.wave{{display:flex;align-items:center;gap:2.5px;height:34px;margin-top:13px}}
+.wave span{{flex:1;background:var(--wc);opacity:.5;border-radius:2px;min-height:3px}}
+.arrow{{font-size:26px;color:#c9c9c9;flex:0 0 auto}}
+.instr{{flex:1;border-radius:16px;padding:16px 20px;
+ border:1px solid color-mix(in srgb,{INSTRUCT} 45%,transparent);
+ background:color-mix(in srgb,{INSTRUCT} 7%,#fff)}}
+.ilabel{{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.1em;color:{INSTRUCT};text-transform:uppercase}}
+.ilabel svg{{width:16px;height:16px}}
+.itext{{font-size:22px;font-weight:700;color:#171717;margin-top:8px;line-height:1.3}}
+.poollabel{{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#374151;margin:4px 2px 12px}}
+.poollabel span{{color:#9aa0a6;font-weight:600}}
+.crow{{display:flex;gap:14px;align-items:stretch}}
+.gbadge{{color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:5px 9px;border-radius:9px;text-align:center;line-height:1.15;flex:0 0 auto}}
+.gbadge b{{display:block;font-size:15px;margin-top:1px}}
+.ptype{{font-size:10.5px;font-weight:700;letter-spacing:.08em;margin:11px 0 7px}}
+.reason{{font-size:12px;line-height:1.5;color:#404040;margin-bottom:10px}}
+.conswrap{{display:flex;flex-wrap:wrap;gap:5px}}
+.c{{font-size:10.5px;font-weight:500;padding:3px 8px;border-radius:999px}}
+.c.ok{{background:{rgba(CHAIN,.13)};color:{CHAIN}}}
+.c.ok:before{{content:"✓ "}}
+.c.no{{background:{rgba('#E23B34',.12)};color:#E23B34}}
+.c.no:before{{content:"✗ "}}
+</style></head><body>{body}</body></html>'''
+open(OUT,"w").write(HTML); print("wrote",OUT)

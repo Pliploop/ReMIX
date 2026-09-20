@@ -1,0 +1,298 @@
+{
+ "examples": [
+  {
+   "instruction": "swap the light percussion for a driving, steady rhythm section",
+   "source": {
+    "title": "Just Lust",
+    "artist": "Juliana Hatfield",
+    "tags": [
+     "singer-songwriter",
+     "rock",
+     "female vocalists",
+     "alternative"
+    ],
+    "vocals": "vocal",
+    "speed": "medium",
+    "clip_id": "IBAIAsxGPt7cb5uq::0-30::1"
+   },
+   "target": {
+    "title": "Angelic Weirdness",
+    "artist": "Guided by Voices",
+    "tags": [
+     "lo-fi",
+     "indie rock",
+     "indie",
+     "2019"
+    ],
+    "vocals": "vocal",
+    "speed": "medium",
+    "clip_id": "KURLuwgRM1cjkEM7::0-30::1"
+   },
+   "candidates": [
+    {
+     "grade": 5,
+     "pool_type": "Type_TARGET",
+     "reason": "The candidate caption is semantically identical to the target caption (sharing the exact same opening and core description of the energetic indie rock track with driving rhythm section). The candidate satisfies all explicit verbalized constraints (driving rhythm section, steady drum patterns, energetic) and preserved tags (indie, alternative - though 'alternative' is missing from candidate tags, it is present in the semantic delta preserved list and the candidate is clearly the intended target match given the caption identity). The heuristic metadata incorrectly flags 'alternative' as failed and suggests a history shortcut, but the caption match is near-perfect (0.996 similarity) and aligns with the primary edit. In compositional retrieval, if the caption matches the target description perfectly, it is the target.",
+     "satisfied": [
+      "driving rhythm section",
+      "steady drum patterns",
+      "energetic"
+     ],
+     "failed": [],
+     "clip": {
+      "title": "Lips Taste Like Tears",
+      "artist": "The Cinematics",
+      "tags": [
+       "indie rock",
+       "rock",
+       "britpop",
+       "indie"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "9x66odVlmYFAGMU9::0-30::1"
+     }
+    },
+    {
+     "grade": 4,
+     "pool_type": "Type_STRONG",
+     "reason": "The candidate satisfies all explicit verbalized constraints (driving rhythm section, steady drum patterns, energetic) and preserved tags (alternative, indie). The candidate caption is semantically nearly identical to the target caption, correctly reflecting the shift to an energetic indie rock style with male vocals and electric guitars, while discarding the source's acoustic/female vocal characteristics. It represents a strong positive match for the requested edit.",
+     "satisfied": [
+      "driving rhythm section",
+      "steady drum patterns",
+      "energetic"
+     ],
+     "failed": [],
+     "clip": {
+      "title": "All Fired Up",
+      "artist": "Interpol",
+      "tags": [
+       "indie rock",
+       "rock",
+       "post-punk",
+       "indie"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "1jYHmQhARB4ikEW9::0-30::1"
+     }
+    },
+    {
+     "grade": 2,
+     "pool_type": "Type_STRONG",
+     "reason": "The candidate satisfies the explicit verbalized edit (replace light percussion with driving, steady rhythm section; energize track) and preserves the required tags (alternative, indie). The candidate caption describes a 'driving rhythm section', 'propulsive drum kit', and 'energetic' vibe, which aligns with the requested semantics. While the heuristic metadata flags 'steady drum patterns' as failed, the candidate's description of a 'propulsive drum kit... that keeps the momentum relentless' is semantically equivalent to the requested 'steady drum patterns' in the context of an energetic rock track. The candidate also correctly shifts to male vocals and electric guitars as implied by the genre shift to indie rock, although the primary edit focused on rhythm. The high text similarity and satisfaction of the primary edit constraints justify a STRONG classification.",
+     "satisfied": [
+      "alternative",
+      "indie",
+      "driving rhythm section"
+     ],
+     "failed": [],
+     "clip": {
+      "title": "Obstacle 2 (Peel Session)",
+      "artist": "Interpol",
+      "tags": [
+       "post-punk",
+       "indie rock",
+       "rock",
+       "indie"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "qH71FET8BC5pPtv8::0-30::1"
+     }
+    },
+    {
+     "grade": 1,
+     "pool_type": "Type_PARTIAL",
+     "reason": "The candidate satisfies the primary edit request to replace light percussion with a driving, energetic rhythm section and preserves the 'alternative' and 'indie' tags. However, it fails to fully align with the target semantics by retaining 'female vocalists' (target specifies male vocals) and missing specific instrumental details like 'steady drum patterns' and 'jangly electric guitars' which are present in the target but not explicitly captured or contradicted in the candidate's description (which mentions 'dynamic drums' and 'bright electric guitars'). The candidate is a near-miss, fitting the general vibe but missing specific constraints.",
+     "satisfied": [
+      "alternative",
+      "indie",
+      "energetic"
+     ],
+     "failed": [
+      "male vocals",
+      "steady drum patterns",
+      "jangly electric guitars"
+     ],
+     "clip": {
+      "title": "Maps",
+      "artist": "Yeah Yeah Yeahs",
+      "tags": [
+       "indie rock",
+       "rock",
+       "indie",
+       "female vocalists"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "TwCuYxw66T2dFYg6::0-30::1"
+     }
+    },
+    {
+     "grade": 0,
+     "pool_type": "Type_HARD_NEG",
+     "reason": "The candidate fails to satisfy the explicit preservation constraint for the 'alternative' tag (candidate has 'alternative rock' but is marked as failing 'alternative' in the heuristic metadata, and lacks the exact tag match required for strict preservation). Furthermore, it fails the new semantic constraint for 'steady drum patterns' (candidate mentions 'steady rock drums' but is marked as failing). Most critically, the candidate retains 'female vocalists' (explicitly in lost/new constraints as needing to change to male or at least losing the specific female singer-songwriter vibe, though the delta says 'male vocals' is new, the candidate has 'female singer'). The heuristic metadata explicitly labels this as a hard negative with failed constraints on 'steady drum patterns' and 'alternative'.",
+     "satisfied": [
+      "indie",
+      "indie rock",
+      "driving rhythm section"
+     ],
+     "failed": [
+      "alternative",
+      "steady drum patterns",
+      "male vocals"
+     ],
+     "clip": {
+      "title": "Runaway",
+      "artist": "Yeah Yeah Yeahs",
+      "tags": [
+       "alternative rock",
+       "indie rock",
+       "indie",
+       "female vocalists"
+      ],
+      "vocals": "vocal",
+      "speed": "fast",
+      "clip_id": "XjMqir26ug2VHVGp::0-30::1"
+     }
+    }
+   ]
+  },
+  {
+   "instruction": "add screamed vocals and melodic power chords",
+   "source": {
+    "title": "Sick Minds",
+    "artist": "The Browning",
+    "tags": [
+     "deathcore",
+     "electronic",
+     "metalcore",
+     "experimental"
+    ],
+    "vocals": "vocal",
+    "speed": "medium",
+    "clip_id": "vG6kmdt67f8EygFy::0-30::1"
+   },
+   "target": {
+    "title": "Intoxicated",
+    "artist": "Now And On Earth",
+    "tags": [
+     "metalcore",
+     "post-hardcore",
+     "progressive metalcore",
+     "melodic metalcore"
+    ],
+    "vocals": "vocal",
+    "speed": "medium",
+    "clip_id": "VGT0QerDi3w9OMQa::0-30::1"
+   },
+   "candidates": [
+    {
+     "grade": 5,
+     "pool_type": "Type_TARGET",
+     "reason": "The candidate caption is semantically identical to the target caption (similarity 0.9997), satisfying all requested changes (screamed vocals, melodic metalcore, power chords) and preservation constraints (metalcore, high energy, vocal). The heuristic metadata incorrectly flags it as a hard negative due to tag mismatches or audio similarity thresholds, but the semantic delta and caption content confirm it is the correct target match.",
+     "satisfied": [
+      "screamed vocals",
+      "melodic metalcore",
+      "power chords"
+     ],
+     "failed": [],
+     "clip": {
+      "title": "Harlots Breath",
+      "artist": "Miss May I",
+      "tags": [
+       "metalcore",
+       "deathcore",
+       "post-hardcore"
+      ],
+      "vocals": "vocal",
+      "speed": "fast",
+      "clip_id": "nuRErdzvMXqnltos::0-30::1"
+     }
+    },
+    {
+     "grade": 2,
+     "pool_type": "Type_STRONG",
+     "reason": "The candidate satisfies the primary edit (adding screamed vocals, shifting to melodic metalcore/power chords) and preserves key constraints (metalcore, high energy, vocal presence). The caption accurately reflects the requested semantic changes. The heuristic metadata's classification as HARD_NEG is contradicted by the high text similarity (0.978) and the candidate's caption which explicitly mentions 'harsh screams' and 'metalcore', aligning with the target semantics. The missing specific tag 'melodic metalcore' in the candidate's tag list is a minor metadata issue compared to the strong semantic match in the caption and audio description.",
+     "satisfied": [
+      "metalcore",
+      "high energy",
+      "vocal"
+     ],
+     "failed": [
+      "melodic metalcore (tag)",
+      "progressive metalcore (tag)"
+     ],
+     "clip": {
+      "title": "Stick Stickly",
+      "artist": "Attack Attack!",
+      "tags": [
+       "post-hardcore",
+       "screamo",
+       "trancecore",
+       "electronic"
+      ],
+      "vocals": "vocal",
+      "speed": "fast",
+      "clip_id": "th2KsLdsoPRLzYh8::0-30::1"
+     }
+    },
+    {
+     "grade": 1,
+     "pool_type": "Type_PARTIAL",
+     "reason": "The candidate satisfies the primary edit of adding screamed vocals and shifting to metalcore, but fails to capture the specific 'melodic metalcore' style and 'power chords' requested in the new constraints. It also retains 'instrumental' and 'math rock' semantics in the heuristic metadata (likely due to audio similarity to source) which contradicts the explicit 'lost' constraints, although the caption itself correctly describes vocals. The candidate is a close match but misses key stylistic nuances (melodic/power chords) and has conflicting metadata regarding the removal of instrumental/math rock elements.",
+     "satisfied": [
+      "metalcore",
+      "screamed vocals",
+      "vocal"
+     ],
+     "failed": [
+      "melodic metalcore",
+      "power chords",
+      "remove instrumental"
+     ],
+     "clip": {
+      "title": "Not Our Tomorrow",
+      "artist": "Miss May I",
+      "tags": [
+       "metalcore",
+       "deathcore",
+       "post-hardcore",
+       "hardcore"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "k6LZ32AyVaYRxRqU::0-30::1"
+     }
+    },
+    {
+     "grade": 0,
+     "pool_type": "Type_HARD_NEG",
+     "reason": "The candidate fails to satisfy the primary edit instructions. The request explicitly asked to 'Add screamed vocals' and 'shift to melodic metalcore', while removing 'instrumental' and 'math rock' elements. The candidate is tagged as 'deathcore' and 'death metal' (violating the genre shift to melodic metalcore) and features 'guttural growled vocals' instead of the requested 'screamed vocals'. Furthermore, the candidate retains 'instrumental' and 'math rock' characteristics in the heuristic satisfaction analysis (or fails to remove them effectively as per the 'lost' constraints), and misses the specific 'power chords' and 'melodic death-metal sensibilities' requested. It is a clear miss on the core semantic changes.",
+     "satisfied": [
+      "metalcore",
+      "vocal",
+      "distorted guitars"
+     ],
+     "failed": [
+      "screamed vocals",
+      "melodic metalcore",
+      "power chords"
+     ],
+     "clip": {
+      "title": "Dead Rose",
+      "artist": "Chelsea Grin",
+      "tags": [
+       "deathcore",
+       "death metal"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "7bwYbJNJB1uCcPqg::0-30::1"
+     }
+    }
+   ]
+  }
+ ]
+}
