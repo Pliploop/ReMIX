@@ -27,9 +27,12 @@ DATASETS = {
     "mtg_jamendo": ("MTG-Jamendo", "/gpfs/scratch/acw749/datasets/mtg_jamendo_instruct/v1"),
 }
 FOLDER = "instructions_axis_focused_5"
-GRADE_LABEL = {4: "strong", 3: "good", 2: "partial", 1: "near-miss", 0: "negative"}
+# Judge grades are 0-5 (Type_TARGET=5 exact, strong=4, [good=3 unused], partial=2,
+# near-miss=1, non-relevant=0). Keep all six so grade 5 is never silently dropped.
+GRADE_LABEL = {5: "exact", 4: "strong", 3: "good", 2: "partial", 1: "near-miss", 0: "negative"}
 # Match the site/paper palette (theme.js STAGE colours), warm->cool by relevance.
-GRADE_COLOR = {4: "#1FA347", 3: "#7BC043", 2: "#FB8B24", 1: "#E2843B", 0: "#C3C7CD"}
+GRADE_COLOR = {5: "#137539", 4: "#1FA347", 3: "#7BC043", 2: "#FB8B24", 1: "#E2843B", 0: "#C3C7CD"}
+GRADES = (5, 4, 3, 2, 1, 0)
 
 
 def _iter_pool(root: str) -> Iterable[Dict[str, Any]]:
@@ -99,7 +102,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     total_c = sum(grade.values())
     print(f"\n=== {label}: {steps:,} steps, {total_c:,} candidates ({total_c/steps:.1f}/step), {judged:,} llm-judged")
     print("  grade distribution:")
-    for g in (4, 3, 2, 1, 0):
+    for g in GRADES:
         n = grade.get(g, 0)
         print(f"    {g} {GRADE_LABEL[g]:9} {n:>8,} ({100*n/total_c:.1f}%)")
     print("  pool types:", dict(pool_type.most_common()))
@@ -110,7 +113,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     slug = label.lower().replace("-", "_").replace(" ", "_")
 
     def _grade_bar(ax):
-        gs = [4, 3, 2, 1, 0]
+        gs = list(GRADES)
         ax.bar([GRADE_LABEL[g] for g in gs], [grade.get(g, 0) for g in gs],
                color=[GRADE_COLOR[g] for g in gs], edgecolor="black", linewidth=0.6)
         ax.set_ylabel("candidates"); ax.set_xlabel("relevance grade")
@@ -126,12 +129,12 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     def _axis_bar(ax):
         top_axes = [a for a, _ in Counter({a: sum(c.values()) for a, c in grade_by_axis.items()}).most_common(6)]
         import numpy as np
-        x = np.arange(len(top_axes)); w = 0.16
-        for i, g in enumerate((4, 3, 2, 1, 0)):
+        x = np.arange(len(top_axes)); w = 0.8 / len(GRADES); mid = (len(GRADES) - 1) / 2
+        for i, g in enumerate(GRADES):
             vals = [grade_by_axis[a].get(g, 0) / max(1, sum(grade_by_axis[a].values())) for a in top_axes]
-            ax.bar(x + (i - 2) * w, vals, w, label=GRADE_LABEL[g], color=GRADE_COLOR[g], edgecolor="black", linewidth=0.4)
+            ax.bar(x + (i - mid) * w, vals, w, label=GRADE_LABEL[g], color=GRADE_COLOR[g], edgecolor="black", linewidth=0.4)
         ax.set_xticks(x); ax.set_xticklabels(top_axes, rotation=30, ha="right", fontsize=7)
-        ax.set_ylabel("grade share"); ax.legend(fontsize=6, ncol=5, loc="upper center")
+        ax.set_ylabel("grade share"); ax.legend(fontsize=6, ncol=len(GRADES), loc="upper center")
     _fig(f"{slug}_relpool_grade_by_axis.pdf", _axis_bar)
 
     # ---- qualitative examples ----
