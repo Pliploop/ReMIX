@@ -1,0 +1,155 @@
+{
+ "instruction": "add screamed vocals and melodic power chords",
+ "chain_id": "chain_00000067",
+ "turn": 1,
+ "source": {
+  "title": "Sick Minds",
+  "artist": "The Browning",
+  "caption": "This instrumental piece is a high‑energy blend of post‑hardcore and math rock, driven by heavily distorted electric guitars that alternate between chugging riffs and intricate, syncopated melodies. The rhythm section features aggressive double‑bass drumming and dynamic bass lines that lock tightly with the guitar work, creating a relentless forward momentum. Production is raw yet polished: guitars occupy a wide stereo field with hard left/right panning, while drums sit centrally but spread across the mix, giving the track a spacious, immersive feel. No vocals appear, so the focus remains entirely on the instrumental interplay.\nThe composition moves through distinct sections—an",
+  "tags": [
+   "deathcore",
+   "electronic",
+   "metalcore",
+   "experimental",
+   "epic"
+  ],
+  "vocals": "vocal",
+  "speed": "medium",
+  "clip_id": "vG6kmdt67f8EygFy::0-30::1"
+ },
+ "target": {
+  "title": "Intoxicated",
+  "artist": "Now And On Earth",
+  "caption": "This is a high‑energy metalcore track that blends aggressive post‑hardcore intensity with melodic death‑metal sensibilities. It features heavily distorted electric guitars delivering fast, intricate riffs and chugging power chords, a driving bass guitar locked tightly with relentless double‑bass drumming, and intense screamed male vocals that convey raw aggression and urgency. The mix is polished yet retains a gritty edge, with wide stereo imaging that places rhythm guitars on opposite sides while keeping drums, bass, and lead vocals centered. Production emphasizes punchy compression on the drums and tight low‑end control on the bass, creating a dense but clear wall of",
+  "tags": [
+   "metalcore",
+   "post-hardcore",
+   "progressive metalcore",
+   "melodic metalcore",
+   "electronic"
+  ],
+  "vocals": "vocal",
+  "speed": "medium",
+  "clip_id": "VGT0QerDi3w9OMQa::0-30::1"
+ },
+ "candidates": [
+  {
+   "grade": 5,
+   "pool_type": "Type_TARGET",
+   "reason": "The candidate caption is semantically identical to the target caption (similarity 0.9997), satisfying all requested changes (screamed vocals, melodic metalcore, power chords) and preservation constraints (metalcore, high energy, vocal). The heuristic metadata incorrectly flags it as a hard negative due to tag mismatches or audio similarity thresholds, but the semantic delta and caption content confirm it is the correct target match.",
+   "satisfied": [
+    "screamed vocals",
+    "melodic metalcore",
+    "power chords",
+    "metalcore"
+   ],
+   "failed": [
+    "screamed vocals",
+    "melodic metalcore",
+    "high energy"
+   ],
+   "clip": {
+    "title": "Harlots Breath",
+    "artist": "Miss May I",
+    "caption": "This is a high‑energy metalcore track that blends aggressive post‑hardcore intensity with melodic death‑metal sensibilities. It features heavily distorted electric guitars delivering fast, intricate riffs and chugging power chords, a driving bass guitar locked tightly with relentless double‑bass drumming, and intense screamed male vocals that convey raw aggression and emotional urgency. The mix is polished yet retains a gritty edge, with wide stereo imaging that places rhythm guitars on opposite sides while keeping drums, bass, and lead vocals centered. Production emphasizes punchy compression on the drums and tight low‑end control on the bass, creating a dense but clear wall",
+    "tags": [
+     "metalcore",
+     "deathcore",
+     "post-hardcore"
+    ],
+    "vocals": "vocal",
+    "speed": "fast",
+    "clip_id": "nuRErdzvMXqnltos::0-30::1"
+   }
+  },
+  {
+   "grade": 2,
+   "pool_type": "Type_STRONG",
+   "reason": "The candidate satisfies the primary edit (adding screamed vocals, shifting to melodic metalcore/power chords) and preserves key constraints (metalcore, high energy, vocal presence). The caption accurately reflects the requested semantic changes. The heuristic metadata's classification as HARD_NEG is contradicted by the high text similarity (0.978) and the candidate's caption which explicitly mentions 'harsh screams' and 'metalcore', aligning with the target semantics. The missing specific tag 'melodic metalcore' in the candidate's tag list is a minor metadata issue compared to the strong semantic match in the caption and audio description.",
+   "satisfied": [
+    "metalcore",
+    "high energy",
+    "vocal",
+    "screamed vocals"
+   ],
+   "failed": [
+    "melodic metalcore (tag)",
+    "progressive metalcore (tag)"
+   ],
+   "clip": {
+    "title": "Stick Stickly",
+    "artist": "Attack Attack!",
+    "caption": "This is a high‑energy metalcore piece that blends aggressive post‑hardcore intensity with melodic elements. It features heavily distorted electric guitars delivering fast riffs and power chords, a driving bass line, and relentless double‑bass drumming that propels the rhythm forward. The vocal performance alternates between harsh screams and clean singing, adding emotional contrast while maintaining the song’s urgent feel. Production is polished yet retains raw edge: guitars are wide‑stereo‑panned, drums sit centrally with punchy compression, and subtle reverb on the clean parts creates depth without softening the overall aggression. Overall, the track conveys",
+    "tags": [
+     "post-hardcore",
+     "screamo",
+     "trancecore",
+     "electronic",
+     "crabcore"
+    ],
+    "vocals": "vocal",
+    "speed": "fast",
+    "clip_id": "th2KsLdsoPRLzYh8::0-30::1"
+   }
+  },
+  {
+   "grade": 1,
+   "pool_type": "Type_PARTIAL",
+   "reason": "The candidate satisfies the primary edit of adding screamed vocals and shifting to metalcore, but fails to capture the specific 'melodic metalcore' style and 'power chords' requested in the new constraints. It also retains 'instrumental' and 'math rock' semantics in the heuristic metadata (likely due to audio similarity to source) which contradicts the explicit 'lost' constraints, although the caption itself correctly describes vocals. The candidate is a close match but misses key stylistic nuances (melodic/power chords) and has conflicting metadata regarding the removal of instrumental/math rock elements.",
+   "satisfied": [
+    "metalcore",
+    "screamed vocals",
+    "vocal",
+    "high energy"
+   ],
+   "failed": [
+    "melodic metalcore",
+    "power chords",
+    "remove instrumental",
+    "remove math rock"
+   ],
+   "clip": {
+    "title": "Not Our Tomorrow",
+    "artist": "Miss May I",
+    "caption": "This is a high‑energy metalcore track featuring aggressive distorted guitars, intense double‑bass drumming, and harsh screamed vocals that convey raw emotion. The song’s relentless rhythm and powerful riffs create a dark yet cathartic atmosphere typical of modern heavy music.",
+    "tags": [
+     "metalcore",
+     "deathcore",
+     "post-hardcore",
+     "hardcore"
+    ],
+    "vocals": "vocal",
+    "speed": "medium",
+    "clip_id": "k6LZ32AyVaYRxRqU::0-30::1"
+   }
+  },
+  {
+   "grade": 0,
+   "pool_type": "Type_HARD_NEG",
+   "reason": "The candidate fails to satisfy the primary edit instructions. The request explicitly asked to 'Add screamed vocals' and 'shift to melodic metalcore', while removing 'instrumental' and 'math rock' elements. The candidate is tagged as 'deathcore' and 'death metal' (violating the genre shift to melodic metalcore) and features 'guttural growled vocals' instead of the requested 'screamed vocals'. Furthermore, the candidate retains 'instrumental' and 'math rock' characteristics in the heuristic satisfaction analysis (or fails to remove them effectively as per the 'lost' constraints), and misses the specific 'power chords' and 'melodic death-metal sensibilities' requested. It is a clear miss on the core semantic changes.",
+   "satisfied": [
+    "metalcore",
+    "vocal",
+    "distorted guitars"
+   ],
+   "failed": [
+    "screamed vocals",
+    "melodic metalcore",
+    "power chords",
+    "remove instrumental"
+   ],
+   "clip": {
+    "title": "Dead Rose",
+    "artist": "Chelsea Grin",
+    "caption": "This is a high‑energy metalcore piece that leans heavily into deathcore aggression, blending crushing distorted guitars, relentless double‑bass drumming, and guttural growled vocals. The production is polished yet retains a raw edge, creating a dense wall of sound typical of modern extreme metal.",
+    "tags": [
+     "deathcore",
+     "death metal"
+    ],
+    "vocals": "vocal",
+    "speed": "medium",
+    "clip_id": "7bwYbJNJB1uCcPqg::0-30::1"
+   }
+  }
+ ]
+}
