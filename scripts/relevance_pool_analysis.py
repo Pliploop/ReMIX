@@ -116,12 +116,15 @@ def analyse(label: str, root: str, n_examples: int) -> None:
             ptype_grade[pt][g] += 1
             for s in (c.get("candidate_sources") or ["unknown"]):
                 prov[str(s)][g] += 1
-            asim, csim = c.get("audio_sim_to_target"), c.get("caption_sim_to_target")
-            sg = sim_by_grade[g]
-            if isinstance(asim, (int, float)) and len(sg["audio"]) < SIM_CAP:
-                sg["audio"].append(float(asim))
-            if isinstance(csim, (int, float)) and len(sg["caption"]) < SIM_CAP:
-                sg["caption"].append(float(csim))
+            # Exclude the injected designated target: it is trivially self-similar
+            # (audio_sim_to_target = 1.0), which would swamp the strong grade.
+            if not c.get("is_exact_target"):
+                asim, csim = c.get("audio_sim_to_target"), c.get("caption_sim_to_target")
+                sg = sim_by_grade[g]
+                if isinstance(asim, (int, float)) and len(sg["audio"]) < SIM_CAP:
+                    sg["audio"].append(float(asim))
+                if isinstance(csim, (int, float)) and len(sg["caption"]) < SIM_CAP:
+                    sg["caption"].append(float(csim))
             if g >= 2:
                 pos += 1
             if c.get("label_source") == "llm_judge":
@@ -171,12 +174,14 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     def _axis_bar(ax):
         top_axes = [a for a, _ in Counter({a: sum(c.values()) for a, c in grade_by_axis.items()}).most_common(6)]
         import numpy as np
-        x = np.arange(len(top_axes)); w = 0.8 / len(GRADES); mid = (len(GRADES) - 1) / 2
-        for i, g in enumerate(GRADES):
-            vals = [grade_by_axis[a].get(g, 0) / max(1, sum(grade_by_axis[a].values())) for a in top_axes]
-            ax.bar(x + (i - mid) * w, vals, w, label=GRADE_LABEL[g], color=GRADE_COLOR[g], edgecolor="black", linewidth=0.4)
-        ax.set_xticks(x); ax.set_xticklabels(top_axes, rotation=30, ha="right", fontsize=7)
-        ax.set_ylabel("grade share"); ax.legend(fontsize=6, ncol=len(GRADES), loc="upper center")
+        x = np.arange(len(top_axes)); bottoms = np.zeros(len(top_axes))
+        # Relevant grades only (grade 0 is 93% and would flatten the axis differences).
+        for g in (5, 4, 2, 1):
+            vals = np.array([grade_by_axis[a].get(g, 0) / max(1, sum(grade_by_axis[a].values())) for a in top_axes])
+            ax.bar(x, vals, bottom=bottoms, color=GRADE_COLOR[g], label=GRADE_LABEL[g], edgecolor="white", linewidth=0.3)
+            bottoms += vals
+        ax.set_xticks(x); ax.set_xticklabels([a.replace("_", " ") for a in top_axes], rotation=25, ha="right", fontsize=8)
+        ax.set_ylabel("relevant share ($\\geq$ near-miss)"); ax.legend(fontsize=6, ncol=4, loc="upper right")
     _fig(f"{slug}_relpool_grade_by_axis.pdf", _axis_bar)
 
     # ---- (1) grade x candidate provenance: positives are not only target-neighbours ----
