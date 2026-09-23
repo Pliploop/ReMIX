@@ -99,7 +99,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         cands = row.get("candidates") or []
         per_step_candidates.append(len(cands))
         pos = 0
-        axes = row.get("instruction_plan", {}).get("inferred_change_axes") or row.get("semantic_constraints", {}).get("change_axes") or []
+        axes = (row.get("instruction_plan") or {}).get("inferred_change_axes") or (row.get("semantic_constraints") or {}).get("change_axes") or []
         axis = str(axes[0]) if axes else "unknown"
         for c in cands:
             g = int(c.get("grade", 0) or 0)
