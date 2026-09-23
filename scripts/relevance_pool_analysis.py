@@ -89,6 +89,12 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     per_step_positives = []          # candidates with grade >= 2 per step
     per_step_candidates = []
     grade_by_axis = defaultdict(Counter)
+    prov = defaultdict(Counter)            # candidate source -> grade counts
+    ptype_grade = defaultdict(Counter)     # heuristic pool_type -> verified grade
+    sim_by_grade = defaultdict(lambda: {"audio": [], "caption": []})
+    exact_grade = Counter()                # grade the exact target receives
+    steps_with_exact = 0
+    SIM_CAP = 40000
     label_changes = 0
     judged = 0
     examples: List[Dict[str, Any]] = []
@@ -104,14 +110,28 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         for c in cands:
             g = int(c.get("grade", 0) or 0)
             grade[g] += 1
-            pool_type[str(c.get("pool_type", "") or "")] += 1
+            pt = str(c.get("pool_type", "") or "")
+            pool_type[pt] += 1
             grade_by_axis[axis][g] += 1
+            ptype_grade[pt][g] += 1
+            for s in (c.get("candidate_sources") or ["unknown"]):
+                prov[str(s)][g] += 1
+            asim, csim = c.get("audio_sim_to_target"), c.get("caption_sim_to_target")
+            sg = sim_by_grade[g]
+            if isinstance(asim, (int, float)) and len(sg["audio"]) < SIM_CAP:
+                sg["audio"].append(float(asim))
+            if isinstance(csim, (int, float)) and len(sg["caption"]) < SIM_CAP:
+                sg["caption"].append(float(csim))
             if g >= 2:
                 pos += 1
             if c.get("label_source") == "llm_judge":
                 judged += 1
                 if c.get("candidate_llm_judge") and int(c["candidate_llm_judge"].get("grade", g) or g) != g:
                     label_changes += 1  # (grade already overwritten; kept for future raw diffs)
+        ex = [int(c.get("grade", 0) or 0) for c in cands if c.get("is_exact_target")]
+        if ex:
+            steps_with_exact += 1
+            exact_grade[max(ex)] += 1
         per_step_positives.append(pos)
         # keep a few well-graded steps as qualitative examples
         if len(examples) < n_examples and pos >= 1 and any(int(c.get("grade", 0) or 0) == 0 for c in cands):
@@ -158,6 +178,83 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         ax.set_xticks(x); ax.set_xticklabels(top_axes, rotation=30, ha="right", fontsize=7)
         ax.set_ylabel("grade share"); ax.legend(fontsize=6, ncol=len(GRADES), loc="upper center")
     _fig(f"{slug}_relpool_grade_by_axis.pdf", _axis_bar)
+
+    # ---- (1) grade x candidate provenance: positives are not only target-neighbours ----
+    SRC_ORDER = ["target_neighborhood", "source_neighborhood", "seed_neighborhood",
+                 "history_reference_neighborhood", "chain_history_target", "exact_target"]
+    SRC_LABEL = {"target_neighborhood": "target", "source_neighborhood": "source",
+                 "seed_neighborhood": "seed", "history_reference_neighborhood": "history",
+                 "chain_history_target": "hist-tgt", "exact_target": "exact"}
+
+    def _prov_bar(ax):
+        import numpy as np
+        srcs = [s for s in SRC_ORDER if s in prov] + [s for s in prov if s not in SRC_ORDER]
+        srcs = srcs[:6]
+        bottoms = np.zeros(len(srcs))
+        for g in (5, 4, 2, 1):  # relevant grades only; grade 0 dwarfs the rest
+            vals = np.array([prov[s].get(g, 0) for s in srcs], float)
+            ax.bar(range(len(srcs)), vals, bottom=bottoms, color=GRADE_COLOR[g],
+                   label=GRADE_LABEL[g], edgecolor="white", linewidth=0.4)
+            bottoms += vals
+        ax.set_xticks(range(len(srcs))); ax.set_xticklabels([SRC_LABEL.get(s, s) for s in srcs],
+                                                            rotation=25, ha="right", fontsize=8)
+        ax.set_ylabel("relevant candidates ($\\geq$ near-miss)")
+        ax.legend(fontsize=6, ncol=4, loc="upper right")
+    _fig(f"{slug}_relpool_grade_by_source.pdf", _prov_bar)
+
+    # ---- (2) similarity vs grade: hard negatives are high-similarity ----
+    def _sim_box(ax):
+        import numpy as np
+        gs = [g for g in GRADES if sim_by_grade[g]["audio"]]
+        x = np.arange(len(gs))
+        for off, key, col in ((-0.19, "audio", "#2E6FD6"), (0.19, "caption", "#FB8B24")):
+            bp = ax.boxplot([sim_by_grade[g][key] for g in gs], positions=x + off, widths=0.34,
+                            showfliers=False, patch_artist=True)
+            for b in bp["boxes"]: b.set(facecolor=col, alpha=0.75, edgecolor="black", linewidth=0.5)
+            for m in bp["medians"]: m.set(color="black", linewidth=1)
+        ax.set_xticks(x); ax.set_xticklabels([GRADE_LABEL[g] for g in gs])
+        ax.set_ylabel("similarity to target"); ax.set_xlabel("verified grade")
+        from matplotlib.patches import Patch
+        ax.legend(handles=[Patch(facecolor="#2E6FD6", label="audio"), Patch(facecolor="#FB8B24", label="caption")],
+                  fontsize=7, loc="upper left")
+    _fig(f"{slug}_relpool_sim_by_grade.pdf", _sim_box)
+
+    # ---- (3) target recoverability ----
+    def _target_bar(ax):
+        gs = [g for g in GRADES if exact_grade.get(g, 0)]
+        ax.bar([GRADE_LABEL[g] for g in gs], [exact_grade[g] for g in gs],
+               color=[GRADE_COLOR[g] for g in gs], edgecolor="black", linewidth=0.5)
+        ax.set_ylabel("steps"); ax.set_xlabel("grade of the exact target")
+        ax.set_title(f"exact target present in {100*steps_with_exact/steps:.1f}% of steps", fontsize=9)
+    _fig(f"{slug}_relpool_target_recovery.pdf", _target_bar)
+
+    # ---- (4) judge vs heuristic: pool_type x verified grade ----
+    def _heur(ax):
+        import numpy as np
+        pts = [p for p, _ in sorted(ptype_grade.items(), key=lambda kv: -sum(kv[1].values())) if p][:6]
+        M = np.array([[ptype_grade[p].get(g, 0) for g in GRADES] for p in pts], float)
+        Mn = M / np.clip(M.sum(1, keepdims=True), 1, None)
+        ax.imshow(Mn, cmap="Blues", aspect="auto", vmin=0, vmax=1)
+        ax.set_xticks(range(len(GRADES))); ax.set_xticklabels([GRADE_LABEL[g] for g in GRADES],
+                                                              rotation=30, ha="right", fontsize=8)
+        ax.set_yticks(range(len(pts))); ax.set_yticklabels(pts, fontsize=8)
+        ax.set_xlabel("verified grade"); ax.set_ylabel("heuristic pool type")
+        for i in range(len(pts)):
+            for j in range(len(GRADES)):
+                if Mn[i, j] >= 0.01:
+                    ax.text(j, i, f"{Mn[i, j]*100:.0f}", ha="center", va="center",
+                            fontsize=7, color="white" if Mn[i, j] > 0.55 else "black")
+    _fig(f"{slug}_relpool_judge_vs_heuristic.pdf", _heur)
+
+    # ---- extra stats for the paper text ----
+    print(f"  target recoverable (exact target in pool): {steps_with_exact:,}/{steps:,} ({100*steps_with_exact/steps:.1f}%)")
+    hn = ptype_grade.get("Type_HARD_NEG", Counter())
+    hn_tot = sum(hn.values())
+    if hn_tot:
+        up = sum(hn.get(g, 0) for g in (5, 4, 2))
+        print(f"  heuristic hard-negs upgraded to >=partial by judge: {up:,}/{hn_tot:,} ({100*up/hn_tot:.1f}%)")
+    pos_src = {SRC_LABEL.get(s, s): sum(prov[s].get(g, 0) for g in (5, 4, 2)) for s in prov}
+    print("  positives (>=partial) by source:", dict(sorted(pos_src.items(), key=lambda kv: -kv[1])))
 
     # ---- qualitative examples ----
     ex_path = REPO / "paper" / f"relpool_examples_{slug}.md"
