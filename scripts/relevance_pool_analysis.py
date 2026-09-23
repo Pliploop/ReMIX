@@ -29,10 +29,42 @@ DATASETS = {
 FOLDER = "instructions_axis_focused_5"
 # Judge grades are 0-5 (Type_TARGET=5 exact, strong=4, [good=3 unused], partial=2,
 # near-miss=1, non-relevant=0). Keep all six so grade 5 is never silently dropped.
-GRADE_LABEL = {5: "exact", 4: "strong", 3: "good", 2: "partial", 1: "near-miss", 0: "negative"}
-# Match the site/paper palette (theme.js STAGE colours), warm->cool by relevance.
-GRADE_COLOR = {5: "#137539", 4: "#1FA347", 3: "#7BC043", 2: "#FB8B24", 1: "#E2843B", 0: "#C3C7CD"}
+GRADE_LABEL = {5: "Exact", 4: "Strong", 3: "Good", 2: "Partial", 1: "Near-miss", 0: "Non-rel."}
 GRADES = (5, 4, 3, 2, 1, 0)
+
+# Publication style shared with scripts/paper_data_stats.py (Okabe-Ito, colorblind-safe).
+BLUE, ORANGE, GREEN, VERM, PURPLE, SKY, YELLOW, GREY = (
+    "#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#999999",
+)
+BAR = dict(alpha=0.85, edgecolor="black", linewidth=0.7)
+# Grade ramp: green (relevant) -> orange/vermillion (marginal) -> grey (non-relevant).
+GRADE_COLOR = {5: "#00543D", 4: GREEN, 3: "#7FC9A9", 2: ORANGE, 1: VERM, 0: "#C9C9C9"}
+# Prettier axis / pool-type labels.
+AXIS_LABEL = {
+    "genre_style": "Genre / style", "texture_production": "Texture / prod.",
+    "energy": "Energy", "instrumentation": "Instrumentation", "mood": "Mood",
+    "vocals": "Vocals", "tempo": "Tempo", "harmony": "Harmony",
+    "structure": "Structure", "other": "Other", "unknown": "Unknown",
+}
+PTYPE_LABEL = {
+    "Type_TARGET": "Target", "Type_STRONG": "Strong", "Type_PARTIAL": "Partial",
+    "Type_HARD_NEG": "Hard neg.", "Type_T": "Tag-only", "Type_H": "History",
+}
+
+
+def _setup_style() -> None:
+    import matplotlib.pyplot as plt
+    plt.rcParams.update({
+        "pdf.fonttype": 42, "ps.fonttype": 42,
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Helvetica", "Arial", "DejaVu Sans"],
+        "font.size": 11, "axes.labelsize": 12,
+        "xtick.labelsize": 10, "ytick.labelsize": 10,
+        "legend.fontsize": 9, "legend.frameon": False, "legend.handlelength": 1.3,
+        "axes.spines.top": False, "axes.spines.right": False,
+        "axes.grid": True, "axes.axisbelow": True,
+        "grid.color": "#dddddd", "grid.linewidth": 0.6, "figure.dpi": 150,
+    })
 
 
 def _iter_pool(root: str) -> Iterable[Dict[str, Any]]:
@@ -70,13 +102,13 @@ def _instructions_for(root: str, keys, field: str = "history_unaware_instruction
     return out
 
 
-def _fig(name: str, plotter) -> None:
+def _fig(name: str, plotter, size=(4.6, 3.2)) -> None:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(4.2, 3.0))
+    _setup_style()
+    fig, ax = plt.subplots(figsize=size, constrained_layout=True)
     plotter(ax)
-    fig.tight_layout()
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_DIR / name)
     plt.close(fig)
@@ -157,99 +189,112 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     # ---- figures ----
     slug = label.lower().replace("-", "_").replace(" ", "_")
 
+    from matplotlib.ticker import FuncFormatter, PercentFormatter
+    _kfmt = FuncFormatter(lambda v, _: f"{v:,.0f}")
+    _POS_LEG = dict(ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.16),
+                    columnspacing=1.0, handletextpad=0.4, handlelength=1.1)
+
     def _grade_bar(ax):
         gs = list(GRADES)
         ax.bar([GRADE_LABEL[g] for g in gs], [grade.get(g, 0) for g in gs],
-               color=[GRADE_COLOR[g] for g in gs], edgecolor="black", linewidth=0.6)
-        ax.set_ylabel("candidates"); ax.set_xlabel("relevance grade")
-        ax.tick_params(axis="x", rotation=30)
+               color=[GRADE_COLOR[g] for g in gs], **BAR)
+        ax.set_ylabel("Candidates"); ax.set_yscale("log")
+        ax.tick_params(axis="x", labelrotation=20)
+        ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_grade_dist.pdf", _grade_bar)
 
     def _pos_hist(ax):
-        import numpy as np
-        ax.hist(per_step_positives, bins=range(0, max(per_step_positives) + 2), color="#2E6FD6", edgecolor="black", linewidth=0.5)
-        ax.set_xlabel("relevant candidates (grade>=2) per query"); ax.set_ylabel("queries")
+        m = max(per_step_positives)
+        ax.hist(per_step_positives, bins=range(0, m + 2), color=BLUE, **BAR)
+        ax.set_xlabel(r"Relevant candidates per query ($\geq$ partial)"); ax.set_ylabel("Queries")
+        ax.yaxis.set_major_formatter(_kfmt); ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_positives_per_query.pdf", _pos_hist)
 
     def _axis_bar(ax):
-        top_axes = [a for a, _ in Counter({a: sum(c.values()) for a, c in grade_by_axis.items()}).most_common(6)]
         import numpy as np
+        top_axes = [a for a, _ in Counter({a: sum(c.values()) for a, c in grade_by_axis.items()}).most_common(6)]
         x = np.arange(len(top_axes)); bottoms = np.zeros(len(top_axes))
-        # Relevant grades only (grade 0 is 93% and would flatten the axis differences).
-        for g in (5, 4, 2, 1):
+        for g in (5, 4, 2, 1):  # relevant grades only; grade 0 (93%) would flatten the differences
             vals = np.array([grade_by_axis[a].get(g, 0) / max(1, sum(grade_by_axis[a].values())) for a in top_axes])
-            ax.bar(x, vals, bottom=bottoms, color=GRADE_COLOR[g], label=GRADE_LABEL[g], edgecolor="white", linewidth=0.3)
+            ax.bar(x, vals, bottom=bottoms, color=GRADE_COLOR[g], label=GRADE_LABEL[g], edgecolor="white", linewidth=0.5)
             bottoms += vals
-        ax.set_xticks(x); ax.set_xticklabels([a.replace("_", " ") for a in top_axes], rotation=25, ha="right", fontsize=8)
-        ax.set_ylabel("relevant share ($\\geq$ near-miss)"); ax.legend(fontsize=6, ncol=4, loc="upper right")
+        ax.set_xticks(x); ax.set_xticklabels([AXIS_LABEL.get(a, a.replace("_", " ").title()) for a in top_axes],
+                                             rotation=20, ha="right")
+        ax.set_ylabel("Share of candidates"); ax.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
+        ax.legend(**_POS_LEG); ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_grade_by_axis.pdf", _axis_bar)
 
-    # ---- (1) grade x candidate provenance: positives are not only target-neighbours ----
+    # ---- (1) grade x candidate provenance ----
     SRC_ORDER = ["target_neighborhood", "source_neighborhood", "seed_neighborhood",
                  "history_reference_neighborhood", "chain_history_target", "exact_target"]
-    SRC_LABEL = {"target_neighborhood": "target", "source_neighborhood": "source",
-                 "seed_neighborhood": "seed", "history_reference_neighborhood": "history",
-                 "chain_history_target": "hist-tgt", "exact_target": "exact"}
+    SRC_LABEL = {"target_neighborhood": "Target", "source_neighborhood": "Source",
+                 "seed_neighborhood": "Seed", "history_reference_neighborhood": "History",
+                 "chain_history_target": "Hist-tgt", "exact_target": "Exact"}
 
     def _prov_bar(ax):
         import numpy as np
         srcs = [s for s in SRC_ORDER if s in prov] + [s for s in prov if s not in SRC_ORDER]
         srcs = srcs[:6]
         bottoms = np.zeros(len(srcs))
-        for g in (5, 4, 2, 1):  # relevant grades only; grade 0 dwarfs the rest
+        for g in (5, 4, 2, 1):
             vals = np.array([prov[s].get(g, 0) for s in srcs], float)
             ax.bar(range(len(srcs)), vals, bottom=bottoms, color=GRADE_COLOR[g],
-                   label=GRADE_LABEL[g], edgecolor="white", linewidth=0.4)
+                   label=GRADE_LABEL[g], edgecolor="white", linewidth=0.5)
             bottoms += vals
-        ax.set_xticks(range(len(srcs))); ax.set_xticklabels([SRC_LABEL.get(s, s) for s in srcs],
-                                                            rotation=25, ha="right", fontsize=8)
-        ax.set_ylabel("relevant candidates ($\\geq$ near-miss)")
-        ax.legend(fontsize=6, ncol=4, loc="upper right")
+        ax.set_xticks(range(len(srcs))); ax.set_xticklabels([SRC_LABEL.get(s, s) for s in srcs], rotation=20, ha="right")
+        ax.set_ylabel("Relevant candidates"); ax.yaxis.set_major_formatter(_kfmt)
+        ax.legend(**_POS_LEG); ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_grade_by_source.pdf", _prov_bar)
 
-    # ---- (2) similarity vs grade: hard negatives are high-similarity ----
+    # ---- (2) similarity vs grade ----
     def _sim_box(ax):
         import numpy as np
         gs = [g for g in GRADES if sim_by_grade[g]["audio"]]
         x = np.arange(len(gs))
-        for off, key, col in ((-0.19, "audio", "#2E6FD6"), (0.19, "caption", "#FB8B24")):
-            bp = ax.boxplot([sim_by_grade[g][key] for g in gs], positions=x + off, widths=0.34,
-                            showfliers=False, patch_artist=True)
-            for b in bp["boxes"]: b.set(facecolor=col, alpha=0.75, edgecolor="black", linewidth=0.5)
-            for m in bp["medians"]: m.set(color="black", linewidth=1)
-        ax.set_xticks(x); ax.set_xticklabels([GRADE_LABEL[g] for g in gs])
-        ax.set_ylabel("similarity to target"); ax.set_xlabel("verified grade")
+        for off, key, col in ((-0.2, "audio", BLUE), (0.2, "caption", ORANGE)):
+            bp = ax.boxplot([sim_by_grade[g][key] for g in gs], positions=x + off, widths=0.36,
+                            showfliers=False, patch_artist=True,
+                            medianprops=dict(color="black", linewidth=1.2),
+                            whiskerprops=dict(color="#555555"), capprops=dict(color="#555555"))
+            for b in bp["boxes"]:
+                b.set(facecolor=col, alpha=0.85, edgecolor="black", linewidth=0.7)
+        ax.set_xticks(x); ax.set_xticklabels([GRADE_LABEL[g] for g in gs], rotation=20, ha="right")
+        ax.set_ylabel("Similarity to target"); ax.set_xlabel("Verified grade"); ax.set_ylim(0, 1.02)
         from matplotlib.patches import Patch
-        ax.legend(handles=[Patch(facecolor="#2E6FD6", label="audio"), Patch(facecolor="#FB8B24", label="caption")],
-                  fontsize=7, loc="upper left")
+        ax.legend(handles=[Patch(facecolor=BLUE, label="Audio"), Patch(facecolor=ORANGE, label="Caption")],
+                  loc="upper right", ncol=2, columnspacing=1.0)
+        ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_sim_by_grade.pdf", _sim_box)
 
     # ---- (3) target recoverability ----
     def _target_bar(ax):
         gs = [g for g in GRADES if exact_grade.get(g, 0)]
         ax.bar([GRADE_LABEL[g] for g in gs], [exact_grade[g] for g in gs],
-               color=[GRADE_COLOR[g] for g in gs], edgecolor="black", linewidth=0.5)
-        ax.set_ylabel("steps"); ax.set_xlabel("grade of the exact target")
-        ax.set_title(f"exact target present in {100*steps_with_exact/steps:.1f}% of steps", fontsize=9)
+               color=[GRADE_COLOR[g] for g in gs], **BAR)
+        ax.set_ylabel("Steps"); ax.set_xlabel("Grade of the designated target")
+        ax.yaxis.set_major_formatter(_kfmt)
+        ax.set_title(f"Present in {100*steps_with_exact/steps:.1f}\\% of steps", fontsize=10)
+        ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_target_recovery.pdf", _target_bar)
 
-    # ---- (4) judge vs heuristic: pool_type x verified grade ----
+    # ---- (4) judge vs heuristic ----
     def _heur(ax):
         import numpy as np
         pts = [p for p, _ in sorted(ptype_grade.items(), key=lambda kv: -sum(kv[1].values())) if p][:6]
         M = np.array([[ptype_grade[p].get(g, 0) for g in GRADES] for p in pts], float)
         Mn = M / np.clip(M.sum(1, keepdims=True), 1, None)
-        ax.imshow(Mn, cmap="Blues", aspect="auto", vmin=0, vmax=1)
-        ax.set_xticks(range(len(GRADES))); ax.set_xticklabels([GRADE_LABEL[g] for g in GRADES],
-                                                              rotation=30, ha="right", fontsize=8)
-        ax.set_yticks(range(len(pts))); ax.set_yticklabels(pts, fontsize=8)
-        ax.set_xlabel("verified grade"); ax.set_ylabel("heuristic pool type")
+        im = ax.imshow(Mn, cmap="Blues", aspect="auto", vmin=0, vmax=1)
+        ax.set_xticks(range(len(GRADES))); ax.set_xticklabels([GRADE_LABEL[g] for g in GRADES], rotation=20, ha="right")
+        ax.set_yticks(range(len(pts))); ax.set_yticklabels([PTYPE_LABEL.get(p, p) for p in pts])
+        ax.set_xlabel("LLM-verified grade"); ax.set_ylabel("Heuristic pool type"); ax.grid(False)
         for i in range(len(pts)):
             for j in range(len(GRADES)):
                 if Mn[i, j] >= 0.01:
                     ax.text(j, i, f"{Mn[i, j]*100:.0f}", ha="center", va="center",
-                            fontsize=7, color="white" if Mn[i, j] > 0.55 else "black")
-    _fig(f"{slug}_relpool_judge_vs_heuristic.pdf", _heur)
+                            fontsize=9, color="white" if Mn[i, j] > 0.5 else "#222222")
+        cb = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
+        cb.ax.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0)); cb.outline.set_visible(False)
+    _fig(f"{slug}_relpool_judge_vs_heuristic.pdf", _heur, size=(5.2, 3.2))
 
     # ---- extra stats for the paper text ----
     print(f"  target recoverable (exact target in pool): {steps_with_exact:,}/{steps:,} ({100*steps_with_exact/steps:.1f}%)")
