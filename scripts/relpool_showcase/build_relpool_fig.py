@@ -1,9 +1,10 @@
 import json, html, hashlib, sys
 d=json.load(open(sys.argv[1])); OUT=sys.argv[2]
 CHAIN="#1FA347"; INSTRUCT="#FB8B24"; SEEDC="#2E6FD6"
-# grade -> (color, label). Palette from website theme.js (site-consistent).
-GC={5:("#0E7A3B","EXACT MATCH"),4:("#1FA347","STRONG"),2:("#FB8B24","PARTIAL"),
-    1:("#E2843B","NEAR MISS"),0:("#9AA0A6","HARD NEGATIVE")}
+# v2 grade -> (color, label). Bright saturated ramp shared with relevance_pool_analysis.
+GC={6:("#0A7D3E","EXACT MATCH"),5:("#22C55E","STRONG"),4:("#A7E32C","GOOD"),
+    3:("#F7B500","PARTIAL"),2:("#FB6A0A","SOFT FAIL"),1:("#E4231B","HARD FAIL"),
+    0:("#CBD0D6","HARD NEGATIVE")}
 def esc(s): return html.escape(str(s or ""))
 def clip(s,n):
     s=str(s or "").strip()
@@ -34,7 +35,7 @@ def candcard(p):
         <span class="gbadge" style="background:{col}">{lbl}<b>{p["grade"]}</b></span></div>
       <div class="tags">{tags(c.get("tags"))}</div>
       {wave(c["clip_id"],col)}
-      <div class="ptype" style="color:{col}">{esc(p["pool_type"])}</div>
+      <div class="ptype" style="color:{col}">{esc(", ".join((p.get("failure_modes") or [])[:3]).replace("_"," ") or "—")}</div>
       <p class="reason">{clip(p["reason"],210)}</p>
       <div class="conswrap">{cons(p.get("satisfied"),p.get("failed"))}</div></div>'''
 def example(e):

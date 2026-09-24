@@ -1,155 +1,367 @@
 {
- "instruction": "add screamed vocals and melodic power chords",
- "chain_id": "chain_00000067",
- "turn": 1,
- "source": {
-  "title": "Sick Minds",
-  "artist": "The Browning",
-  "caption": "This instrumental piece is a high‑energy blend of post‑hardcore and math rock, driven by heavily distorted electric guitars that alternate between chugging riffs and intricate, syncopated melodies. The rhythm section features aggressive double‑bass drumming and dynamic bass lines that lock tightly with the guitar work, creating a relentless forward momentum. Production is raw yet polished: guitars occupy a wide stereo field with hard left/right panning, while drums sit centrally but spread across the mix, giving the track a spacious, immersive feel. No vocals appear, so the focus remains entirely on the instrumental interplay.\nThe composition moves through distinct sections—an",
-  "tags": [
-   "deathcore",
-   "electronic",
-   "metalcore",
-   "experimental",
-   "epic"
-  ],
-  "vocals": "vocal",
-  "speed": "medium",
-  "clip_id": "vG6kmdt67f8EygFy::0-30::1"
- },
- "target": {
-  "title": "Intoxicated",
-  "artist": "Now And On Earth",
-  "caption": "This is a high‑energy metalcore track that blends aggressive post‑hardcore intensity with melodic death‑metal sensibilities. It features heavily distorted electric guitars delivering fast, intricate riffs and chugging power chords, a driving bass guitar locked tightly with relentless double‑bass drumming, and intense screamed male vocals that convey raw aggression and urgency. The mix is polished yet retains a gritty edge, with wide stereo imaging that places rhythm guitars on opposite sides while keeping drums, bass, and lead vocals centered. Production emphasizes punchy compression on the drums and tight low‑end control on the bass, creating a dense but clear wall of",
-  "tags": [
-   "metalcore",
-   "post-hardcore",
-   "progressive metalcore",
-   "melodic metalcore",
-   "electronic"
-  ],
-  "vocals": "vocal",
-  "speed": "medium",
-  "clip_id": "VGT0QerDi3w9OMQa::0-30::1"
- },
- "candidates": [
+ "examples": [
   {
-   "grade": 5,
-   "pool_type": "Type_TARGET",
-   "reason": "The candidate caption is semantically identical to the target caption (similarity 0.9997), satisfying all requested changes (screamed vocals, melodic metalcore, power chords) and preservation constraints (metalcore, high energy, vocal). The heuristic metadata incorrectly flags it as a hard negative due to tag mismatches or audio similarity thresholds, but the semantic delta and caption content confirm it is the correct target match.",
-   "satisfied": [
-    "screamed vocals",
-    "melodic metalcore",
-    "power chords",
-    "metalcore"
-   ],
-   "failed": [
-    "screamed vocals",
-    "melodic metalcore",
-    "high energy"
-   ],
-   "clip": {
-    "title": "Harlots Breath",
-    "artist": "Miss May I",
-    "caption": "This is a high‑energy metalcore track that blends aggressive post‑hardcore intensity with melodic death‑metal sensibilities. It features heavily distorted electric guitars delivering fast, intricate riffs and chugging power chords, a driving bass guitar locked tightly with relentless double‑bass drumming, and intense screamed male vocals that convey raw aggression and emotional urgency. The mix is polished yet retains a gritty edge, with wide stereo imaging that places rhythm guitars on opposite sides while keeping drums, bass, and lead vocals centered. Production emphasizes punchy compression on the drums and tight low‑end control on the bass, creating a dense but clear wall",
+   "instruction": "drop the energy, switch to female soul",
+   "source": {
+    "title": "Looks Like We Made It",
+    "artist": "Barry Manilow",
     "tags": [
-     "metalcore",
-     "deathcore",
-     "post-hardcore"
-    ],
-    "vocals": "vocal",
-    "speed": "fast",
-    "clip_id": "nuRErdzvMXqnltos::0-30::1"
-   }
-  },
-  {
-   "grade": 2,
-   "pool_type": "Type_STRONG",
-   "reason": "The candidate satisfies the primary edit (adding screamed vocals, shifting to melodic metalcore/power chords) and preserves key constraints (metalcore, high energy, vocal presence). The caption accurately reflects the requested semantic changes. The heuristic metadata's classification as HARD_NEG is contradicted by the high text similarity (0.978) and the candidate's caption which explicitly mentions 'harsh screams' and 'metalcore', aligning with the target semantics. The missing specific tag 'melodic metalcore' in the candidate's tag list is a minor metadata issue compared to the strong semantic match in the caption and audio description.",
-   "satisfied": [
-    "metalcore",
-    "high energy",
-    "vocal",
-    "screamed vocals"
-   ],
-   "failed": [
-    "melodic metalcore (tag)",
-    "progressive metalcore (tag)"
-   ],
-   "clip": {
-    "title": "Stick Stickly",
-    "artist": "Attack Attack!",
-    "caption": "This is a high‑energy metalcore piece that blends aggressive post‑hardcore intensity with melodic elements. It features heavily distorted electric guitars delivering fast riffs and power chords, a driving bass line, and relentless double‑bass drumming that propels the rhythm forward. The vocal performance alternates between harsh screams and clean singing, adding emotional contrast while maintaining the song’s urgent feel. Production is polished yet retains raw edge: guitars are wide‑stereo‑panned, drums sit centrally with punchy compression, and subtle reverb on the clean parts creates depth without softening the overall aggression. Overall, the track conveys",
-    "tags": [
-     "post-hardcore",
-     "screamo",
-     "trancecore",
-     "electronic",
-     "crabcore"
-    ],
-    "vocals": "vocal",
-    "speed": "fast",
-    "clip_id": "th2KsLdsoPRLzYh8::0-30::1"
-   }
-  },
-  {
-   "grade": 1,
-   "pool_type": "Type_PARTIAL",
-   "reason": "The candidate satisfies the primary edit of adding screamed vocals and shifting to metalcore, but fails to capture the specific 'melodic metalcore' style and 'power chords' requested in the new constraints. It also retains 'instrumental' and 'math rock' semantics in the heuristic metadata (likely due to audio similarity to source) which contradicts the explicit 'lost' constraints, although the caption itself correctly describes vocals. The candidate is a close match but misses key stylistic nuances (melodic/power chords) and has conflicting metadata regarding the removal of instrumental/math rock elements.",
-   "satisfied": [
-    "metalcore",
-    "screamed vocals",
-    "vocal",
-    "high energy"
-   ],
-   "failed": [
-    "melodic metalcore",
-    "power chords",
-    "remove instrumental",
-    "remove math rock"
-   ],
-   "clip": {
-    "title": "Not Our Tomorrow",
-    "artist": "Miss May I",
-    "caption": "This is a high‑energy metalcore track featuring aggressive distorted guitars, intense double‑bass drumming, and harsh screamed vocals that convey raw emotion. The song’s relentless rhythm and powerful riffs create a dark yet cathartic atmosphere typical of modern heavy music.",
-    "tags": [
-     "metalcore",
-     "deathcore",
-     "post-hardcore",
-     "hardcore"
+     "pop",
+     "soft rock",
+     "easy listening",
+     "70s"
     ],
     "vocals": "vocal",
     "speed": "medium",
-    "clip_id": "k6LZ32AyVaYRxRqU::0-30::1"
-   }
-  },
-  {
-   "grade": 0,
-   "pool_type": "Type_HARD_NEG",
-   "reason": "The candidate fails to satisfy the primary edit instructions. The request explicitly asked to 'Add screamed vocals' and 'shift to melodic metalcore', while removing 'instrumental' and 'math rock' elements. The candidate is tagged as 'deathcore' and 'death metal' (violating the genre shift to melodic metalcore) and features 'guttural growled vocals' instead of the requested 'screamed vocals'. Furthermore, the candidate retains 'instrumental' and 'math rock' characteristics in the heuristic satisfaction analysis (or fails to remove them effectively as per the 'lost' constraints), and misses the specific 'power chords' and 'melodic death-metal sensibilities' requested. It is a clear miss on the core semantic changes.",
-   "satisfied": [
-    "metalcore",
-    "vocal",
-    "distorted guitars"
-   ],
-   "failed": [
-    "screamed vocals",
-    "melodic metalcore",
-    "power chords",
-    "remove instrumental"
-   ],
-   "clip": {
-    "title": "Dead Rose",
-    "artist": "Chelsea Grin",
-    "caption": "This is a high‑energy metalcore piece that leans heavily into deathcore aggression, blending crushing distorted guitars, relentless double‑bass drumming, and guttural growled vocals. The production is polished yet retains a raw edge, creating a dense wall of sound typical of modern extreme metal.",
+    "clip_id": "5K39imxAg7KQsTCd::0-30::1"
+   },
+   "target": {
+    "title": "Giving You The Best That I Got",
+    "artist": "Anita Baker",
     "tags": [
-     "deathcore",
-     "death metal"
+     "soul",
+     "female vocalists",
+     "anita baker",
+     "rnb"
     ],
     "vocals": "vocal",
     "speed": "medium",
-    "clip_id": "7bwYbJNJB1uCcPqg::0-30::1"
-   }
+    "clip_id": "yD6tIaym5IRdvPmJ::0-30::1"
+   },
+   "candidates": [
+    {
+     "grade": 5,
+     "quality": "strong",
+     "failure_modes": [],
+     "reason": "The candidate perfectly executes the requested shift to soulful R&B with female vocals and lower energy, while preserving the ballad structure and medium speed (85 BPM is medium-slow, fitting the 'medium speed' preservation constraint better than the heuristic's 'slow' label suggests).",
+     "satisfied": [
+      "shift to rnb/soul",
+      "female lead vocals",
+      "lower energy"
+     ],
+     "failed": [
+      "rnb",
+      "female vocals"
+     ],
+     "clip": {
+      "title": "Just Because",
+      "artist": "Anita Baker",
+      "tags": [
+       "soul",
+       "smooth jazz",
+       "female vocalists",
+       "adult contemporary"
+      ],
+      "vocals": "vocal",
+      "speed": "slow",
+      "clip_id": "oVLfOmSNqsrduqvb::0-30::1"
+     }
+    },
+    {
+     "grade": 4,
+     "quality": "good",
+     "failure_modes": [
+      "change_partial"
+     ],
+     "reason": "The candidate successfully shifts to female vocals and a soulful, lower-energy ballad style, but retains the 'pop' tag and 'adult contemporary' description rather than fully committing to the requested 'R&B' genre, resulting in a looser match than the target.",
+     "satisfied": [
+      "female vocals",
+      "lower energy",
+      "soulful mood"
+     ],
+     "failed": [
+      "rnb genre",
+      "remove pop tag"
+     ],
+     "clip": {
+      "title": "I Wanna Love You Forever",
+      "artist": "Jessica Simpson",
+      "tags": [
+       "pop",
+       "jessica simpson",
+       "female vocalists",
+       "ballad"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "eh6M16G9mXtASoEY::0-30::1"
+     }
+    },
+    {
+     "grade": 3,
+     "quality": "partial",
+     "failure_modes": [
+      "change_partial",
+      "preservation_violated"
+     ],
+     "reason": "The candidate successfully shifts the genre to R&B/Soul and lowers the energy, but fails the explicit instruction to use female vocals (using male vocals instead) and violates the preservation of medium speed (candidate is slow/120bpm).",
+     "satisfied": [
+      "rnb",
+      "soul",
+      "lower energy"
+     ],
+     "failed": [
+      "female vocals",
+      "medium speed"
+     ],
+     "clip": {
+      "title": "I Believe I Can Fly",
+      "artist": "R. Kelly",
+      "tags": [
+       "soul",
+       "soundtrack",
+       "rnb",
+       "90s"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "pjWbmJke1Iz9eQ7g::0-30::1"
+     }
+    },
+    {
+     "grade": 2,
+     "quality": "soft_fail",
+     "failure_modes": [
+      "caption_semantics_miss",
+      "surface_only"
+     ],
+     "reason": "The candidate satisfies the surface tags (R&B, Soul, Female Vocals) but fails the semantic instruction to shift to a soulful R&B ballad with lower energy, as the caption explicitly describes it as a 'contemporary pop ballad' with 'acoustic guitar strumming' and 'modern mainstream pop' production.",
+     "satisfied": [
+      "rnb",
+      "soul",
+      "female vocals"
+     ],
+     "failed": [
+      "soulful r&b style",
+      "lower energy",
+      "soft rock removal"
+     ],
+     "clip": {
+      "title": "This Is Us",
+      "artist": "Keyshia Cole",
+      "tags": [
+       "soul",
+       "female vocalists",
+       "keyshia cole",
+       "rnb"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "WSsYgO8m4yRnCkWb::0-30::1"
+     }
+    },
+    {
+     "grade": 1,
+     "quality": "hard_fail",
+     "failure_modes": [
+      "caption_semantics_miss",
+      "preservation_violated"
+     ],
+     "reason": "The candidate caption explicitly describes 'male vocals' and 'acoustic guitar strumming' (soft rock/pop), directly contradicting the instruction's request for 'female vocals' and a shift to 'soulful R&B', despite the tags being correct.",
+     "satisfied": [
+      "rnb tag",
+      "soul tag",
+      "female vocalists tag"
+     ],
+     "failed": [
+      "female vocals (caption says male)",
+      "soulful R&B style (caption says pop-rock)",
+      "lower energy (caption implies higher/standard rock energy)"
+     ],
+     "clip": {
+      "title": "Caught Up in the Rapture",
+      "artist": "Anita Baker",
+      "tags": [
+       "soul",
+       "female vocalists",
+       "anita baker",
+       "smooth"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "3g70a1c5v6S6dbrl::0-30::1"
+     }
+    }
+   ]
+  },
+  {
+   "instruction": "lock in a steady rock groove",
+   "source": {
+    "title": "Yah Mo B There",
+    "artist": "James Ingram",
+    "tags": [
+     "soul",
+     "fip",
+     "drjazzmrfunkmusic"
+    ],
+    "vocals": "vocal",
+    "speed": "medium",
+    "clip_id": "rTWdgYojFgVeMGRK::0-30::1"
+   },
+   "target": {
+    "title": "The Witch Queen of New Orleans",
+    "artist": "Redbone",
+    "tags": [
+     "classic rock",
+     "rock",
+     "pop",
+     "fip"
+    ],
+    "vocals": "vocal",
+    "speed": "medium",
+    "clip_id": "XTKjxdE7YnSTKOuN::0-30::1"
+   },
+   "candidates": [
+    {
+     "grade": 5,
+     "quality": "strong",
+     "failure_modes": [],
+     "reason": "The candidate successfully shifts the genre to classic rock and adopts the requested gritty texture and steady groove, while correctly preserving the vocal and speed constraints from the seed.",
+     "satisfied": [
+      "genre: classic rock",
+      "texture: gritty",
+      "rhythm: steady mid-tempo groove"
+     ],
+     "failed": [],
+     "clip": {
+      "title": "Metal Guru",
+      "artist": "T. Rex",
+      "tags": [
+       "glam rock",
+       "rock",
+       "classic rock",
+       "70s"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "6UsREyPzBiYHwZOJ::0-30::1"
+     }
+    },
+    {
+     "grade": 4,
+     "quality": "good",
+     "failure_modes": [
+      "preservation_violated"
+     ],
+     "reason": "The candidate successfully shifts the genre to classic rock and adopts a gritty, energetic texture with distorted guitars, satisfying the primary edit; however, it violates the preserved speed constraint (candidate is 'slow' while seed/instruction implies 'medium') and introduces vocals where the target description suggests an instrumental focus.",
+     "satisfied": [
+      "genre: classic rock",
+      "texture: gritty",
+      "instrumentation: distorted electric guitars"
+     ],
+     "failed": [
+      "speed: medium",
+      "vocals: instrumental (implied by target caption)"
+     ],
+     "clip": {
+      "title": "Flaming Pie",
+      "artist": "Paul McCartney",
+      "tags": [
+       "rock",
+       "pop",
+       "classic rock",
+       "arguman-loved tracks"
+      ],
+      "vocals": "vocal",
+      "speed": "slow",
+      "clip_id": "vk1DgiYC36m8gGSb::0-30::1"
+     }
+    },
+    {
+     "grade": 3,
+     "quality": "partial",
+     "failure_modes": [
+      "change_partial"
+     ],
+     "reason": "The candidate successfully shifts the genre to classic rock and removes the gentle ballad flow, but fails to achieve the requested 'gritty' texture and 'steady mid-tempo groove', instead presenting a 'laid-back' and 'clean' psychedelic rock feel.",
+     "satisfied": [
+      "genre: classic rock",
+      "lost: gentle ballad flow",
+      "lost: soft/intimate texture"
+     ],
+     "failed": [
+      "texture: gritty",
+      "rhythm: steady mid-tempo groove"
+     ],
+     "clip": {
+      "title": "Sea Of Joy",
+      "artist": "Blind Faith",
+      "tags": [
+       "classic rock",
+       "rock",
+       "blues rock",
+       "70s"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "nsce1KelJGeiccQr::0-30::1"
+     }
+    },
+    {
+     "grade": 2,
+     "quality": "soft_fail",
+     "failure_modes": [
+      "surface_only",
+      "caption_semantics_miss"
+     ],
+     "reason": "The candidate matches the surface genre tags (Classic Rock, 70s) but fails the primary semantic instruction to shift to a 'gritty' and 'steady groove' texture, instead providing a 'warm', 'polished', and 'soft rock' instrumental that retains the gentle/intimate qualities of the seed.",
+     "satisfied": [
+      "genre: classic rock",
+      "genre: 70s",
+      "vocals: vocal"
+     ],
+     "failed": [
+      "texture: gritty",
+      "rhythm: steady mid-tempo groove",
+      "instrumentation: distorted electric guitars"
+     ],
+     "clip": {
+      "title": "Lowdown",
+      "artist": "Boz Scaggs",
+      "tags": [
+       "classic rock",
+       "soft rock",
+       "pop",
+       "rock"
+      ],
+      "vocals": "vocal",
+      "speed": "medium",
+      "clip_id": "f1625TQwG0RhpwM5::0-30::1"
+     }
+    },
+    {
+     "grade": 1,
+     "quality": "hard_fail",
+     "failure_modes": [
+      "change_missing",
+      "preservation_violated"
+     ],
+     "reason": "The candidate fails to apply the primary requested changes, retaining the 'gentle ballad flow' and 'soft/intimate' texture instead of the requested 'steady mid-tempo groove' and 'gritty' texture, while also violating the preserved speed constraint (slow vs medium).",
+     "satisfied": [
+      "genre: classic rock",
+      "genre: 70s",
+      "vocals: vocal"
+     ],
+     "failed": [
+      "rhythm: steady mid-tempo groove",
+      "texture: gritty",
+      "speed: medium"
+     ],
+     "clip": {
+      "title": "Monolith",
+      "artist": "T. Rex",
+      "tags": [
+       "glam rock",
+       "classic rock",
+       "rock",
+       "70s"
+      ],
+      "vocals": "vocal",
+      "speed": "slow",
+      "clip_id": "3aYLu4PaUicsWQRq::0-30::1"
+     }
+    }
+   ]
   }
  ]
 }
