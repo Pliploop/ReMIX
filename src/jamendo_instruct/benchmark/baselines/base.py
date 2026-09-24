@@ -61,6 +61,16 @@ class Baseline(Protocol):
     def rank(self, query: Query, k: int) -> List[str]: ...
 
 
+def matmul_flops(nq: int, n: int, d: int) -> int:
+    """FLOPs for an (nq,d) x (n,d)^T similarity search (2 per multiply-add)."""
+    return 2 * int(nq) * int(n) * int(d)
+
+
+def forward_flops(n_params: int, n_tokens: int) -> int:
+    """Approx transformer forward FLOPs: 2 * params * tokens."""
+    return 2 * int(n_params) * int(n_tokens)
+
+
 def rank_by_vector(qvec: np.ndarray, matrix: np.ndarray, ids: List[str], k: int, exclude: set) -> List[str]:
     """Top-k corpus ids by cosine (both L2-normalised), dropping `exclude`."""
     sims = matrix @ qvec
@@ -71,11 +81,8 @@ def rank_by_vector(qvec: np.ndarray, matrix: np.ndarray, ids: List[str], k: int,
     return out[:k]
 
 
-def batched_topk(qmat: np.ndarray, matrix: np.ndarray, ids: List[str], k: int,
-                 exclude_rows: List[int]) -> List[List[str]]:
-    """One matmul for all queries: qmat (Nq,D) x matrix (N,D)^T -> top-k ids per row.
-    `exclude_rows[i]` (or -1) is a corpus row to drop from query i (its own seed)."""
-    sims = qmat @ matrix.T                       # (Nq, N)
+def topk_scores(sims: np.ndarray, ids: List[str], k: int, exclude_rows: List[int]) -> List[List[str]]:
+    """Top-k ids per row of a precomputed (Nq,N) score matrix, dropping exclude_rows[i]."""
     for i, er in enumerate(exclude_rows):
         if er is not None and er >= 0:
             sims[i, er] = -1e30
@@ -86,3 +93,9 @@ def batched_topk(qmat: np.ndarray, matrix: np.ndarray, ids: List[str], k: int,
         order = part[i][np.argsort(-sims[i, part[i]])]
         out.append([ids[j] for j in order])
     return out
+
+
+def batched_topk(qmat: np.ndarray, matrix: np.ndarray, ids: List[str], k: int,
+                 exclude_rows: List[int]) -> List[List[str]]:
+    """One matmul for all queries: qmat (Nq,D) x matrix (N,D)^T -> top-k ids per row."""
+    return topk_scores(qmat @ matrix.T, ids, k, exclude_rows)

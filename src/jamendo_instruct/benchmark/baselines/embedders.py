@@ -32,6 +32,8 @@ class GemmaText:
         self.max_length = max_length
         self.tokenizer = AutoTokenizer.from_pretrained(model_id, token=tok)
         self.model = AutoModel.from_pretrained(model_id, token=tok).to(device).eval()
+        self.n_params = sum(p.numel() for p in self.model.parameters())
+        self.flops = 0  # accumulated forward FLOPs (2 * params * real tokens)
 
     def encode(self, texts: List[str], batch: int = 256) -> np.ndarray:
         torch = self.torch
@@ -42,6 +44,7 @@ class GemmaText:
                 enc = self.tokenizer(chunk, padding=True, truncation=True,
                                      max_length=self.max_length, return_tensors="pt")
                 enc = {k: v.to(self.device) for k, v in enc.items()}
+                self.flops += 2 * self.n_params * int(enc["attention_mask"].sum().item())
                 hs = self.model(**enc).last_hidden_state
                 mask = enc["attention_mask"].unsqueeze(-1)
                 emb = (hs * mask).sum(1) / mask.sum(1).clamp(min=1)
@@ -59,12 +62,16 @@ class MuLanText:
         self.torch = torch
         self.device = device
         self.model = MuQMuLan.from_pretrained(model_id).to(device).eval()
+        self.n_params = sum(p.numel() for p in self.model.parameters())
+        self.flops = 0
 
     def encode(self, texts: List[str], batch: int = 64) -> np.ndarray:
         torch = self.torch
         out = []
         with torch.no_grad():
             for i in range(0, len(texts), batch):
-                emb = self.model(texts=list(texts[i:i + batch]))
+                chunk = list(texts[i:i + batch])
+                self.flops += 2 * self.n_params * sum(max(1, len(t.split())) for t in chunk)  # ~tokens
+                emb = self.model(texts=chunk)
                 out.append(emb.detach().cpu().numpy().astype(np.float32))
         return _l2(np.concatenate(out))

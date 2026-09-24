@@ -45,7 +45,7 @@ FOLDER = "instructions_axis_focused_5"
 
 
 def _pretty(rows) -> None:
-    """Aligned table via rich if available, else plain text."""
+    """Aligned table via rich if available, else plain text. rows: (name, rep, sec, flops)."""
     metrics = list(rows[0][1]) if rows else []
     try:
         from rich.console import Console
@@ -54,19 +54,23 @@ def _pretty(rows) -> None:
         t.add_column("baseline", justify="left")
         for m in metrics:
             t.add_column(m, justify="right")
+        t.add_column("sec", justify="right"); t.add_column("TFLOP", justify="right")
         best = {m: max(r[1][m] for r in rows) for m in metrics}
-        for name, rep in rows:
+        for name, rep, sec, fl in rows:
             cells = [name]
             for m in metrics:
                 v = f"{rep[m]:.4f}"
                 cells.append(f"[bold green]{v}[/bold green]" if rep[m] == best[m] else v)
+            cells += [f"{sec:.0f}", f"{fl/1e12:.2f}"]
             t.add_row(*cells)
         Console().print(t)
     except Exception:
-        w = max((len(n) for n, _ in rows), default=8)
-        print("  " + " ".join([f"{'baseline':<{w}}"] + [f"{m:>12}" for m in metrics]))
-        for name, rep in rows:
-            print("  " + f"{name:<{w}} " + " ".join(f"{rep[m]:>12.4f}" for m in metrics))
+        w = max((len(n) for n, *_ in rows), default=8)
+        head = [f"{'baseline':<{w}}"] + [f"{m:>12}" for m in metrics] + [f"{'sec':>8}", f"{'TFLOP':>8}"]
+        print("  " + " ".join(head))
+        for name, rep, sec, fl in rows:
+            print("  " + f"{name:<{w}} " + " ".join(f"{rep[m]:>12.4f}" for m in metrics)
+                  + f" {sec:>8.0f} {fl/1e12:>8.2f}")
 
 
 def main() -> None:
@@ -107,22 +111,28 @@ def main() -> None:
             preds = {q.query_id: b.rank(q, args.k) for q in queries}
         rep = evaluate(preds, qrels)
         dt = time.time() - t0
-        rows.append((name, rep))
+        flops = int(getattr(b, "flops", 0) or 0)
+        rows.append((name, rep, dt, flops))
         if out:
             (out / f"{name}.json").write_text(json.dumps(
                 {"baseline": name, "dataset": args.dataset, "split": args.split, "k": args.k,
-                 "n_queries": len(queries), "n_corpus": len(corpus.ids), "seconds": round(dt, 1),
+                 "n_queries": len(queries), "n_corpus": len(corpus.ids),
+                 "seconds": round(dt, 1), "flops": flops, "tflops": round(flops / 1e12, 3),
                  "metrics": dict(rep)}, indent=2))
-        print(f"[{name}] ({dt:.0f}s)\n{rep}\n", flush=True)
+        print(f"[{name}] ({dt:.0f}s, {flops/1e12:.2f} TFLOP)\n{rep}\n", flush=True)
 
     metrics = list(rows[0][1]) if rows else []
     if out:
-        (out / "results.json").write_text(json.dumps({n: dict(r) for n, r in rows}, indent=2))
+        (out / "results.json").write_text(json.dumps(
+            {n: {"metrics": dict(r), "seconds": round(s, 1), "tflops": round(fl / 1e12, 3)}
+             for n, r, s, fl in rows}, indent=2))
         with (out / "results.md").open("w") as f:
-            f.write("| baseline | " + " | ".join(metrics) + " |\n")
-            f.write("|" + "---|" * (len(metrics) + 1) + "\n")
-            for name, rep in rows:
-                f.write(f"| {name} | " + " | ".join(f"{rep[m]:.4f}" for m in metrics) + " |\n")
+            cols = metrics + ["sec", "TFLOP"]
+            f.write("| baseline | " + " | ".join(cols) + " |\n")
+            f.write("|" + "---|" * (len(cols) + 1) + "\n")
+            for name, rep, sec, fl in rows:
+                f.write(f"| {name} | " + " | ".join(f"{rep[m]:.4f}" for m in metrics)
+                        + f" | {sec:.0f} | {fl/1e12:.2f} |\n")
     print()
     _pretty(rows)
     print(f"\n{'DRY RUN — nothing written' if not out else f'wrote {len(rows)} baselines -> {out}'}")

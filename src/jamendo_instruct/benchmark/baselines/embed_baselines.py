@@ -5,7 +5,7 @@ from typing import Dict, List
 
 import numpy as np
 
-from .base import Baseline, Corpus, Query, batched_topk
+from .base import Baseline, Corpus, Query, batched_topk, matmul_flops
 from .embedders import GemmaText, MuLanText, _l2
 
 
@@ -31,6 +31,7 @@ class _GemmaTextQuery(Baseline):
     def rank_all(self, queries: List[Query], k: int) -> Dict[str, List[str]]:
         Q = self.emb.encode(self._texts(queries))
         lists = batched_topk(Q, self.c.text, self.c.ids, k, _exclude_rows(self.c, queries))
+        self.flops = self.emb.flops + matmul_flops(len(queries), *self.c.text.shape)
         return {q.query_id: lst for q, lst in zip(queries, lists)}
 
 
@@ -62,6 +63,7 @@ class MuLanZeroShot(Baseline):
         texts = [f"{_seed_caption(self.c, q)} {q.instruction}".strip() for q in queries]
         Q = self.emb.encode(texts)
         lists = batched_topk(Q, self.c.audio, self.c.ids, k, _exclude_rows(self.c, queries))
+        self.flops = self.emb.flops + matmul_flops(len(queries), *self.c.audio.shape)
         return {q.query_id: lst for q, lst in zip(queries, lists)}
 
 
@@ -83,6 +85,7 @@ class LateFusion(Baseline):
                       for q in queries])
         Q = _l2(A + self.w * T)
         lists = batched_topk(Q, self.c.audio, self.c.ids, k, _exclude_rows(self.c, queries))
+        self.flops = self.emb.flops + matmul_flops(len(queries), *self.c.audio.shape)
         return {q.query_id: lst for q, lst in zip(queries, lists)}
 
 

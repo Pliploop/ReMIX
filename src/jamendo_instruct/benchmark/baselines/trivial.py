@@ -10,7 +10,7 @@ from typing import Dict, List
 
 import numpy as np
 
-from .base import Baseline, Corpus, Query, batched_topk, rank_by_vector
+from .base import Baseline, Corpus, Query, batched_topk, matmul_flops, rank_by_vector
 
 
 class _EmbBaseline(Baseline):
@@ -40,6 +40,7 @@ class _EmbBaseline(Baseline):
         rows = [r for _, r in valid]
         exclude = [self.c.id2row.get(queries[i].seed_clip_id, -1) for i, _ in valid]
         lists = batched_topk(self.M[rows], self.M, self.c.ids, k, exclude)
+        self.flops = matmul_flops(len(valid), self.M.shape[0], self.M.shape[1])
         out = {q.query_id: [] for q in queries}
         for (i, _), lst in zip(valid, lists):
             out[queries[i].query_id] = lst
@@ -76,7 +77,34 @@ class Random(Baseline):
         return pool[:k]
 
     def rank_all(self, queries: List[Query], k: int) -> Dict[str, List[str]]:
+        self.flops = 0
         return {q.query_id: self.rank(q, k) for q in queries}
 
 
-REGISTRY = {b.name: b for b in [Random, SeedAudioNN, SeedCaptionNN, TargetCaptionOracle]}
+class BM25(Baseline):
+    """Lexical sparse retrieval: BM25 over corpus captions, query = seed caption + instruction."""
+    name = "bm25"
+
+    @staticmethod
+    def _tok(s: str) -> List[str]:
+        return "".join(ch.lower() if ch.isalnum() else " " for ch in s).split()
+
+    def prepare(self, corpus: Corpus) -> None:
+        from rank_bm25 import BM25Okapi
+        self.c = corpus
+        self.bm25 = BM25Okapi([self._tok(corpus.meta[cid].get("caption", "")) for cid in corpus.ids])
+        self.flops = 0  # lexical; not comparable to the neural FLOPs
+
+    def rank(self, query: Query, k: int) -> List[str]:
+        q = self._tok(f"{(self.c.meta.get(query.seed_clip_id, {}) or {}).get('caption','')} {query.instruction}")
+        scores = self.bm25.get_scores(q)
+        order = np.argsort(-scores)
+        out = [self.c.ids[i] for i in order if self.c.ids[i] != query.seed_clip_id]
+        return out[:k]
+
+    def rank_all(self, queries: List[Query], k: int) -> Dict[str, List[str]]:
+        self.flops = 0
+        return {q.query_id: self.rank(q, k) for q in queries}
+
+
+REGISTRY = {b.name: b for b in [Random, SeedAudioNN, SeedCaptionNN, TargetCaptionOracle, BM25]}
