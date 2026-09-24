@@ -126,50 +126,64 @@ def _fig(name: str, plotter, size=(4.6, 3.2)) -> None:
 
 
 def _write_pool_pie(slug: str, pool_frac: Dict[int, float], steps: int) -> None:
-    """Average per-step pool composition: an exploded pie with a zoom box (leader
-    lines) expanding the relevant + failure tail out of the dominant Non-rel slice."""
+    """Average per-step pool composition as a pie-of-pie: the main pie is dominated
+    by Non-rel; a boxed inset pie zooms the relevant + failure tail (grades 1-6),
+    with its wedges labelled as a share of that tail. Leader lines join the tail
+    arc of the main pie to the box."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.patches import ConnectionPatch
+    from matplotlib.patches import ConnectionPatch, FancyBboxPatch
     import numpy as np
     _setup_style()
-    order = [0, 1, 2, 3, 4, 5, 6]  # Non-rel first, then Hard-fail..Exact contiguous
+    order = [0, 1, 2, 3, 4, 5, 6]          # Non-rel first; grades 1-6 contiguous after
+    rest = [6, 5, 4, 3, 2, 1]              # inset drawn Exact..Hard-fail
     means = {g: pool_frac.get(g, 0.0) / max(1, steps) for g in order}
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.8, 3.7), gridspec_kw={"width_ratios": [1.7, 1]})
-    wedges, _ = ax1.pie(
-        [means[g] for g in order], colors=[GRADE_COLOR[g] for g in order],
-        startangle=90, counterclock=False, explode=[0.0] + [0.04] * 6,
-        wedgeprops=dict(edgecolor="white", linewidth=1.0),
-    )
+    rest_total = sum(means[g] for g in rest) or 1.0
+
+    fig = plt.figure(figsize=(8.6, 4.7))
+    ax1 = fig.add_axes([0.01, 0.26, 0.46, 0.70])   # main pie
+    ax2 = fig.add_axes([0.60, 0.34, 0.36, 0.56])   # inset pie (inside the box)
+
+    w1, _ = ax1.pie([means[g] for g in order], colors=[GRADE_COLOR[g] for g in order],
+                    startangle=90, counterclock=False, explode=[0.0] + [0.05] * 6,
+                    wedgeprops=dict(edgecolor="white", linewidth=1.0))
     ax1.set_aspect("equal")
-    ax1.legend(wedges, [f"{GRADE_LABEL[g]}  {means[g]*100:.1f}%" for g in order],
-               loc="center right", bbox_to_anchor=(-0.02, 0.5), frameon=False, fontsize=8.5)
 
-    # zoom bar: the six non-Non-rel grades expanded to full height
-    rest_order = [1, 2, 3, 4, 5, 6]  # Hard-fail (bottom) .. Exact (top)
-    rest_total = sum(means[g] for g in rest_order) or 1.0
-    bottom, bar_w = 0.0, 0.6
-    for g in rest_order:
-        h = means[g] / rest_total
-        ax2.bar(0.0, h, width=bar_w, bottom=bottom, color=GRADE_COLOR[g], edgecolor="white", linewidth=0.8)
-        if h > 0.03:
-            ax2.text(0.0, bottom + h / 2, f"{GRADE_LABEL[g]}  {means[g]*100:.1f}%", ha="center", va="center",
-                     fontsize=8, color="white" if g in (1, 6) else "#222222")
-        bottom += h
-    ax2.set_xlim(-0.8, 0.8); ax2.set_ylim(0, 1); ax2.axis("off")
-    ax2.set_title(f"Relevant + failure tail\n({rest_total*100:.1f}% of pool)", fontsize=9)
+    # framed inset "box"
+    box = FancyBboxPatch((0.565, 0.20), 0.42, 0.74, transform=fig.transFigure,
+                         boxstyle="round,pad=0.006,rounding_size=0.012",
+                         fill=True, facecolor="#fbfbfb", edgecolor="#9aa0a6",
+                         linewidth=1.0, zorder=0)
+    fig.add_artist(box)
 
-    # leader lines from the combined rest-arc endpoints to the zoom bar
-    r, (cx, cy) = wedges[0].r, wedges[0].center
-    for theta, ybar in ((wedges[-1].theta2, 1.0), (wedges[1].theta1, 0.0)):
+    zvals = [means[g] / rest_total for g in rest]
+    ax2.pie(zvals, colors=[GRADE_COLOR[g] for g in rest], startangle=90, counterclock=False,
+            explode=[0.03] * len(rest), wedgeprops=dict(edgecolor="white", linewidth=1.0),
+            autopct=lambda p: f"{p:.0f}%" if p >= 5 else "", pctdistance=0.74,
+            textprops=dict(fontsize=8, color="#111111"))
+    ax2.set_aspect("equal")
+    ax2.set_title(f"Relevant + failure tail\n({rest_total*100:.1f}% of pool, share of tail)", fontsize=9)
+
+    # leader lines: two edges of the tail arc on the main pie -> left corners of the box
+    r, (cx, cy) = w1[0].r, w1[0].center
+    arc = [(w1[-1].theta2, (0.565, 0.90)), (w1[1].theta1, (0.565, 0.24))]
+    for theta, box_corner in arc:
         xp = r * np.cos(np.deg2rad(theta)) + cx
         yp = r * np.sin(np.deg2rad(theta)) + cy
-        fig.add_artist(ConnectionPatch(xyA=(-bar_w / 2, ybar), coordsA=ax2.transData,
-                                       xyB=(xp, yp), coordsB=ax1.transData,
-                                       color="#9aa0a6", linewidth=0.9))
+        fig.add_artist(ConnectionPatch(xyA=(xp, yp), coordsA=ax1.transData,
+                                       xyB=box_corner, coordsB=fig.transFigure,
+                                       color="#9aa0a6", linewidth=0.9, zorder=1))
+
+    # framed legend below, grade + share of the whole pool
+    handles = [plt.Rectangle((0, 0), 1, 1, color=GRADE_COLOR[g]) for g in order]
+    labels = [f"{GRADE_LABEL[g]}  {means[g]*100:.1f}%" for g in order]
+    leg = fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.5, 0.005),
+                     ncol=4, frameon=True, fontsize=8.5, handlelength=1.0, columnspacing=1.4)
+    leg.get_frame().set_edgecolor("#9aa0a6"); leg.get_frame().set_linewidth(0.8)
+
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    fig.savefig(FIG_DIR / f"{slug}_relpool_pool_composition_pie.pdf", bbox_inches="tight")
+    fig.savefig(FIG_DIR / f"{slug}_relpool_pool_composition_pie.pdf")
     plt.close(fig)
     print(f"  figure -> paper/figures/{slug}_relpool_pool_composition_pie.pdf")
 
