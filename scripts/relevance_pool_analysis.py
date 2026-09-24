@@ -298,7 +298,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
                color=[GRADE_COLOR[g] for g in gs], **BAR)
         ax.set_ylabel("Steps"); ax.set_xlabel("Grade of the designated target")
         ax.yaxis.set_major_formatter(_kfmt)
-        ax.set_title(f"Present in {100*steps_with_exact/steps:.1f}\\% of steps", fontsize=10)
+        ax.set_title(f"Present in {100*steps_with_exact/steps:.1f}% of steps", fontsize=10)
         ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_target_recovery.pdf", _target_bar)
 
