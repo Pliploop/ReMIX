@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 from typing import Dict, List
 
@@ -123,6 +124,7 @@ class RemixC(L.LightningModule):
         self.fusion = Fusion(in_dim=mulan.audio.dim, embed_dim=model.embed_dim, **model.fusion)
         self.objective = hydra.utils.instantiate(objective)
         self.val_outputs: List[Dict[str, torch.Tensor]] = []
+        self._last_step_t = None
 
     # ------------------------------------------------------------ embeddings
     def encode_query(self, seed_wav, instructions, seed_tokens=None):
@@ -163,6 +165,10 @@ class RemixC(L.LightningModule):
                              offset=self.global_rank * len(q), q_swap=q_swap, swap_valid=valid)
         self.log_dict({f"train/{k}": v for k, v in out.items()}, prog_bar=True, batch_size=len(q))
         self.log("train/peak_mem_gb", torch.cuda.max_memory_allocated() / 2**30, batch_size=len(q))
+        now = time.perf_counter()                                # wall clock incl. dataloader waits
+        if self._last_step_t is not None:
+            self.log("train/step_sec", now - self._last_step_t, batch_size=len(q))
+        self._last_step_t = now
         return out["loss"]
 
     def on_validation_epoch_start(self):

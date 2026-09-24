@@ -30,7 +30,9 @@ trainer:
   default_root_dir: ${hydra:runtime.output_dir}
 
 logger:
-  project: remix-c
+  entity: jul-guinot
+  project: remix-C
+  log_model: false               # true = upload checkpoints to wandb at the end of training
   name: ${run_name}
   save_dir: ${hydra:runtime.output_dir}
   offline: false
