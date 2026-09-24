@@ -38,57 +38,55 @@ not re-embed unless a baseline asks.
 ```
 Grades are the v2 scale (0–6). Clips absent from `grades` are non-relevant (0).
 
-**Results** — what a baseline returns, one per query:
-```json
-{"query_id": "chain_00000067#1", "ranking": [["clipX", 0.98], ["clipY", 0.71]]}
+**Predictions** — what a user submits: a **ranked list of clip IDs, best first**,
+per query. Nothing else — no scores, no wrapper objects.
+```python
+predictions = {"chain_00000067#1": ["clipX", "clipY", "clipZ", ...], ...}
+# for a single query you may pass just the list:  ["clipX", "clipY", ...]
 ```
-A ranked list of `(clip_id, score)` over the corpus (top-`k` is enough; the tail
-is treated as unranked / score $-\infty$).
 
-## 3. `grade_pool` — the benchmark object
+## 3. `grade_pool` — the answer key + one-call scoring
 
-The benchmark is built from the pool via `grade_pool(...)`, which returns a
-`GradedPool`. It **is** the "correct composed results": it holds, per query, the
-graded relevant clips, and it scores any submitted `Results`.
+Deliberately tiny. `grade_pool` reads the pool and returns the **correct ranking**
+per query — the relevant clips ordered by grade (best first). That is the answer
+key ("correct composed results"):
 
 ```python
-def grade_pool(pool_path_or_records, *, positive_min=3, splits=("test",)) -> GradedPool: ...
-
-class GradedPool:
-    qrels: dict[str, dict[str, int]]          # query_id -> {clip_id: grade}   (the "correct" answers)
-    def relevant(self, query_id, min_grade=1) -> dict[str, int]: ...   # graded relevant set
-    def positives(self, query_id) -> set[str]: ...                     # grade >= positive_min
-    def evaluate(self, results, metrics=DEFAULT_METRICS) -> Report: ...  # score a baseline
+def grade_pool(pool, *, positive_min=3, splits=("test",)) -> dict[str, list[str]]:
+    """pool -> {query_id: [clip_id ranked by grade desc]}   # the ideal ranking"""
 ```
 
-- `grade_pool` accepts the pool in the **compatible format** of §2 (or reads the
-  raw `chain_step_relevance_pools.shard*.jsonl` and projects it to qrels).
-- `evaluate(results)` returns a `Report` (overall metrics + per-slice breakdowns);
-  it never re-reads the pool, so the same `GradedPool` grades every baseline
-  identically.
+Scoring is a single function; a user returns their ranked IDs and calls it:
+
+```python
+def evaluate(predictions, pool, metrics=DEFAULT_METRICS) -> Report:
+    """predictions: {query_id: [clip_id,...]}  (or a single [clip_id,...])
+       pool:        the same pool grade_pool() reads (path/records)
+       -> Report (overall metrics + per-slice breakdowns)"""
+```
+
+Internally `grade_pool`/`evaluate` share one `_qrels(pool) -> {qid: {clip: grade}}`
+projection; grades come from the v2 pool, unpooled clips are 0. That is the entire
+public surface: **return a ranked list of IDs, call `evaluate`, done.**
 
 ## 4. `Baseline` — the common model API
 
-Every baseline (naive → trained) implements one interface, so the harness treats
-them uniformly:
+Every baseline (naive → trained) implements one method whose output is exactly a
+predictions entry — a ranked list of IDs — so the harness treats them uniformly:
 
 ```python
 class Baseline(Protocol):
     name: str
-    def prepare(self, corpus: Corpus) -> None: ...        # build index / cache corpus embeddings (once)
-    def rank(self, query: Query, k: int) -> list[tuple[str, float]]: ...   # ranking for one query
-    # optional: rank_batch(queries, k) for models that batch efficiently
-```
+    def prepare(self, corpus: Corpus) -> None: ...          # build index / cache corpus embeddings (once)
+    def rank(self, query: Query, k: int) -> list[str]: ...  # ranked clip IDs, best first
 
-Harness driver:
-```python
-def run_benchmark(baseline, corpus, queries, graded_pool, k=1000) -> Report:
+def run_benchmark(baseline, corpus, queries, pool, k=1000) -> Report:
     baseline.prepare(corpus)
-    results = [{"query_id": q.id, "ranking": baseline.rank(q, k)} for q in queries]
-    return graded_pool.evaluate(results)
+    predictions = {q.id: baseline.rank(q, k) for q in queries}
+    return evaluate(predictions, pool)
 ```
-A baseline is thus anything that maps (seed, instruction) → a corpus ranking; the
-grading is entirely on the `GradedPool` side.
+A baseline is thus anything that maps (seed, instruction) → a ranked list of corpus
+IDs; grading lives entirely in `evaluate`.
 
 ## 5. Metrics
 
@@ -124,7 +122,7 @@ All zero-shot baselines share the reused embeddings; only `LLMCaptionRewrite`,
 ```
 src/jamendo_instruct/benchmark/
   contracts.py     # Corpus, Query, Results dataclasses + JSONL IO
-  graded_pool.py   # grade_pool(), GradedPool, Report, metrics
+  graded_pool.py   # grade_pool() (answer key), evaluate() (scoring), Report, metrics
   baselines/
     base.py        # Baseline protocol + shared embedding index helpers
     trivial.py     # Random, oracle, seed/instruction NN, concat, BM25
@@ -138,7 +136,7 @@ scripts/
 
 ## 8. Build order
 
-1. **Contracts + `grade_pool`/`GradedPool` + metrics** (this is the API; a tiny
+1. **Contracts + `grade_pool` + `evaluate` + metrics** (this is the API; a tiny
    synthetic test proves the scoring).
 2. **`export_benchmark.py`** — project the pool + run into corpus/queries/qrels.
 3. **Trivial baselines** (Random, oracle, seed/instruction NN, concat, BM25) →
