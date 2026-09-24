@@ -73,14 +73,19 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--baselines", nargs="+", default=["all"], help="baseline names, or 'all'")
     ap.add_argument("--dataset", choices=list(DATASETS), default="music4all")
-    ap.add_argument("--output-dir", required=True, help="where per-baseline metrics + the table are written")
+    ap.add_argument("--output-dir", default=None, help="where per-baseline metrics + the table are written (omit with --dry-run)")
+    ap.add_argument("--dry-run", action="store_true", help="print the table only; write nothing (use until the pool is final)")
     ap.add_argument("--k", type=int, default=200, help="ranking depth submitted to the scorer")
     ap.add_argument("--split", default="test")
     args = ap.parse_args()
+    if not args.dry_run and not args.output_dir:
+        ap.error("--output-dir is required unless --dry-run")
 
     root = Path(DATASETS[args.dataset]) / FOLDER
     bench, pool = root / "benchmark", root / "relevance_pool"
-    out = Path(args.output_dir); out.mkdir(parents=True, exist_ok=True)
+    out = None
+    if not args.dry_run:
+        out = Path(args.output_dir); out.mkdir(parents=True, exist_ok=True)
 
     corpus = Corpus.load(bench)
     queries = load_queries(bench)
@@ -100,24 +105,24 @@ def main() -> None:
         rep = evaluate(preds, qrels)
         dt = time.time() - t0
         rows.append((name, rep))
-        (out / f"{name}.json").write_text(json.dumps(
-            {"baseline": name, "dataset": args.dataset, "split": args.split, "k": args.k,
-             "n_queries": len(queries), "n_corpus": len(corpus.ids), "seconds": round(dt, 1),
-             "metrics": dict(rep)}, indent=2))
+        if out:
+            (out / f"{name}.json").write_text(json.dumps(
+                {"baseline": name, "dataset": args.dataset, "split": args.split, "k": args.k,
+                 "n_queries": len(queries), "n_corpus": len(corpus.ids), "seconds": round(dt, 1),
+                 "metrics": dict(rep)}, indent=2))
         print(f"[{name}] ({dt:.0f}s)\n{rep}\n", flush=True)
 
-    # combined outputs
-    combined = {name: dict(rep) for name, rep in rows}
-    (out / "results.json").write_text(json.dumps(combined, indent=2))
     metrics = list(rows[0][1]) if rows else []
-    with (out / "results.md").open("w") as f:
-        f.write("| baseline | " + " | ".join(metrics) + " |\n")
-        f.write("|" + "---|" * (len(metrics) + 1) + "\n")
-        for name, rep in rows:
-            f.write(f"| {name} | " + " | ".join(f"{rep[m]:.4f}" for m in metrics) + " |\n")
+    if out:
+        (out / "results.json").write_text(json.dumps({n: dict(r) for n, r in rows}, indent=2))
+        with (out / "results.md").open("w") as f:
+            f.write("| baseline | " + " | ".join(metrics) + " |\n")
+            f.write("|" + "---|" * (len(metrics) + 1) + "\n")
+            for name, rep in rows:
+                f.write(f"| {name} | " + " | ".join(f"{rep[m]:.4f}" for m in metrics) + " |\n")
     print()
     _pretty(rows)
-    print(f"\nwrote {len(rows)} baselines -> {out}")
+    print(f"\n{'DRY RUN — nothing written' if not out else f'wrote {len(rows)} baselines -> {out}'}")
 
 
 if __name__ == "__main__":
