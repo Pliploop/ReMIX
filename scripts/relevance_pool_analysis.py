@@ -142,6 +142,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     fmodes = Counter()                     # v2 failure-mode taxonomy tallies
     lsrc = Counter()                       # label_source (llm_judge / similarity_gated / deterministic)
     quality = Counter()                    # judge quality enum
+    pool_frac = defaultdict(float)         # sum over steps of each grade's within-pool fraction
     examples: List[Dict[str, Any]] = []
     steps = 0
 
@@ -184,6 +185,10 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         if ex:
             steps_with_exact += 1
             exact_grade[max(ex)] += 1
+        if cands:  # within-pool grade composition for this step (averaged later)
+            step_grade = Counter(int(c.get("grade", 0) or 0) for c in cands)
+            for gg, nn in step_grade.items():
+                pool_frac[gg] += nn / len(cands)
         per_step_positives.append(pos)
         # keep a few well-graded steps as qualitative examples
         if len(examples) < n_examples and pos >= 1 and any(int(c.get("grade", 0) or 0) == 0 for c in cands):
@@ -325,6 +330,17 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         ax.grid(axis="y", visible=False)
     if any(m != "off_topic" for m in fmodes):
         _fig(f"{slug}_relpool_failure_modes.pdf", _fmode_bar, size=(4.8, 3.2))
+
+    # ---- (6) average per-step pool composition (pie) ----
+    def _pool_pie(ax):
+        gs = [g for g in GRADES if pool_frac.get(g, 0) > 0]
+        vals = [pool_frac[g] / steps for g in gs]
+        wedges, _ = ax.pie(vals, colors=[GRADE_COLOR[g] for g in gs], startangle=90,
+                           counterclock=False, wedgeprops=dict(edgecolor="white", linewidth=1.2))
+        ax.legend(wedges, [f"{GRADE_LABEL[g]}  {v*100:.1f}%" for g, v in zip(gs, vals)],
+                  loc="center left", bbox_to_anchor=(1.0, 0.5), frameon=False, fontsize=9)
+        ax.set_aspect("equal")
+    _fig(f"{slug}_relpool_pool_composition_pie.pdf", _pool_pie, size=(5.4, 3.2))
 
     # ---- extra stats for the paper text ----
     print(f"  target recoverable (exact target in pool): {steps_with_exact:,}/{steps:,} ({100*steps_with_exact/steps:.1f}%)")
