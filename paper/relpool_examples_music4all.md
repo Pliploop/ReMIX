@@ -6,11 +6,11 @@
 
 | grade | pool type | clip | judge reason |
 |---|---|---|---|
-| 5 | Type_TARGET | `nuRErdzvMXqnltos::0-30::1` | The candidate caption is semantically identical to the target caption (similarity 0.9997), satisfyin |
-| 5 | Type_TARGET | `ox1BMIIV9kMUXO6z::0-30::1` | The candidate caption is semantically identical to the target caption, satisfying all new constraint |
-| 4 | Type_TARGET | `VGT0QerDi3w9OMQa::0-30::1` |  |
-| 0 | Type_HARD_NEG | `1XqQhTYiCr9nL2zK::0-30::1` |  |
-| 0 | Type_HARD_NEG | `Unhq5a0ezoDOMNoA::0-30::1` |  |
+| 6 | Type_TARGET | `VGT0QerDi3w9OMQa::0-30::1` |  |
+| 5 | Type_HARD_NEG | `nuRErdzvMXqnltos::0-30::1` | The candidate caption is semantically identical to the target caption, successfully adding screamed  |
+| 5 | Type_HARD_NEG | `ox1BMIIV9kMUXO6z::0-30::1` | The candidate caption perfectly matches the target description, satisfying all requested changes (ad |
+| 0 | Type_HARD_NEG | `i87WnfmeIHgDwlMR::0-30::1` |  |
+| 0 | Type_HARD_NEG | `rsjVcnkvs69e3oxo::0-30::1` |  |
 
 ## chain chain_00000067 turn 2
 - **source**: `VGT0QerDi3w9OMQa::0-30::1`  →  **target**: `nuRErdzvMXqnltos::0-30::1`
@@ -18,11 +18,11 @@
 
 | grade | pool type | clip | judge reason |
 |---|---|---|---|
-| 5 | Type_TARGET | `TBsO0RBlsdDYTx0Q::0-30::1` | The candidate caption is identical to the target caption. The candidate metadata (speed: fast, vocal |
-| 4 | Type_TARGET | `nuRErdzvMXqnltos::0-30::1` |  |
-| 2 | Type_STRONG | `Oh2kqJ0fh76lfo7L::0-30::1` | The candidate satisfies the primary edit (fast speed) and preserves the core semantic constraints (m |
-| 0 | Type_HARD_NEG | `1XqQhTYiCr9nL2zK::0-30::1` | The candidate fails the primary edit constraint by maintaining 'medium speed' instead of the request |
-| 0 | Type_HARD_NEG | `VGT0QerDi3w9OMQa::0-30::1` | The candidate fails the primary edit constraint by maintaining 'medium speed' instead of the request |
+| 6 | Type_TARGET | `nuRErdzvMXqnltos::0-30::1` |  |
+| 5 | Type_HARD_NEG | `Oh2kqJ0fh76lfo7L::0-30::1` | The candidate satisfies the primary instruction to increase tempo to 'fast' (confirmed by metadata)  |
+| 5 | Type_HARD_NEG | `RDA7zwiLfgl7vHTx::0-30::1` | The candidate satisfies the primary instruction to increase tempo to 'fast' (confirmed by metadata a |
+| 0 | Type_HARD_NEG | `ZLLOtw14uMYcDQd1::0-30::1` |  |
+| 0 | Type_HARD_NEG | `HZJkXwiFDkVJwqne::0-30::1` |  |
 
 ## chain chain_00000067 turn 3
 - **source**: `nuRErdzvMXqnltos::0-30::1`  →  **target**: `uD8ofaCfxM74nFrw::0-30::1`
@@ -30,11 +30,11 @@
 
 | grade | pool type | clip | judge reason |
 |---|---|---|---|
-| 4 | Type_TARGET | `uD8ofaCfxM74nFrw::0-30::1` |  |
-| 2 | Type_STRONG | `y0ZafC3G45Dp0OTh::0-30::1` | The candidate satisfies all explicit semantic constraints derived from the edit: it preserves the me |
-| 2 | Type_STRONG | `1XqQhTYiCr9nL2zK::0-30::1` | The candidate satisfies the primary edit constraints: it has 'medium speed' (explicitly requested ne |
-| 0 | Type_HARD_NEG | `TBsO0RBlsdDYTx0Q::0-30::1` | The candidate is the exact source clip, failing to apply any of the requested edits. It retains 'fas |
-| 0 | Type_HARD_NEG | `cxvnSvQxM16K7S6Q::0-30::1` | The candidate fails to satisfy the primary edit instructions. The request explicitly asked to 'Slow  |
+| 6 | Type_TARGET | `uD8ofaCfxM74nFrw::0-30::1` |  |
+| 5 | Type_HARD_NEG | `y0ZafC3G45Dp0OTh::0-30::1` | The candidate satisfies the primary instruction to slow the tempo to medium and shift style toward e |
+| 5 | Type_HARD_NEG | `1XqQhTYiCr9nL2zK::0-30::1` | The candidate satisfies the primary instruction to slow the tempo to medium and shift the style towa |
+| 0 | Type_HARD_NEG | `jrezipVPRdK5v5wu::0-30::1` |  |
+| 0 | Type_HARD_NEG | `WFRuD3kMxc6vICY6::0-30::1` |  |
 
 ## chain chain_00000067 turn 4
 - **source**: `uD8ofaCfxM74nFrw::0-30::1`  →  **target**: `qBZQ7ByN9yfZZr8T::0-30::1`
@@ -42,11 +42,11 @@
 
 | grade | pool type | clip | judge reason |
 |---|---|---|---|
-| 5 | Type_TARGET | `7tUMQmVCMvxHteKO::0-30::1` | The candidate caption is semantically identical to the target caption, satisfying all new constraint |
-| 5 | Type_TARGET | `qX7dfHnoNNTtB8fJ::0-30::1` | The candidate caption is semantically identical to the target caption, satisfying all new constraint |
-| 5 | Type_TARGET | `DYjyTqAuUE8XIEtp::0-30::1` | The candidate caption is semantically identical to the target caption, satisfying all new constraint |
-| 0 | Type_HARD_NEG | `jm5jIKKYpstSQUCx::0-30::1` |  |
-| 0 | Type_HARD_NEG | `k0rpXNDQ9yOTfU0I::0-30::1` | The candidate caption explicitly states 'no vocals are present', which directly contradicts the expl |
+| 6 | Type_TARGET | `qBZQ7ByN9yfZZr8T::0-30::1` |  |
+| 5 | Type_HARD_NEG | `7tUMQmVCMvxHteKO::0-30::1` | The candidate caption is semantically identical to the target caption, successfully executing the re |
+| 5 | Type_HARD_NEG | `4ArdlFwTyt7DVIFW::0-30::1` | The candidate perfectly matches the target caption and tags, successfully executing the shift from m |
+| 0 | Type_HARD_NEG | `ea7yyfwtXYGp9y4v::0-30::1` |  |
+| 0 | Type_HARD_NEG | `2AqXFxzI4BBl1tc9::0-30::1` |  |
 
 ## chain chain_00000067 turn 5
 - **source**: `qBZQ7ByN9yfZZr8T::0-30::1`  →  **target**: `Ynd6P8T8TUyBNmhB::0-30::1`
@@ -54,11 +54,11 @@
 
 | grade | pool type | clip | judge reason |
 |---|---|---|---|
-| 5 | Type_TARGET | `k4vuVtUYe0ZkxFUJ::0-30::1` | The candidate caption is semantically identical to the target caption, describing the same genre shi |
-| 5 | Type_TARGET | `UR5XuKkOTqbuicWN::0-30::1` | The candidate caption is semantically identical to the target caption (similarity 0.9978), describin |
-| 4 | Type_TARGET | `Ynd6P8T8TUyBNmhB::0-30::1` |  |
-| 0 | Type_HARD_NEG | `uOA8zaba7H9YpHaq::0-30::1` | The candidate fails to execute the primary edit. The instruction explicitly requires switching FROM  |
-| 0 | Type_HARD_NEG | `3bkZemgeYqXbIQoT::0-30::1` | The candidate is the source clip itself (or a near-identical version), failing to apply the requeste |
+| 6 | Type_TARGET | `Ynd6P8T8TUyBNmhB::0-30::1` |  |
+| 5 | Type_HARD_NEG | `k4vuVtUYe0ZkxFUJ::0-30::1` | The candidate successfully shifts the genre to folk/viking metal with symphonic elements and a drivi |
+| 5 | Type_HARD_NEG | `rLYXeVcSAScTwCBz::0-30::1` | The candidate successfully shifts the genre to folk/viking metal with symphonic elements and a drivi |
+| 0 | Type_HARD_NEG | `DTC4IwOrzWFerZhU::0-30::1` |  |
+| 0 | Type_HARD_NEG | `Lw6lImY23HEmXGlf::0-30::1` |  |
 
 ## chain chain_00000149 turn 1
 - **source**: `BjRtmDm6oZVC6nJZ::0-30::1`  →  **target**: `PM1qmXIpCY6yFdTV::0-30::1`
@@ -66,9 +66,9 @@
 
 | grade | pool type | clip | judge reason |
 |---|---|---|---|
-| 4 | Type_TARGET | `PM1qmXIpCY6yFdTV::0-30::1` |  |
-| 0 | Type_HARD_NEG | `KT46ZolxgWRkUtPd::0-30::1` | The candidate completely fails the primary edit instruction. The request was to shift to a '70s soul |
-| 0 | Type_HARD_NEG | `uwrVajJay2Qce20i::0-30::1` | The candidate is a high-energy pop song with female vocals, which directly contradicts the requested |
-| 0 | Type_HARD_NEG | `KT46ZolxgWRkUtPd::0-30::1` | The candidate completely fails the primary edit instruction. The request was to shift to a '70s soul |
-| 0 | Type_HARD_NEG | `uwrVajJay2Qce20i::0-30::1` | The candidate is a high-energy pop song with female vocals, which directly contradicts the requested |
+| 6 | Type_TARGET | `PM1qmXIpCY6yFdTV::0-30::1` |  |
+| 1 | Type_HARD_NEG | `KT46ZolxgWRkUtPd::0-30::1` | The candidate fails to execute the primary instruction to shift to a 70s style with a male vocalist  |
+| 1 | Type_HARD_NEG | `uwrVajJay2Qce20i::0-30::1` | The candidate fails to implement the primary requested changes (shifting to 70s style, male vocalist |
+| 0 | Type_HARD_NEG | `e7kxeoFgukxA4quZ::0-30::1` |  |
+| 0 | Type_HARD_NEG | `jMWbSpE430tKVTwr::0-30::1` |  |
 
