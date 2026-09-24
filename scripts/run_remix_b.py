@@ -77,6 +77,7 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="print the table only; write nothing (use until the pool is final)")
     ap.add_argument("--k", type=int, default=200, help="ranking depth submitted to the scorer")
     ap.add_argument("--split", default="test")
+    ap.add_argument("--limit", type=int, default=0, help="cap #queries (0 = all); for quick validation")
     args = ap.parse_args()
     if not args.dry_run and not args.output_dir:
         ap.error("--output-dir is required unless --dry-run")
@@ -89,6 +90,8 @@ def main() -> None:
 
     corpus = Corpus.load(bench)
     queries = load_queries(bench)
+    if args.limit:
+        queries = queries[:args.limit]
     qrels = _read_qrels(str(pool), min_grade=3)
     print(f"corpus {len(corpus.ids):,} clips | {len(queries):,} queries | {len(qrels):,} judged\n", flush=True)
 
