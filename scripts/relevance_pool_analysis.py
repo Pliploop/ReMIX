@@ -39,8 +39,9 @@ BLUE, ORANGE, GREEN, VERM, PURPLE, SKY, YELLOW, GREY = (
     "#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#999999",
 )
 BAR = dict(alpha=0.85, edgecolor="black", linewidth=0.7)
-# Grade ramp: green (relevant) -> orange/vermillion (marginal) -> grey (non-relevant).
-GRADE_COLOR = {6: "#00543D", 5: GREEN, 4: "#7FC9A9", 3: ORANGE, 2: VERM, 1: "#8C2500", 0: "#C9C9C9"}
+# Grade ramp: bright, saturated green (relevant) -> amber/orange -> red -> grey (non-rel).
+GRADE_COLOR = {6: "#0A7D3E", 5: "#22C55E", 4: "#A7E32C", 3: "#F7B500", 2: "#FB6A0A", 1: "#E4231B", 0: "#CBD0D6"}
+WEDGE_EDGE = dict(edgecolor="#2A2A2A", linewidth=1.0)
 FAILURE_MODE_LABEL = {
     "change_missing": "change missing", "change_partial": "change partial",
     "change_overshoot": "overshoot", "preservation_violated": "preservation broken",
@@ -126,60 +127,59 @@ def _fig(name: str, plotter, size=(4.6, 3.2)) -> None:
 
 
 def _write_pool_pie(slug: str, pool_frac: Dict[int, float], steps: int) -> None:
-    """Average per-step pool composition as a pie-of-pie: the main pie is dominated
-    by Non-rel; a boxed inset pie zooms the relevant + failure tail (grades 1-6),
-    with its wedges labelled as a share of that tail. Leader lines join the tail
-    arc of the main pie to the box."""
+    """Average per-step pool composition: a main pie dominated by Non-rel, with the
+    relevant + failure tail (grades 1-6) boxed on the pie and zoomed into a proper
+    bar-chart inset (spines, ticks, grid) whose bars are the share of that tail."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.patches import ConnectionPatch, FancyBboxPatch
     import numpy as np
     _setup_style()
     order = [0, 1, 2, 3, 4, 5, 6]          # Non-rel first; grades 1-6 contiguous after
-    rest = [6, 5, 4, 3, 2, 1]              # inset drawn Exact..Hard-fail
+    tail = [1, 2, 3, 4, 5, 6]              # bar chart, Hard-fail .. Exact
     means = {g: pool_frac.get(g, 0.0) / max(1, steps) for g in order}
-    rest_total = sum(means[g] for g in rest) or 1.0
+    rest_total = sum(means[g] for g in tail) or 1.0
 
-    fig = plt.figure(figsize=(8.6, 4.7))
-    ax1 = fig.add_axes([0.01, 0.26, 0.46, 0.70])   # main pie
-    ax2 = fig.add_axes([0.60, 0.34, 0.36, 0.56])   # inset pie (inside the box)
+    fig = plt.figure(figsize=(9.6, 4.9))
+    ax1 = fig.add_axes([0.00, 0.20, 0.50, 0.76]); ax1.set_aspect("equal")
+    w1, _, _ = ax1.pie(
+        [means[g] for g in order], colors=[GRADE_COLOR[g] for g in order],
+        startangle=90, counterclock=False, explode=[0.0] + [0.06] * 6,
+        wedgeprops=WEDGE_EDGE, autopct=lambda p: f"{p:.0f}%" if p > 50 else "",
+        pctdistance=0.62, textprops=dict(fontsize=11, color="#222222", fontweight="bold"),
+    )
 
-    w1, _ = ax1.pie([means[g] for g in order], colors=[GRADE_COLOR[g] for g in order],
-                    startangle=90, counterclock=False, explode=[0.0] + [0.05] * 6,
-                    wedgeprops=dict(edgecolor="white", linewidth=1.0))
-    ax1.set_aspect("equal")
+    # bar-chart inset (real axes: spines, ticks, grid) to the right of the pie
+    axins = ax1.inset_axes([1.16, 0.06, 0.80, 0.88])
+    vals = [means[g] / rest_total * 100 for g in tail]
+    axins.bar(range(len(tail)), vals, color=[GRADE_COLOR[g] for g in tail], **WEDGE_EDGE)
+    axins.set_xticks(range(len(tail))); axins.set_xticklabels([GRADE_LABEL[g] for g in tail], rotation=25, ha="right")
+    axins.set_ylabel("Share of tail (%)")
+    axins.set_title(f"Relevant + failure tail  ({rest_total*100:.1f}% of pool)", fontsize=10)
+    axins.grid(axis="y", alpha=0.7); axins.grid(axis="x", visible=False)
+    for sp in ("left", "bottom"):
+        axins.spines[sp].set_visible(True)
+    for i, v in enumerate(vals):
+        axins.text(i, v + max(vals) * 0.02, f"{v:.0f}", ha="center", va="bottom", fontsize=8)
 
-    # framed inset "box"
-    box = FancyBboxPatch((0.565, 0.20), 0.42, 0.74, transform=fig.transFigure,
-                         boxstyle="round,pad=0.006,rounding_size=0.012",
-                         fill=True, facecolor="#fbfbfb", edgecolor="#9aa0a6",
-                         linewidth=1.0, zorder=0)
-    fig.add_artist(box)
-
-    zvals = [means[g] / rest_total for g in rest]
-    ax2.pie(zvals, colors=[GRADE_COLOR[g] for g in rest], startangle=90, counterclock=False,
-            explode=[0.03] * len(rest), wedgeprops=dict(edgecolor="white", linewidth=1.0),
-            autopct=lambda p: f"{p:.0f}%" if p >= 5 else "", pctdistance=0.74,
-            textprops=dict(fontsize=8, color="#111111"))
-    ax2.set_aspect("equal")
-    ax2.set_title(f"Relevant + failure tail\n({rest_total*100:.1f}% of pool, share of tail)", fontsize=9)
-
-    # leader lines: two edges of the tail arc on the main pie -> left corners of the box
-    r, (cx, cy) = w1[0].r, w1[0].center
-    arc = [(w1[-1].theta2, (0.565, 0.90)), (w1[1].theta1, (0.565, 0.24))]
-    for theta, box_corner in arc:
-        xp = r * np.cos(np.deg2rad(theta)) + cx
-        yp = r * np.sin(np.deg2rad(theta)) + cy
-        fig.add_artist(ConnectionPatch(xyA=(xp, yp), coordsA=ax1.transData,
-                                       xyB=box_corner, coordsB=fig.transFigure,
-                                       color="#9aa0a6", linewidth=0.9, zorder=1))
+    # box the source region (tail wedges) on the pie + leader lines to the inset
+    pts = []
+    for wg in w1[1:]:
+        for th in np.linspace(wg.theta1, wg.theta2, 6):
+            pts.append((wg.center[0] + wg.r * np.cos(np.deg2rad(th)),
+                        wg.center[1] + wg.r * np.sin(np.deg2rad(th))))
+        pts.append(tuple(wg.center))
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    pad = 0.06
+    bounds = [min(xs) - pad, min(ys) - pad, (max(xs) - min(xs)) + 2 * pad, (max(ys) - min(ys)) + 2 * pad]
+    ax1.indicate_inset(bounds, inset_ax=axins, edgecolor="#333333", linewidth=1.2, alpha=0.9)
 
     # framed legend below, grade + share of the whole pool
-    handles = [plt.Rectangle((0, 0), 1, 1, color=GRADE_COLOR[g]) for g in order]
-    labels = [f"{GRADE_LABEL[g]}  {means[g]*100:.1f}%" for g in order]
-    leg = fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.5, 0.005),
-                     ncol=4, frameon=True, fontsize=8.5, handlelength=1.0, columnspacing=1.4)
+    handles = [plt.Rectangle((0, 0), 1, 1, facecolor=GRADE_COLOR[g], edgecolor="#2A2A2A", linewidth=0.6) for g in order]
+    labels = [f"{GRADE_LABEL[g]} ({means[g]*100:.1f}%)" for g in order]
+    leg = fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.5, 0.0),
+                     ncol=7, frameon=True, fontsize=8.5, handlelength=1.1, columnspacing=1.2,
+                     title="Grade (share of pool)", borderpad=0.7)
     leg.get_frame().set_edgecolor("#9aa0a6"); leg.get_frame().set_linewidth(0.8)
 
     FIG_DIR.mkdir(parents=True, exist_ok=True)
