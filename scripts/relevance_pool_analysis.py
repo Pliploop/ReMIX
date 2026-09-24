@@ -125,6 +125,55 @@ def _fig(name: str, plotter, size=(4.6, 3.2)) -> None:
     print(f"  figure -> paper/figures/{name}")
 
 
+def _write_pool_pie(slug: str, pool_frac: Dict[int, float], steps: int) -> None:
+    """Average per-step pool composition: an exploded pie with a zoom box (leader
+    lines) expanding the relevant + failure tail out of the dominant Non-rel slice."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import ConnectionPatch
+    import numpy as np
+    _setup_style()
+    order = [0, 1, 2, 3, 4, 5, 6]  # Non-rel first, then Hard-fail..Exact contiguous
+    means = {g: pool_frac.get(g, 0.0) / max(1, steps) for g in order}
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.8, 3.7), gridspec_kw={"width_ratios": [1.7, 1]})
+    wedges, _ = ax1.pie(
+        [means[g] for g in order], colors=[GRADE_COLOR[g] for g in order],
+        startangle=90, counterclock=False, explode=[0.0] + [0.04] * 6,
+        wedgeprops=dict(edgecolor="white", linewidth=1.0),
+    )
+    ax1.set_aspect("equal")
+    ax1.legend(wedges, [f"{GRADE_LABEL[g]}  {means[g]*100:.1f}%" for g in order],
+               loc="center right", bbox_to_anchor=(-0.02, 0.5), frameon=False, fontsize=8.5)
+
+    # zoom bar: the six non-Non-rel grades expanded to full height
+    rest_order = [1, 2, 3, 4, 5, 6]  # Hard-fail (bottom) .. Exact (top)
+    rest_total = sum(means[g] for g in rest_order) or 1.0
+    bottom, bar_w = 0.0, 0.6
+    for g in rest_order:
+        h = means[g] / rest_total
+        ax2.bar(0.0, h, width=bar_w, bottom=bottom, color=GRADE_COLOR[g], edgecolor="white", linewidth=0.8)
+        if h > 0.03:
+            ax2.text(0.0, bottom + h / 2, f"{GRADE_LABEL[g]}  {means[g]*100:.1f}%", ha="center", va="center",
+                     fontsize=8, color="white" if g in (1, 6) else "#222222")
+        bottom += h
+    ax2.set_xlim(-0.8, 0.8); ax2.set_ylim(0, 1); ax2.axis("off")
+    ax2.set_title(f"Relevant + failure tail\n({rest_total*100:.1f}% of pool)", fontsize=9)
+
+    # leader lines from the combined rest-arc endpoints to the zoom bar
+    r, (cx, cy) = wedges[0].r, wedges[0].center
+    for theta, ybar in ((wedges[-1].theta2, 1.0), (wedges[1].theta1, 0.0)):
+        xp = r * np.cos(np.deg2rad(theta)) + cx
+        yp = r * np.sin(np.deg2rad(theta)) + cy
+        fig.add_artist(ConnectionPatch(xyA=(-bar_w / 2, ybar), coordsA=ax2.transData,
+                                       xyB=(xp, yp), coordsB=ax1.transData,
+                                       color="#9aa0a6", linewidth=0.9))
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    fig.savefig(FIG_DIR / f"{slug}_relpool_pool_composition_pie.pdf", bbox_inches="tight")
+    plt.close(fig)
+    print(f"  figure -> paper/figures/{slug}_relpool_pool_composition_pie.pdf")
+
+
 def analyse(label: str, root: str, n_examples: int) -> None:
     grade = Counter()
     pool_type = Counter()
@@ -278,7 +327,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         x = np.arange(len(gs))
         for off, key, col in ((-0.2, "audio", BLUE), (0.2, "caption", ORANGE)):
             bp = ax.boxplot([sim_by_grade[g][key] for g in gs], positions=x + off, widths=0.36,
-                            showfliers=False, patch_artist=True,
+                            showfliers=False, patch_artist=True, whis=(5, 95),
                             medianprops=dict(color="black", linewidth=1.2),
                             whiskerprops=dict(color="#555555"), capprops=dict(color="#555555"))
             for b in bp["boxes"]:
@@ -331,16 +380,8 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     if any(m != "off_topic" for m in fmodes):
         _fig(f"{slug}_relpool_failure_modes.pdf", _fmode_bar, size=(4.8, 3.2))
 
-    # ---- (6) average per-step pool composition (pie) ----
-    def _pool_pie(ax):
-        gs = [g for g in GRADES if pool_frac.get(g, 0) > 0]
-        vals = [pool_frac[g] / steps for g in gs]
-        wedges, _ = ax.pie(vals, colors=[GRADE_COLOR[g] for g in gs], startangle=90,
-                           counterclock=False, wedgeprops=dict(edgecolor="white", linewidth=1.2))
-        ax.legend(wedges, [f"{GRADE_LABEL[g]}  {v*100:.1f}%" for g, v in zip(gs, vals)],
-                  loc="center left", bbox_to_anchor=(1.0, 0.5), frameon=False, fontsize=9)
-        ax.set_aspect("equal")
-    _fig(f"{slug}_relpool_pool_composition_pie.pdf", _pool_pie, size=(5.4, 3.2))
+    # ---- (6) average per-step pool composition: bar-of-pie zoomed on the relevant tail ----
+    _write_pool_pie(slug, pool_frac, steps)
 
     # ---- extra stats for the paper text ----
     print(f"  target recoverable (exact target in pool): {steps_with_exact:,}/{steps:,} ({100*steps_with_exact/steps:.1f}%)")
