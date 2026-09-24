@@ -27,10 +27,12 @@ DATASETS = {
     "mtg_jamendo": ("MTG-Jamendo", "/gpfs/scratch/acw749/datasets/mtg_jamendo_instruct/v1"),
 }
 FOLDER = "instructions_axis_focused_5"
-# Judge grades are 0-5 (Type_TARGET=5 exact, strong=4, [good=3 unused], partial=2,
-# near-miss=1, non-relevant=0). Keep all six so grade 5 is never silently dropped.
-GRADE_LABEL = {5: "Exact", 4: "Strong", 3: "Good", 2: "Partial", 1: "Near-miss", 0: "Non-rel."}
-GRADES = (5, 4, 3, 2, 1, 0)
+WRITE_EXAMPLES = True  # set False on preview runs (--out-dir) so paper example files aren't touched
+# v2 grading (docs/benchmark_grading_v2.md): contiguous 0-6 quality scale.
+GRADE_LABEL = {6: "Exact", 5: "Strong", 4: "Good", 3: "Partial", 2: "Soft-fail", 1: "Hard-fail", 0: "Non-rel."}
+GRADES = (6, 5, 4, 3, 2, 1, 0)
+POSITIVE_MIN = 3  # grade >= 3 (partial or better) counts as a relevant positive
+POS_GRADES = (6, 5, 4, 3)  # relevant grades (grade 0-2 dwarf them in raw counts)
 
 # Publication style shared with scripts/paper_data_stats.py (Okabe-Ito, colorblind-safe).
 BLUE, ORANGE, GREEN, VERM, PURPLE, SKY, YELLOW, GREY = (
@@ -38,7 +40,15 @@ BLUE, ORANGE, GREEN, VERM, PURPLE, SKY, YELLOW, GREY = (
 )
 BAR = dict(alpha=0.85, edgecolor="black", linewidth=0.7)
 # Grade ramp: green (relevant) -> orange/vermillion (marginal) -> grey (non-relevant).
-GRADE_COLOR = {5: "#00543D", 4: GREEN, 3: "#7FC9A9", 2: ORANGE, 1: VERM, 0: "#C9C9C9"}
+GRADE_COLOR = {6: "#00543D", 5: GREEN, 4: "#7FC9A9", 3: ORANGE, 2: VERM, 1: "#8C2500", 0: "#C9C9C9"}
+FAILURE_MODE_LABEL = {
+    "change_missing": "change missing", "change_partial": "change partial",
+    "change_overshoot": "overshoot", "preservation_violated": "preservation broken",
+    "source_incompatible": "source incompatible", "caption_semantics_miss": "caption miss",
+    "surface_only": "surface only", "history_shortcut": "history shortcut",
+    "history_dependent_satisfied": "history-satisfied", "near_duplicate": "near-duplicate",
+    "off_topic": "off-topic",
+}
 # Prettier axis / pool-type labels.
 AXIS_LABEL = {
     "genre_style": "Genre / style", "texture_production": "Texture / prod.",
@@ -129,6 +139,9 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     SIM_CAP = 40000
     label_changes = 0
     judged = 0
+    fmodes = Counter()                     # v2 failure-mode taxonomy tallies
+    lsrc = Counter()                       # label_source (llm_judge / similarity_gated / deterministic)
+    quality = Counter()                    # judge quality enum
     examples: List[Dict[str, Any]] = []
     steps = 0
 
@@ -157,12 +170,16 @@ def analyse(label: str, root: str, n_examples: int) -> None:
                     sg["audio"].append(float(asim))
                 if isinstance(csim, (int, float)) and len(sg["caption"]) < SIM_CAP:
                     sg["caption"].append(float(csim))
-            if g >= 2:
+            if g >= POSITIVE_MIN:
                 pos += 1
+            lsrc[str(c.get("label_source") or "")] += 1
+            for m in (c.get("failure_modes") or []):
+                fmodes[str(m)] += 1
+            j = c.get("candidate_llm_judge") or {}
             if c.get("label_source") == "llm_judge":
                 judged += 1
-                if c.get("candidate_llm_judge") and int(c["candidate_llm_judge"].get("grade", g) or g) != g:
-                    label_changes += 1  # (grade already overwritten; kept for future raw diffs)
+                if j.get("quality"):
+                    quality[str(j.get("quality"))] += 1
         ex = [int(c.get("grade", 0) or 0) for c in cands if c.get("is_exact_target")]
         if ex:
             steps_with_exact += 1
@@ -184,7 +201,10 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         print(f"    {g} {GRADE_LABEL[g]:9} {n:>8,} ({100*n/total_c:.1f}%)")
     print("  pool types:", dict(pool_type.most_common()))
     import statistics as st
-    print(f"  positives (grade>=2)/step: mean {st.mean(per_step_positives):.1f}, median {int(st.median(per_step_positives))}")
+    print(f"  positives (grade>={POSITIVE_MIN})/step: mean {st.mean(per_step_positives):.1f}, median {int(st.median(per_step_positives))}")
+    print(f"  label_source: {dict(lsrc)}")
+    print(f"  judge quality: {dict(quality)}")
+    print(f"  failure_modes: {dict(fmodes.most_common())}")
 
     # ---- figures ----
     slug = label.lower().replace("-", "_").replace(" ", "_")
@@ -214,7 +234,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         import numpy as np
         top_axes = [a for a, _ in Counter({a: sum(c.values()) for a, c in grade_by_axis.items()}).most_common(6)]
         x = np.arange(len(top_axes)); bottoms = np.zeros(len(top_axes))
-        for g in (5, 4, 2, 1):  # relevant grades only; grade 0 (93%) would flatten the differences
+        for g in POS_GRADES:  # relevant grades only; grade 0-2 would flatten the differences
             vals = np.array([grade_by_axis[a].get(g, 0) / max(1, sum(grade_by_axis[a].values())) for a in top_axes])
             ax.bar(x, vals, bottom=bottoms, color=GRADE_COLOR[g], label=GRADE_LABEL[g], edgecolor="white", linewidth=0.5)
             bottoms += vals
@@ -236,7 +256,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         srcs = [s for s in SRC_ORDER if s in prov] + [s for s in prov if s not in SRC_ORDER]
         srcs = srcs[:6]
         bottoms = np.zeros(len(srcs))
-        for g in (5, 4, 2, 1):
+        for g in POS_GRADES:
             vals = np.array([prov[s].get(g, 0) for s in srcs], float)
             ax.bar(range(len(srcs)), vals, bottom=bottoms, color=GRADE_COLOR[g],
                    label=GRADE_LABEL[g], edgecolor="white", linewidth=0.5)
@@ -296,17 +316,29 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         cb.ax.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0)); cb.outline.set_visible(False)
     _fig(f"{slug}_relpool_judge_vs_heuristic.pdf", _heur, size=(5.2, 3.2))
 
+    # ---- (5) failure-mode taxonomy ----
+    def _fmode_bar(ax):
+        top = [(m, n) for m, n in fmodes.most_common() if m != "off_topic"][:9]
+        top = top[::-1]  # largest ends at the top in barh
+        ax.barh([FAILURE_MODE_LABEL.get(m, m) for m, _ in top], [n for _, n in top], color=VERM, **BAR)
+        ax.set_xlabel("Candidates flagged"); ax.xaxis.set_major_formatter(_kfmt)
+        ax.grid(axis="y", visible=False)
+    if any(m != "off_topic" for m in fmodes):
+        _fig(f"{slug}_relpool_failure_modes.pdf", _fmode_bar, size=(4.8, 3.2))
+
     # ---- extra stats for the paper text ----
     print(f"  target recoverable (exact target in pool): {steps_with_exact:,}/{steps:,} ({100*steps_with_exact/steps:.1f}%)")
     hn = ptype_grade.get("Type_HARD_NEG", Counter())
     hn_tot = sum(hn.values())
     if hn_tot:
-        up = sum(hn.get(g, 0) for g in (5, 4, 2))
+        up = sum(hn.get(g, 0) for g in POS_GRADES)
         print(f"  heuristic hard-negs upgraded to >=partial by judge: {up:,}/{hn_tot:,} ({100*up/hn_tot:.1f}%)")
-    pos_src = {SRC_LABEL.get(s, s): sum(prov[s].get(g, 0) for g in (5, 4, 2)) for s in prov}
+    pos_src = {SRC_LABEL.get(s, s): sum(prov[s].get(g, 0) for g in POS_GRADES) for s in prov}
     print("  positives (>=partial) by source:", dict(sorted(pos_src.items(), key=lambda kv: -kv[1])))
 
     # ---- qualitative examples ----
+    if not WRITE_EXAMPLES:
+        return  # preview run: figures + stats only, don't touch the paper's example files
     ex_path = REPO / "paper" / f"relpool_examples_{slug}.md"
     ex_path.parent.mkdir(parents=True, exist_ok=True)
     instr_map = _instructions_for(root, [(r.get("chain_id"), r.get("turn_index")) for r in examples])
@@ -355,7 +387,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dataset", choices=list(DATASETS) + ["all"], default="all")
     ap.add_argument("--examples", type=int, default=6)
+    ap.add_argument("--out-dir", default=None, help="Figure output dir (default: paper/figures). Use a scratch dir for previews.")
     args = ap.parse_args()
+    if args.out_dir:
+        global FIG_DIR, WRITE_EXAMPLES
+        FIG_DIR = Path(args.out_dir).expanduser().resolve()
+        WRITE_EXAMPLES = False
     keys = list(DATASETS) if args.dataset == "all" else [args.dataset]
     for k in keys:
         label, root = DATASETS[k]
