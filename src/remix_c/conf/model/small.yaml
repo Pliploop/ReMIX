@@ -1,0 +1,13 @@
+# Small fusion on top of frozen MuQ-MuLan towers.
+defaults:
+  - large
+  - _self_
+
+seed_tower:
+  freeze: true
+target_tower:
+  freeze: true
+instruction_tower:
+  freeze: true
+fusion:
+  depth: 2

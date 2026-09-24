@@ -10,6 +10,8 @@ metrics to --output-dir, and pretty-prints a combined table.
 Baselines (see src/jamendo_instruct/benchmark/baselines/):
   no model:   random, seed_audio_nn, seed_caption_nn, target_caption_oracle
   embedders:  instruction_text, caption_plus_instruction, mulan_zeroshot, late_fusion
+  llm:        llm_caption_rewrite, llm_pointwise_rerank, mulan_rewrite, analogy_steering, hybrid_score_fusion
+  trained:    remix_c (needs --ckpt; see src/remix_c/README.md)
 Use `--baselines all` for every registered baseline.
 
 Prereqs:
@@ -28,6 +30,7 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import sys
 import time
@@ -83,7 +86,10 @@ def main() -> None:
     ap.add_argument("--k", type=int, default=200, help="ranking depth submitted to the scorer")
     ap.add_argument("--split", default="test")
     ap.add_argument("--limit", type=int, default=0, help="cap #queries (0 = all); for quick validation")
+    ap.add_argument("--ckpt", default=None, help="ReMIX-C checkpoint for the remix_c baseline")
     args = ap.parse_args()
+    if args.ckpt:
+        os.environ["REMIX_C_CKPT"] = args.ckpt
     if not args.dry_run and not args.output_dir:
         ap.error("--output-dir is required unless --dry-run")
 

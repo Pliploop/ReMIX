@@ -1,0 +1,10 @@
+_target_: remix_c.data.RemixData
+index_dir: /gpfs/scratch/acw749/datasets/music4all_instruct/music4all_v1/instructions_axis_focused_5/remix_c
+filter_criteria: overall        # overall = overall_validity question | mean = mean of the 8 rubric questions
+filter_threshold: null          # null = every train variant; e.g. 4 = both judges >= 4 on filter_criteria
+val_filter_criteria: overall
+val_filter_threshold: 4         # val is always the clean, fixed set
+val_max_steps: 2000             # val queries (corpus = their targets)
+n_windows: 3                    # 10 s MuQ windows per clip (3 = the full 30 s)
+batch_size: 16                  # per GPU
+num_workers: 8

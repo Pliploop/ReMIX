@@ -1,0 +1,60 @@
+defaults:
+  - data: music4all
+  - model: large
+  - objective: contrastive
+  - _self_
+
+seed: 0
+resume: null                     # path to a .ckpt to resume from
+run_name: ${hydra:runtime.choices.model}_${hydra:runtime.choices.objective}
+out_root: /gpfs/scratch/acw749/remix_c/runs
+
+optim:
+  lr_towers: 1.0e-5              # pretrained MuQ / XLM-R towers
+  lr_heads: 1.0e-4               # fusion, target head, objective (predictor / temperature)
+  weight_decay: 0.01
+  warmup_steps: 1000
+  total_steps: ${trainer.max_steps}
+
+trainer:
+  accelerator: gpu
+  devices: 2
+  strategy: ddp_find_unused_parameters_true   # MuQ pretraining heads receive no grad
+  precision: bf16-mixed
+  max_steps: 30000
+  val_check_interval: 1000
+  check_val_every_n_epoch: null
+  log_every_n_steps: 20
+  gradient_clip_val: 1.0
+  num_sanity_val_steps: 2
+  default_root_dir: ${hydra:runtime.output_dir}
+
+logger:
+  project: remix-c
+  name: ${run_name}
+  save_dir: ${hydra:runtime.output_dir}
+  offline: false
+
+callbacks:
+  checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    monitor: val/R@10
+    mode: max
+    save_top_k: 2
+    save_last: true
+    filename: "{step}"
+  lr:
+    _target_: lightning.pytorch.callbacks.LearningRateMonitor
+    logging_interval: step
+  retrieval:
+    _target_: remix_c.callbacks.RetrievalMetrics
+  plots:
+    _target_: remix_c.callbacks.EmbeddingPlots
+    tsne_points: 1000
+    every_n_val: 1
+
+hydra:
+  run:
+    dir: ${out_root}/${run_name}/${now:%Y-%m-%d_%H-%M-%S}
+  job:
+    chdir: false

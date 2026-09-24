@@ -1,0 +1,17 @@
+# 6-layer fusion, every tower fine-tuned.
+mulan_id: OpenMuQ/MuQ-MuLan-large
+embed_dim: 512                  # = MuLan latent dim, so the target head starts as MuLan's
+seed_tower:
+  freeze: false
+  grad_checkpoint: true          # recompute MuQ per 10 s window in backward; no effect when frozen
+target_tower:
+  freeze: false
+  grad_checkpoint: true
+instruction_tower:
+  freeze: false
+  max_len: 128
+fusion:
+  dim: 512
+  depth: 6
+  heads: 8
+  dropout: 0.1

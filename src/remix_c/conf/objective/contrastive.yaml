@@ -1,0 +1,5 @@
+# ReMIX-C: InfoNCE; negatives = changed target / instruction / both.
+_target_: remix_c.objectives.Contrastive
+temperature: 0.07
+learn_temperature: true
+n_swap: 4                        # instruction-swapped queries per anchor (0 = plain in-batch InfoNCE)

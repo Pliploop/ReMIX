@@ -1,0 +1,9 @@
+# LeReMIX-C: MSE prediction + SIGReg on both sides, no negatives, no stop-grad (LeVLJEPA recipe).
+_target_: remix_c.objectives.LeJEPA
+dim: ${model.embed_dim}
+pred_width: 2048
+pred_depth: 4
+dropout: 0.1
+lambda_q: 0.01
+lambda_t: 0.01
+n_slices: 256
