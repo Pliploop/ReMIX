@@ -19,7 +19,7 @@ behavior:
   shard_index: 0       # this job's shard, in [0, num_shards)
   pool_splits: []      # restrict to these splits, e.g. ["test"]; [] = all
   resume: false        # skip (chain,turn) steps already in the output and append
-  max_judge_candidates: 0   # LLM-judge only top-K candidates by deterministic score; 0 = all
+  max_judge_candidates: 48  # v2: top-K by score above the floor are judged; rest = grade 0
   require_validated_instructions: true
   only_keep_validation_passed: true
   write_full_dataset_labels: false
@@ -86,6 +86,10 @@ pool:
   good_threshold: 0.65
   partial_threshold: 0.45
   near_miss_threshold: 0.25
+  # v2 grading (docs/benchmark_grading_v2.md): candidates with composite/final
+  # score below this floor are grade 0 and never judged (paired with the top-K
+  # cap `behavior.max_judge_candidates`).
+  judge_score_floor: 0.25
   shortcut_negative_prev_threshold: 0.8
   shortcut_negative_seed_ceiling: 0.6
   target_tag_recall_weight: 0.15

@@ -707,20 +707,29 @@ def _candidate_llm_judge_prompt(
         "heuristic_candidate": heuristic_candidate,
     }
     user_content = (
-        "You are judging the evaluation failure mode for one candidate in a compositional music-retrieval benchmark.\n"
+        "You judge how well one candidate track answers a compositional music-retrieval query.\n"
+        "The query is a seed track plus an edit instruction (and possibly earlier turns of a chain).\n"
         "Return exactly one JSON object and nothing else.\n"
         "Output format:\n"
-        '{"pool_type": "Type_T", "grade": 2, "failure_category": "caption_miss", "confidence": 0.0, "reason": "...", "satisfied_constraints": ["..."], "failed_constraints": ["..."]}\n\n'
-        "Rules:\n"
-        "1. Use the semantic deltas and the candidate content as the source of truth. Heuristic metadata is advisory only.\n"
-        "2. Choose exactly one pool type from: Type_TARGET, Type_STRONG, Type_H, Type_T, Type_PARTIAL, Type_HARD_NEG.\n"
-        "3. Type_TARGET is only for the exact target.\n"
-        "4. Type_STRONG means the candidate satisfies the requested verbalized semantics, obeys explicit preservation clauses, and has reasonable source affinity.\n"
-        "5. Type_H means it fits the latest edit but violates an explicit history-dependent preservation or callback.\n"
-        "6. Type_T means explicit tag/vocal/speed constraints mostly fit, but caption semantics miss.\n"
-        "7. Type_PARTIAL means the candidate is close but misses part of the requested semantics.\n"
-        "8. Type_HARD_NEG means it is clearly wrong overall.\n"
-        "9. Provide the grade that matches your pool type and concise satisfied/failed constraint lists.\n\n"
+        '{"quality": "strong", "failure_modes": ["preservation_violated"], "confidence": 0.0, '
+        '"reason": "...", "satisfied_constraints": ["..."], "failed_constraints": ["..."]}\n\n'
+        "Use the semantic deltas and the candidate content as the source of truth; heuristic metadata is advisory only.\n\n"
+        "Pick exactly one `quality` label (how good an answer the candidate is to THIS instruction):\n"
+        "  - exact     : semantically indistinguishable from the intended target.\n"
+        "  - strong    : satisfies ALL requested changes AND all explicit preservation clauses.\n"
+        "  - good      : satisfies the requested change and stays compatible with the seed, but misses a MINOR preservation or is a looser match.\n"
+        "  - partial   : satisfies PART of the requested change and misses another part.\n"
+        "  - soft_fail : surface constraints (tags/vocal/speed) fit, but the requested semantics are not achieved.\n"
+        "  - hard_fail : fails the PRIMARY requested change, though still musically on-topic.\n"
+        "(Do not output 'miss'/grade 0 -- clearly-unrelated candidates are filtered before you see them.)\n\n"
+        "Also return `failure_modes`: a list (>=1 unless quality is exact/strong) of tags from:\n"
+        "  change_missing, change_partial, change_overshoot, preservation_violated, source_incompatible,\n"
+        "  caption_semantics_miss, surface_only, history_shortcut, history_dependent_satisfied, near_duplicate, off_topic.\n"
+        "  - history_shortcut: satisfies the latest edit only by returning a prior-turn track / ignoring the current instruction.\n"
+        "  - history_dependent_satisfied: legitimately satisfies the instruction via an earlier turn (a POSITIVE flag; keep the earned quality).\n"
+        "  - A minor mode may accompany a strong/good label to record what slipped.\n\n"
+        "Judge candidates on their own merit even if they were mined from a previous turn -- a history track can be a correct answer.\n"
+        "Give concise satisfied/failed constraint lists and a one-sentence reason.\n\n"
         f"Payload:\n{json.dumps(payload, ensure_ascii=True, indent=2)}"
     )
     return [
@@ -754,32 +763,49 @@ def _parse_candidate_judge(raw: str) -> Dict[str, Any]:
         # One unparseable model response must not kill the whole run. Abstain and
         # let the caller keep the deterministic label for this candidate.
         return {"parse_ok": False}
-    pool_type = str(parsed.get("pool_type", "") or "").strip()
-    grade = int(parsed.get("grade", 0) or 0)
+    quality = str(parsed.get("quality", "") or "").strip().lower()
+    grade = _grade_from_quality(quality)
+    modes_raw = parsed.get("failure_modes", [])
+    if not isinstance(modes_raw, list):
+        modes_raw = [modes_raw]
+    failure_modes = [str(m).strip() for m in modes_raw if str(m).strip() in FAILURE_MODES]
     satisfied = parsed.get("satisfied_constraints", [])
     failed = parsed.get("failed_constraints", [])
     return {
-        "pool_type": pool_type,
+        "quality": quality,
         "grade": grade,
-        "failure_category": str(parsed.get("failure_category", "") or "").strip(),
+        "failure_modes": failure_modes,
         "confidence": float(parsed.get("confidence", 0.0) or 0.0),
         "reason": str(parsed.get("reason", "") or "").strip(),
         "satisfied_constraints": [str(x) for x in satisfied if str(x).strip()] if isinstance(satisfied, list) else [],
         "failed_constraints": [str(x) for x in failed if str(x).strip()] if isinstance(failed, list) else [],
-        "parse_ok": True,
+        # A valid verdict must name a known quality; otherwise fall back to the
+        # deterministic label for this candidate.
+        "parse_ok": quality in QUALITY_GRADE,
     }
 
 
+# --- v2 grading (docs/benchmark_grading_v2.md) ------------------------------- #
+# Contiguous 0-6 quality scale. Grade is a fixed function of a categorical quality
+# label the judge emits; grade 0 is the similarity-gated default (never judged).
+QUALITY_GRADE = {"exact": 6, "strong": 5, "good": 4, "partial": 3, "soft_fail": 2, "hard_fail": 1}
+GRADE_LABEL_V2 = {6: "exact_target", 5: "strong_match", 4: "good_match",
+                  3: "partial_match", 2: "soft_fail", 1: "hard_fail", 0: "miss"}
+FAILURE_MODES = {
+    "change_missing", "change_partial", "change_overshoot",
+    "preservation_violated", "source_incompatible",
+    "caption_semantics_miss", "surface_only",
+    "history_shortcut", "history_dependent_satisfied",
+    "near_duplicate", "off_topic",
+}
+
+
+def _grade_from_quality(quality: str) -> int:
+    return QUALITY_GRADE.get(str(quality or "").strip().lower(), 0)
+
+
 def _label_from_grade(grade: int) -> str:
-    if grade >= 4:
-        return "strong_match"
-    if grade == 3:
-        return "good_match"
-    if grade == 2:
-        return "partial_match"
-    if grade == 1:
-        return "near_miss"
-    return "miss"
+    return GRADE_LABEL_V2.get(int(grade), "miss")
 
 
 def _reason_code_from_candidate(item: Dict[str, Any]) -> str:
@@ -962,7 +988,7 @@ def _constructive_candidate_metadata(
 
     if is_exact_target:
         pool_type = "Type_TARGET"
-        grade = 4
+        grade = 6  # designated target -> exact, by construction (v2 scale)
         failure_category = "target"
         failed_constraints = []
     elif history_shortcut_detected:
@@ -1146,6 +1172,9 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
     shard_index = int(getattr(cfg.stage.behavior, "shard_index", 0) or 0)
     pool_splits = {str(s) for s in (getattr(cfg.stage.behavior, "pool_splits", []) or [])}
     max_judge_candidates = int(getattr(cfg.stage.behavior, "max_judge_candidates", 0) or 0)
+    # v2 gate: below this composite-score floor a candidate is grade 0, unjudged.
+    judge_score_floor = float(getattr(cfg.stage.pool, "judge_score_floor",
+                                      getattr(cfg.stage.pool, "near_miss_threshold", 0.25)))
 
     def _in_shard(cid: str) -> bool:
         if num_shards <= 1:
@@ -1199,13 +1228,7 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
         "steps_skipped_missing_prepared": 0,
         "steps_skipped_validation": 0,
         "candidate_rows_written": 0,
-        "category_counts": {
-            "strong_match": 0,
-            "good_match": 0,
-            "partial_match": 0,
-            "near_miss": 0,
-            "miss": 0,
-        },
+        "category_counts": {label: 0 for label in GRADE_LABEL_V2.values()},
         "pool_type_counts": {
             "Type_TARGET": 0,
             "Type_STRONG": 0,
@@ -1468,6 +1491,26 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                             if bool(scored.get("history_shortcut", False)):
                                 counts["history_shortcut_negatives"] += 1
 
+                        # v2 dedup: at most one snippet per track_id (keep the highest
+                        # final_score), and never keep another snippet of the target's
+                        # own track as a negative.
+                        target_track = str(target_row.get("track_id", "") or "")
+                        _best_by_track: Dict[str, Dict[str, Any]] = {}
+                        _deduped: List[Dict[str, Any]] = []
+                        for _it in sorted(all_scored_candidates,
+                                          key=lambda x: float(x.get("final_score", 0.0) or 0.0), reverse=True):
+                            _is_target = bool(_it.get("is_exact_target", False))
+                            _tid = str(_it.get("track_id", "") or _it.get("clip_id", ""))
+                            if not _is_target and target_track and _tid == target_track:
+                                counts["candidates_dropped_target_track"] = counts.get("candidates_dropped_target_track", 0) + 1
+                                continue
+                            if _tid in _best_by_track and not _is_target:
+                                counts["candidates_dropped_same_track"] = counts.get("candidates_dropped_same_track", 0) + 1
+                                continue
+                            _best_by_track[_tid] = _it
+                            _deduped.append(_it)
+                        all_scored_candidates = _deduped
+
                         target_split = str(target_row.get("split", "") or "")
                         if llm_judge_ctx is not None and (not candidate_judge_splits or target_split in candidate_judge_splits):
                             # Build one prompt per judgeable candidate, then decode the
@@ -1483,6 +1526,7 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                                 item for item in all_scored_candidates
                                 if not bool(item.get("is_exact_target", False))
                                 and structured_by_clip.get(str(item["clip_id"])) is not None
+                                and float(item.get("final_score", 0.0) or 0.0) >= judge_score_floor
                             ]
                             if max_judge_candidates > 0 and len(judgeable) > max_judge_candidates:
                                 judgeable = sorted(
@@ -1503,32 +1547,41 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                                     candidate_row=candidate_row,
                                 ))
                             judge_raws = _decode_judge_batch(llm_judge_ctx, cfg, judge_prompts)
+                            judged_ids: set = set()
                             for item, raw in zip(judge_items, judge_raws):
-                                original_pool_type = str(item.get("pool_type", "") or "")
                                 original_grade = int(item.get("grade", 0) or 0)
                                 judge = _parse_candidate_judge(raw)
                                 counts["candidate_llm_judge_calls"] += 1
-                                if not judge.get("parse_ok", True):
-                                    # Model gave no parseable verdict; keep the deterministic label.
+                                if not judge.get("parse_ok", False):
+                                    # No parseable verdict; keep the deterministic label.
                                     counts["candidate_llm_judge_parse_failures"] = counts.get("candidate_llm_judge_parse_failures", 0) + 1
                                     continue
-                                judged_pool_type = str(judge.get("pool_type", "") or "").strip() or original_pool_type
-                                default_grade, default_failure_category = _pool_type_defaults(judged_pool_type)
-                                judged_grade = int(judge.get("grade", default_grade) or default_grade)
+                                judged_ids.add(str(item["clip_id"]))
                                 item["candidate_llm_judge"] = judge
                                 item["label_source"] = "llm_judge"
-                                item["pool_type"] = judged_pool_type
-                                item["grade"] = judged_grade
-                                item["label"] = _label_from_grade(judged_grade)
-                                item["failure_category"] = str(judge.get("failure_category", "") or "").strip() or default_failure_category
+                                item["quality"] = judge["quality"]
+                                item["grade"] = int(judge["grade"])
+                                item["label"] = _label_from_grade(item["grade"])
+                                item["failure_modes"] = list(judge.get("failure_modes", []) or [])
                                 if judge.get("satisfied_constraints"):
                                     item["satisfied_constraints"] = _dedupe_list(list(judge.get("satisfied_constraints", []) or []))
                                 if judge.get("failed_constraints"):
                                     item["failed_constraints"] = _dedupe_list(list(judge.get("failed_constraints", []) or []))
                                 item["judge_reason"] = str(judge.get("reason", "") or "").strip()
                                 item["judge_confidence"] = float(judge.get("confidence", 0.0) or 0.0)
-                                if judged_pool_type != original_pool_type or judged_grade != original_grade:
+                                if item["grade"] != original_grade:
                                     counts["candidate_llm_judge_label_changes"] += 1
+
+                            # v2 similarity gate: every non-target candidate the judge did
+                            # not verify (below the score floor or outside top-K) is grade 0.
+                            for item in all_scored_candidates:
+                                if bool(item.get("is_exact_target", False)):
+                                    continue
+                                if str(item["clip_id"]) not in judged_ids:
+                                    item["grade"] = 0
+                                    item["label"] = _label_from_grade(0)
+                                    item["label_source"] = "similarity_gated"
+                                    item.setdefault("failure_modes", ["off_topic"])
 
                         desired_counts = _desired_pool_counts(max_candidates)
                         if any(str(item.get("pool_type", "")) == "Type_H" for item in all_scored_candidates):
@@ -1576,11 +1629,8 @@ def run_relevance_pool(cfg: DictConfig) -> Dict[str, object]:
                             counts["pool_type_counts"][str(item["pool_type"])] += 1
 
                         pool_summary = {
-                            "strong_match": sum(1 for item in scored_candidates if item["label"] == "strong_match"),
-                            "good_match": sum(1 for item in scored_candidates if item["label"] == "good_match"),
-                            "partial_match": sum(1 for item in scored_candidates if item["label"] == "partial_match"),
-                            "near_miss": sum(1 for item in scored_candidates if item["label"] == "near_miss"),
-                            "miss": sum(1 for item in scored_candidates if item["label"] == "miss"),
+                            label: sum(1 for item in scored_candidates if item["label"] == label)
+                            for label in GRADE_LABEL_V2.values()
                         }
                         pool_type_summary = {
                             "Type_TARGET": sum(1 for item in scored_candidates if item["pool_type"] == "Type_TARGET"),
