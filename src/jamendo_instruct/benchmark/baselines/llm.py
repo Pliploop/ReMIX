@@ -33,6 +33,19 @@ REWRITE_SYS = ("You rewrite a music caption so it describes the track a listener
                "one paragraph, concrete about genre, instrumentation, vocals, tempo, and mood. No preamble.")
 
 
+_ENGINE = None
+
+
+def _get_llm() -> "_LLM":
+    """One vLLM engine per process: a second LLM() in-process would OOM the GPUs.
+    FLOPs counter reset so each baseline reports only its own tokens."""
+    global _ENGINE
+    if _ENGINE is None:
+        _ENGINE = _LLM()
+    _ENGINE.flops = 0
+    return _ENGINE
+
+
 def _seed_caption(c: Corpus, q: Query) -> str:
     return (c.meta.get(q.seed_clip_id, {}) or {}).get("caption", "")
 
@@ -45,8 +58,8 @@ class _LLM:
     def __init__(self):
         from jamendo_instruct.llm_backends import build_vllm_offline_chat_model, decode_vllm_chat_completions
         self.ctx = build_vllm_offline_chat_model(
-            MODEL_ID, tensor_parallel_size=TP, kv_cache_dtype="fp8",
-            max_model_len=8192, gpu_memory_utilization=0.85)
+            model_id=MODEL_ID, tensor_parallel_size=TP, kv_cache_dtype="fp8",
+            max_model_len=8192, gpu_memory_utilization=0.75)  # leave room for MuLan/Gemma encoders on the same GPU
         self._decode = decode_vllm_chat_completions
         self.n_params = _PARAMS.get(MODEL_ID, 27e9)
         self.flops = 0
@@ -75,7 +88,7 @@ class LLMCaptionRewrite(Baseline):
     name = "llm_caption_rewrite"
 
     def prepare(self, corpus: Corpus) -> None:
-        self.c = corpus; self.emb = GemmaText(); self.llm = _LLM()
+        self.c = corpus; self.emb = GemmaText(); self.llm = _get_llm()
 
     def rank_all(self, queries: List[Query], k: int) -> Dict[str, List[str]]:
         Q = self.emb.encode(self.llm.rewrite(self.c, queries))
@@ -88,7 +101,7 @@ class MuLanRewrite(Baseline):
     name = "mulan_rewrite"
 
     def prepare(self, corpus: Corpus) -> None:
-        self.c = corpus; self.emb = MuLanText(); self.llm = _LLM()
+        self.c = corpus; self.emb = MuLanText(); self.llm = _get_llm()
 
     def rank_all(self, queries: List[Query], k: int) -> Dict[str, List[str]]:
         Q = self.emb.encode(self.llm.rewrite(self.c, queries))          # (Nq,512) joint space
@@ -105,7 +118,7 @@ class AnalogySteering(Baseline):
         self.w = w
 
     def prepare(self, corpus: Corpus) -> None:
-        self.c = corpus; self.emb = MuLanText(); self.llm = _LLM()
+        self.c = corpus; self.emb = MuLanText(); self.llm = _get_llm()
 
     def rank_all(self, queries: List[Query], k: int) -> Dict[str, List[str]]:
         tgt = self.emb.encode(self.llm.rewrite(self.c, queries))
@@ -127,7 +140,7 @@ class HybridScoreFusion(Baseline):
         self.alpha = alpha
 
     def prepare(self, corpus: Corpus) -> None:
-        self.c = corpus; self.emb = GemmaText(); self.llm = _LLM()
+        self.c = corpus; self.emb = GemmaText(); self.llm = _get_llm()
 
     def rank_all(self, queries: List[Query], k: int) -> Dict[str, List[str]]:
         Tq = self.emb.encode(self.llm.rewrite(self.c, queries))          # (Nq,768)
@@ -155,7 +168,7 @@ class LLMPointwiseReranker(Baseline):
         from . import get as get_baseline
         self.c = corpus
         self.first = get_baseline(self.first_stage)(); self.first.prepare(corpus)
-        self.llm = _LLM()
+        self.llm = _get_llm()
 
     @staticmethod
     def _score(text: str) -> float:

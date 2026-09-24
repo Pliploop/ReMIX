@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -63,7 +64,7 @@ def _pretty(rows) -> None:
                 cells.append(f"[bold green]{v}[/bold green]" if rep[m] == best[m] else v)
             cells += [f"{sec:.0f}", f"{fl/1e12:.2f}"]
             t.add_row(*cells)
-        Console().print(t)
+        Console(width=None if sys.stdout.isatty() else 200).print(t)  # slurm logs: no 80-col truncation
     except Exception:
         w = max((len(n) for n, *_ in rows), default=8)
         head = [f"{'baseline':<{w}}"] + [f"{m:>12}" for m in metrics] + [f"{'sec':>8}", f"{'TFLOP':>8}"]
@@ -96,7 +97,10 @@ def main() -> None:
     queries = load_queries(bench)
     if args.limit:
         queries = queries[:args.limit]
-    qrels = _read_qrels(str(pool), min_grade=3)
+    # score only the queries we rank: --limit / a pool that outgrew the export
+    # would otherwise count every unranked judged query as a zero.
+    qids = {q.query_id for q in queries}
+    qrels = {k: v for k, v in _read_qrels(str(pool), min_grade=3).items() if k in qids}
     print(f"corpus {len(corpus.ids):,} clips | {len(queries):,} queries | {len(qrels):,} judged\n", flush=True)
 
     names = B.all_names() if args.baselines == ["all"] else args.baselines
