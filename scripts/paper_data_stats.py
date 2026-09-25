@@ -34,7 +34,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from matplotlib.ticker import MaxNLocator  # noqa: E402
+from matplotlib.ticker import MaxNLocator, PercentFormatter  # noqa: E402
 from rich.console import Console  # noqa: E402
 from rich.progress import (  # noqa: E402
     BarColumn,
@@ -92,42 +92,15 @@ def tags_to_genre(tags: Sequence[str]) -> str:
 # --------------------------------------------------------------------------- #
 # Publication style + palette (Okabe-Ito, colorblind-safe)
 # --------------------------------------------------------------------------- #
-BLUE, ORANGE, GREEN, VERM, PURPLE, SKY, YELLOW, BLACK = (
-    "#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#111111",
+from paper_style import (  # noqa: E402  shared figure style (Inter, print sizes, Okabe-Ito)
+    BAR, BLUE, DATASET, FS, FS_SMALL, GREEN, GREY, HALF, HALF_TALL, HIST, ORANGE, PURPLE, SEQ, SKY, VERM, YELLOW,
 )
-QUAL = [BLUE, ORANGE, GREEN, VERM, PURPLE, SKY, "#999999", YELLOW]
-COOC_CMAP = "Greens"   # co-occurrence (sequential, non-viridis)
-PROB = "Blues"         # probabilities / transition heatmaps
-# Low-opacity fills with crisp black contours (applied to every bar/hist).
-BAR = dict(alpha=0.82, edgecolor="black", linewidth=0.8)
-HIST = dict(alpha=0.55, edgecolor="black", linewidth=0.8)
+from paper_style import apply as setup_style  # noqa: E402
 
-
-def setup_style() -> None:
-    # NeurIPS body is Times; STIX is a bundled Times-like serif (no external font
-    # needed) and also renders math nicely.
-    plt.rcParams.update(
-        {
-            "pdf.fonttype": 42,
-            "ps.fonttype": 42,
-            "font.family": "sans-serif",
-            "font.sans-serif": ["Helvetica", "Arial", "DejaVu Sans"],
-            "font.size": 12,
-            "axes.labelsize": 13,
-            "xtick.labelsize": 11,
-            "ytick.labelsize": 11,
-            "legend.fontsize": 11,
-            "legend.frameon": False,
-            "legend.handlelength": 1.4,
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "axes.grid": True,
-            "axes.axisbelow": True,
-            "grid.color": "#dddddd",
-            "grid.linewidth": 0.6,
-            "figure.dpi": 150,
-        }
-    )
+BLACK = "#111111"
+QUAL = [BLUE, ORANGE, GREEN, VERM, PURPLE, SKY, GREY, YELLOW]
+COOC_CMAP = "Greens"   # co-occurrence (sequential)
+PROB = SEQ             # probabilities / transition heatmaps
 
 
 # --------------------------------------------------------------------------- #
@@ -140,6 +113,8 @@ PRETTY: Dict[str, str] = {
     "genre": "Genre", "mood": "Mood", "instrument": "Instrument", "instrumentation": "Instrumentation",
     "tempo": "Tempo", "vocals": "Vocals", "speed": "Tempo", "energy": "Energy", "rhythm": "Rhythm",
     "production": "Production", "none": "None",
+    "genre_style": "Genre / style", "texture_production": "Texture / production",
+    "vocal_style_or_gender": "Vocal style / gender", "theme_or_language": "Theme / language",
 }
 QUESTION_SHORT: Dict[str, str] = {
     "meaningful_change": "Meaningful change",
@@ -208,8 +183,8 @@ def derive(steps_df: pd.DataFrame, corpus_df: pd.DataFrame) -> Dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # Figure primitives (one Axes per figure, no titles)
 # --------------------------------------------------------------------------- #
-def _new(w: float = 5.2, h: float = 3.4):
-    fig, ax = plt.subplots(figsize=(w, h), constrained_layout=True)
+def _new(w: float = HALF[0], h: float = HALF[1]):
+    fig, ax = plt.subplots(figsize=(w, h))
     return fig, ax
 
 
@@ -224,10 +199,10 @@ def _bar_labels(ax, bars, values, *, fmt="{:,}", pad=3, horizontal=False) -> Non
     for b, v in zip(bars, values):
         if horizontal:
             ax.annotate(fmt.format(v), (b.get_width(), b.get_y() + b.get_height() / 2),
-                        xytext=(pad, 0), textcoords="offset points", va="center", fontsize=9, color="#333")
+                        xytext=(pad, 0), textcoords="offset points", va="center", fontsize=FS_SMALL, color="#333")
         else:
             ax.annotate(fmt.format(v), (b.get_x() + b.get_width() / 2, b.get_height()),
-                        xytext=(0, pad), textcoords="offset points", ha="center", fontsize=9, color="#333")
+                        xytext=(0, pad), textcoords="offset points", ha="center", fontsize=FS_SMALL, color="#333")
 
 
 def _abbrev(n: float) -> str:
@@ -291,19 +266,19 @@ def fig_genre(ctx):
         for i, g in enumerate(top.index)
     ]
 
-    fig, ax = _new(6.4, 5.4)
+    fig, ax = _new(*HALF_TALL)
     wedges, _ = ax.pie(
         sizes,
         startangle=90,
         counterclock=False,
         colors=colors,
         radius=1.0,
-        wedgeprops=dict(width=0.34, edgecolor="white", linewidth=2.0),
+        wedgeprops=dict(width=0.34, edgecolor="#333333", linewidth=0.5),
     )
     # Clip count in the hole of the donut.
     ax.text(0, 0, f"{_abbrev(total)}", ha="center", va="center",
-            fontsize=19, fontweight="bold", color="#2b2b2b")
-    ax.text(0, -0.19, "clips", ha="center", va="center", fontsize=11, color="#8a8a8a")
+            fontsize=10, fontweight="bold", color="#2b2b2b")
+    ax.text(0, -0.19, "clips", ha="center", va="center", fontsize=FS, color="#8a8a8a")
     # Sleek leader callouts: genre name in dark, percentage tinted to its wedge.
     for w, lab, p, col in zip(wedges, labels, pct, colors):
         ang = np.deg2rad((w.theta1 + w.theta2) / 2.0)
@@ -317,8 +292,8 @@ def fig_genre(ctx):
             f"{lab}  {p:.0f}%",
             xy=(x, y), xycoords="data",
             xytext=(1.20 * side, 1.15 * y), textcoords="data",
-            ha=ha, va="center", fontsize=10.5, fontweight="medium", color=txt_col,
-            arrowprops=dict(arrowstyle="-", color=lead, lw=1.0, shrinkA=1, shrinkB=3,
+            ha=ha, va="center", fontsize=FS_SMALL, fontweight="medium", color=txt_col,
+            arrowprops=dict(arrowstyle="-", color=lead, lw=0.6, shrinkA=1, shrinkB=3,
                             connectionstyle=f"angle,angleA=0,angleB={np.rad2deg(ang):.0f}"),
         )
     ax.set(aspect="equal")
@@ -329,7 +304,7 @@ def fig_genre(ctx):
 
 def fig_vocals(ctx):
     vc = ctx["corpus_df"]["vocals"].value_counts()
-    fig, ax = _new(4.2, 3.2)
+    fig, ax = _new()
     b = ax.bar([nice(x) for x in vc.index], vc.values, color=GREEN, width=0.62, **BAR)
     _bar_labels(ax, b, vc.values)
     ax.set_ylabel("Number of clips")
@@ -340,7 +315,7 @@ def fig_speed(ctx):
     order = ["very slow", "slow", "medium", "fast", "very fast", "unknown"]
     sc = ctx["corpus_df"]["speed"].value_counts()
     sc = sc.reindex([o for o in order if o in sc.index]).dropna()
-    fig, ax = _new(4.8, 3.2)
+    fig, ax = _new()
     b = ax.bar([nice(x) for x in sc.index], sc.values, color=ORANGE, width=0.62, **BAR)
     _bar_labels(ax, b, sc.values.astype(int))
     ax.set_ylabel("Number of clips")
@@ -349,7 +324,7 @@ def fig_speed(ctx):
 
 def fig_tags_per_clip(ctx):
     tc = ctx["corpus_df"]["tag_count"].dropna()
-    fig, ax = _new(5.0, 3.4)
+    fig, ax = _new()
     ax.hist(tc, bins=range(0, int(tc.max()) + 2), color=PURPLE, **HIST)
     ax.set_xlabel("Tags per clip")
     ax.set_ylabel("Number of clips")
@@ -367,7 +342,7 @@ def fig_coverage(ctx):
         "Lyrics": c["lyrics_status"].isin(["ok", "found", "available"]).mean(),
     }
     items = sorted(cov.items(), key=lambda kv: kv[1])
-    fig, ax = _new(5.0, 3.2)
+    fig, ax = _new()
     b = ax.barh([k for k, _ in items], [v for _, v in items], color=BLUE, **BAR)
     _bar_labels(ax, b, [v for _, v in items], fmt="{:.0%}", horizontal=True)
     ax.set_xlim(0, 1.1)
@@ -377,8 +352,8 @@ def fig_coverage(ctx):
 
 def fig_caption_length(ctx):
     cw = ctx["corpus_df"]["caption_words"].dropna()
-    fig, ax = _new(5.0, 3.4)
-    ax.hist(cw, bins=40, color=SKY, edgecolor="white", linewidth=0.3)
+    fig, ax = _new()
+    ax.hist(cw, bins=40, color=SKY, **HIST)
     ax.set_xlabel("Caption length (words)")
     ax.set_ylabel("Number of clips")
     _finish(fig, ax, ctx, "corpus_caption_length")
@@ -389,9 +364,9 @@ def fig_caption_length(ctx):
 # --------------------------------------------------------------------------- #
 def fig_transition_score(ctx):
     su = ctx["steps_unique"]
-    fig, ax = _new(5.4, 3.6)
+    fig, ax = _new()
     for i, (hard, g) in enumerate(sorted(su.groupby("hardness"), key=lambda kv: str(kv[0]))):
-        ax.hist(g["transition_score"].dropna(), bins=40, histtype="step", linewidth=1.8,
+        ax.hist(g["transition_score"].dropna(), bins=40, histtype="step", linewidth=1.1,
                 color=QUAL[i % len(QUAL)], label=nice(hard))
     ax.set_xlabel("Transition score")
     ax.set_ylabel("Number of steps")
@@ -404,10 +379,11 @@ def fig_genre_matrix(ctx):
     top = su["source_genre"].value_counts().head(12).index.tolist()
     sub = su[su["source_genre"].isin(top) & su["target_genre"].isin(top)]
     mat = pd.crosstab(sub["source_genre"], sub["target_genre"], normalize="index").reindex(index=top, columns=top).fillna(0)
-    fig, ax = _new(5.8, 5.2)
+    fig, ax = _new(*HALF_TALL)
     im = ax.imshow(mat.values, cmap=PROB, vmin=0, aspect="auto")
-    ax.set_xticks(range(len(top)), [nice(t) for t in top], rotation=45, ha="right")
+    ax.set_xticks(range(len(top)), [nice(t) for t in top], rotation=90)
     ax.set_yticks(range(len(top)), [nice(t) for t in top])
+    ax.tick_params(length=0)
     ax.set_xlabel("Target genre")
     ax.set_ylabel("Source genre")
     ax.grid(False)
@@ -422,14 +398,14 @@ def _transition_heatmap(ctx, src_col, tgt_col, order, name):
     if not cats:
         return
     mat = pd.crosstab(su[src_col], su[tgt_col], normalize="index").reindex(index=cats, columns=cats).fillna(0)
-    fig, ax = _new(4.8, 4.2)
+    fig, ax = _new(*HALF_TALL)
     im = ax.imshow(mat.values, cmap=PROB, vmin=0, vmax=1, aspect="auto")
     ax.set_xticks(range(len(cats)), [nice(c) for c in cats], rotation=30, ha="right")
     ax.set_yticks(range(len(cats)), [nice(c) for c in cats])
     for i in range(len(cats)):
         for j in range(len(cats)):
             v = mat.values[i, j]
-            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=9,
+            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=FS_SMALL,
                     color="white" if v > 0.55 else "#222")
     ax.set_xlabel("Target")
     ax.set_ylabel("Source")
@@ -449,9 +425,9 @@ def fig_speed_flips(ctx):
 
 def fig_tag_churn(ctx):
     su = ctx["steps_unique"]
-    fig, ax = _new(5.2, 3.4)
-    ax.hist(su["tags_added_count"], bins=range(0, 12), histtype="step", linewidth=1.8, color=GREEN, label="Added")
-    ax.hist(su["tags_removed_count"], bins=range(0, 12), histtype="step", linewidth=1.8, color=VERM, label="Removed")
+    fig, ax = _new()
+    ax.hist(su["tags_added_count"], bins=range(0, 12), histtype="step", linewidth=1.1, color=GREEN, label="Added")
+    ax.hist(su["tags_removed_count"], bins=range(0, 12), histtype="step", linewidth=1.1, color=VERM, label="Removed")
     ax.set_xlabel("Tags changed per step")
     ax.set_ylabel("Number of steps")
     ax.legend()
@@ -467,7 +443,7 @@ def fig_axes_change_preserve(ctx):
     pr = _explode_counts(instr["preservation_axes"])
     names = sorted(set(ch.index) | set(pr.index), key=lambda a: -(ch.get(a, 0) + pr.get(a, 0)))[:10][::-1]
     y = np.arange(len(names))
-    fig, ax = _new(5.8, 4.0)
+    fig, ax = _new()
     ax.barh(y + 0.2, [ch.get(a, 0) for a in names], height=0.38, color=BLUE, label="Changed", **BAR)
     ax.barh(y - 0.2, [pr.get(a, 0) for a in names], height=0.38, color=ORANGE, label="Preserved", **BAR)
     ax.set_yticks(y, [nice(a) for a in names])
@@ -487,17 +463,11 @@ def fig_axis_cooccurrence(ctx):
             for b in present:
                 co[idx[a], idx[b]] += 1
     np.fill_diagonal(co, 0)  # self-co-occurrence is uninformative; drop it
-    fig, ax = _new(5.2, 4.6)
+    fig, ax = _new(*HALF_TALL)
     im = ax.imshow(co, cmap=COOC_CMAP, aspect="auto")
-    ax.set_xticks(range(len(top)), [nice(a) for a in top], rotation=45, ha="right")
+    ax.set_xticks(range(len(top)), [nice(a) for a in top], rotation=90)
     ax.set_yticks(range(len(top)), [nice(a) for a in top])
-    hi = co.max() if co.size else 1
-    for i in range(len(top)):
-        for j in range(len(top)):
-            if i == j:
-                continue
-            ax.text(j, i, _abbrev(co[i, j]), ha="center", va="center", fontsize=8,
-                    color="white" if co[i, j] > hi * 0.55 else "#222")
+    ax.tick_params(length=0)
     ax.grid(False)
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04).set_label("Co-occurring instructions")
     _finish(fig, ax, ctx, "recipe_cooccurrence", grid=None)
@@ -505,7 +475,7 @@ def fig_axis_cooccurrence(ctx):
 
 def fig_num_axes(ctx):
     nc = ctx["instr"]["change_axis_count"].value_counts().sort_index()
-    fig, ax = _new(4.8, 3.4)
+    fig, ax = _new()
     b = ax.bar(nc.index.astype(int), nc.values, color=GREEN, width=0.7, **BAR)
     _bar_labels(ax, b, nc.values)
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -518,7 +488,7 @@ def fig_caption_only(ctx):
     r = ctx["instr"]["caption_only_change"].value_counts(normalize=True)
     labels = {True: "Caption-grounded", False: "Tag / metadata"}
     order = [k for k in [True, False] if k in r.index]
-    fig, ax = _new(4.2, 3.4)
+    fig, ax = _new(*HALF_TALL)
     b = ax.bar([labels[k] for k in order], [r[k] for k in order],
                color=[ORANGE, BLUE][: len(order)], width=0.6, **BAR)
     _bar_labels(ax, b, [r[k] for k in order], fmt="{:.0%}")
@@ -532,8 +502,8 @@ def fig_caption_only(ctx):
 # --------------------------------------------------------------------------- #
 def fig_instruction_length(ctx):
     words = ctx["instr"]["history_unaware_words"].dropna()
-    fig, ax = _new(5.2, 3.4)
-    ax.hist(words, bins=40, color=BLUE, edgecolor="white", linewidth=0.3)
+    fig, ax = _new()
+    ax.hist(words, bins=40, color=BLUE, **HIST)
     ax.set_xlabel("Instruction length (words)")
     ax.set_ylabel("Number of instructions")
     _finish(fig, ax, ctx, "instr_length")
@@ -542,7 +512,7 @@ def fig_instruction_length(ctx):
 def fig_chain_length(ctx):
     clen = ctx["steps_unique"].groupby("chain_id")["turn_index"].nunique()
     vc = clen.value_counts().sort_index()
-    fig, ax = _new(4.8, 3.4)
+    fig, ax = _new()
     b = ax.bar(vc.index.astype(int), vc.values, color=PURPLE, width=0.7, **BAR)
     _bar_labels(ax, b, vc.values)
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -570,12 +540,12 @@ def fig_llm_rubric(ctx):
     q["label"] = q["question_id"].map(lambda x: QUESTION_SHORT.get(x, nice(x)))
     q = q.iloc[::-1]
     score_colors = plt.get_cmap("RdYlGn")(np.linspace(0.12, 0.88, 5))  # 1=red ... 5=green
-    fig, ax = _new(6.6, 4.2)
+    fig, ax = _new()
     left = np.zeros(len(q))
     for s in range(1, 6):
         vals = q[f"score_{s}"].to_numpy(dtype=float)
         ax.barh(q["label"], vals, left=left, color=score_colors[s - 1],
-                edgecolor="black", linewidth=0.5, label=f"{s}")
+                edgecolor="#333333", linewidth=0.5, label=f"{s}")
         left += vals
     ax.set_xlabel("Number of ratings")
     ax.legend(title="Score (1–5)", ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.12))
@@ -602,7 +572,7 @@ def fig_llm_accept_hardness(ctx):
     if df.empty:
         return
     by = df.groupby("hardness")["accept"].mean().sort_values()
-    fig, ax = _new(4.6, 3.2)
+    fig, ax = _new()
     b = ax.barh([nice(x) for x in by.index], by.values, color=BLUE, **BAR)
     _bar_labels(ax, b, by.values, fmt="{:.0%}", horizontal=True)
     ax.set_xlim(0, 1.1)
@@ -620,7 +590,7 @@ def fig_llm_issue_tags(ctx):
     if it.empty:
         return
     it = it.sort_values("count").tail(12)
-    fig, ax = _new(6.0, 4.0)
+    fig, ax = _new()
     b = ax.barh([nice(x) for x in it["issue_tag"]], it["count"].values, color=VERM, **BAR)
     _bar_labels(ax, b, it["count"].values, horizontal=True)
     ax.set_xlabel("Number of flagged instructions")
@@ -632,14 +602,14 @@ def fig_leakage(ctx):
     splits = [s for s in ["train", "validation", "test"] if s in set(corpus_df["split"])] or sorted(corpus_df["split"].unique())
     art = {s: set(corpus_df[corpus_df["split"] == s]["artist_id"]) - {""} for s in splits}
     mat = np.array([[len(art[a] & art[b]) / max(1, len(art[a])) for b in splits] for a in splits])
-    fig, ax = _new(4.6, 4.0)
+    fig, ax = _new(*HALF_TALL)
     im = ax.imshow(mat, cmap="Reds", vmin=0, vmax=1, aspect="auto")
     ax.set_xticks(range(len(splits)), [nice(s) for s in splits])
     ax.set_yticks(range(len(splits)), [nice(s) for s in splits])
     for i in range(len(splits)):
         for j in range(len(splits)):
             ax.text(j, i, f"{mat[i, j]:.2f}", ha="center", va="center",
-                    color="white" if mat[i, j] > 0.55 else "#222", fontsize=10)
+                    color="white" if mat[i, j] > 0.55 else "#222", fontsize=FS_SMALL)
     ax.set_xlabel("Also appears in")
     ax.set_ylabel("Artists from")
     ax.grid(False)
@@ -680,7 +650,7 @@ def make_table1(ctx):
 # Combined two-dataset ("ReMIX") figures
 # --------------------------------------------------------------------------- #
 DS_TITLE = {"music4all": "Music4All", "mtg_jamendo": "MTG-Jamendo"}
-DS_COLOR = {"music4all": BLUE, "mtg_jamendo": ORANGE}
+DS_COLOR = DATASET
 
 
 def _load_cached(cache_dir: Path, label: str) -> Dict[str, Any]:
@@ -706,7 +676,6 @@ def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[
     pre = out["label"]
 
     def save(fig, name, grid="y"):
-        fig.tight_layout()
         fig.savefig(fd / f"{pre}_{name}.pdf")
         plt.close(fig)
 
@@ -739,14 +708,14 @@ def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[
         gseries[lab] = gc.to_dict()
         gcats += list(gc.head(10).index)
     gcats = [g for g in dict.fromkeys(gcats) if g != "Other"][:10][::-1]
-    fig, ax = _new(6.2, 4.4)
+    fig, ax = _new()
     _grouped_barh(ax, gcats, gseries, order)
     ax.set_xlabel("Fraction of clips")
     ax.legend()
     save(fig, "corpus_genre", grid="x")
 
     # transition score (overlaid step hists)
-    fig, ax = _new(5.6, 3.6)
+    fig, ax = _new()
     for lab in order:
         ax.hist(ds[lab]["steps_unique"]["transition_score"].dropna(), bins=40, histtype="step",
                 linewidth=1.8, color=DS_COLOR[lab], label=DS_TITLE[lab], density=True)
@@ -763,7 +732,7 @@ def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[
         lens[lab] = cl.to_dict()
         maxlen = max(maxlen, int(cl.index.max()))
     cats = list(range(1, maxlen + 1))
-    fig, ax = _new(5.2, 3.4)
+    fig, ax = _new()
     x = np.arange(len(cats)); w = 0.8 / len(order)
     for i, lab in enumerate(order):
         ax.bar(x + (i - (len(order) - 1) / 2) * w, [lens[lab].get(c, 0) for c in cats], width=w,
@@ -782,16 +751,18 @@ def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[
         aseries[lab] = (counts / total).to_dict()
         acats += list(counts.head(8).index)
     acats = [a for a in dict.fromkeys(acats)][:10][::-1]
-    fig, ax = _new(6.0, 4.2)
+    fig, ax = _new(*HALF_TALL)
     _grouped_barh(ax, acats, aseries, order)
-    ax.set_xlabel("Fraction of instructions editing axis")
-    ax.legend()
+    ax.xaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
+    ax.set_xlabel("Instructions editing the axis")
+    ax.tick_params(axis="y", length=0); ax.spines["left"].set_visible(False)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.4, 1.0), ncol=2)
     save(fig, "recipe_axes", grid="x")
 
     # edit complexity (# change axes, grouped)
     nseries = {lab: ds[lab]["instr"]["change_axis_count"].value_counts(normalize=True).to_dict() for lab in order}
     cats = sorted({int(k) for lab in order for k in nseries[lab]})
-    fig, ax = _new(5.0, 3.4)
+    fig, ax = _new()
     x = np.arange(len(cats)); w = 0.8 / len(order)
     for i, lab in enumerate(order):
         ax.bar(x + (i - (len(order) - 1) / 2) * w, [nseries[lab].get(c, 0) for c in cats], width=w,
@@ -811,7 +782,7 @@ def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[
                 "Lyrics": d["lyrics_status"].isin(["ok", "found", "available"]).mean()}
     covs = {lab: cov(ds[lab]) for lab in order}
     ccats = list(covs[order[0]].keys())[::-1]
-    fig, ax = _new(5.4, 3.4)
+    fig, ax = _new()
     _grouped_barh(ax, ccats, covs, order)
     ax.set_xlim(0, 1.1)
     ax.set_xlabel("Fraction of clips")

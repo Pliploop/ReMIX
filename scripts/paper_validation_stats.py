@@ -40,16 +40,8 @@ from jamendo_instruct.demo.human_validation_app import (  # noqa: E402
 )
 from jamendo_instruct.demo.validation_rubric import RATING_QUESTIONS  # noqa: E402
 
-from paper_data_stats import (  # noqa: E402
-    BAR,
-    BLUE,
-    ORANGE,
-    QUESTION_SHORT,
-    _bar_labels,
-    _new,
-    nice,
-    setup_style,
-)
+from paper_data_stats import QUESTION_SHORT, _bar_labels, _new, nice, setup_style  # noqa: E402
+from paper_style import BAR, DATASET, EDGE, FS_SMALL, HALF_TALL, HALF_W, INK, JUDGE, SCORE, SEQ  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 FIG_DIR = REPO / "paper" / "figures"
@@ -118,47 +110,54 @@ def accept_rate(records: Sequence[Dict[str, Any]], qid: str) -> float | None:
 # --------------------------------------------------------------------------- #
 # Figures
 # --------------------------------------------------------------------------- #
+def _hbars_style(ax, labels, y):
+    ax.set_yticks(y, labels)
+    ax.tick_params(axis="y", length=0)
+    ax.grid(axis="x", visible=True)
+    ax.grid(axis="y", visible=False)
+    ax.spines["left"].set_visible(False)
+
+
 def fig_accept_by_question(ds: Dict[str, Any], ratings: Dict[str, List[Dict[str, Any]]]) -> None:
     """Grouped horizontal bars: per-question accept rate, one bar per judge."""
     qids = QUESTION_ORDER[::-1]
     labels = [QUESTION_SHORT.get(q, nice(q)) for q in qids]
     judges = list(ds["judges"])
-    colors = {judges[0]: BLUE, judges[1]: ORANGE}
     y = np.arange(len(qids))
-    h = 0.38
-    fig, ax = _new(6.6, 4.4)
+    h = 0.4
+    fig, ax = _new(*HALF_TALL)
     for i, judge in enumerate(judges):
         vals = [accept_rate(ratings[judge], q) or 0.0 for q in qids]
-        off = (i - 0.5) * h
-        b = ax.barh(y + off, vals, height=h, color=colors[judge], label=judge, **BAR)
-        _bar_labels(ax, b, vals, fmt="{:.0%}", horizontal=True)
-    ax.set_yticks(y, labels)
-    ax.set_xlim(0, 1.12)
-    ax.set_xlabel("Acceptance rate  (score $\\geq 4$)")
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2)
-    ax.grid(axis="x", visible=True)
-    ax.grid(axis="y", visible=False)
+        b = ax.barh(y + (0.5 - i) * h, vals, height=h, color=JUDGE[judge], label=judge, **BAR)
+        _bar_labels(ax, b, vals, fmt="{:.0%}", horizontal=True, pad=1.5)
+    _hbars_style(ax, labels, y)
+    ax.set_xlim(0, 1.15)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0], ["0", "25", "50", "75", "100"])
+    ax.set_xlabel("Accepted (score ≥ 4), %")
+    ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2)
     fig.savefig(FIG_DIR / f"{ds['label']}_val_accept_by_question.pdf")
     plt.close(fig)
 
 
 def fig_rubric_dist(ds: Dict[str, Any], judge: str, records: Sequence[Dict[str, Any]]) -> None:
-    """Stacked 1-5 score distribution per question for one judge (RdYlGn)."""
+    """100%-stacked 1-5 score distribution per question for one judge."""
     rows = {r["question_id"]: r for r in _admin_question_rows(records)}
     qids = QUESTION_ORDER[::-1]
     labels = [QUESTION_SHORT.get(q, nice(q)) for q in qids]
-    colors = plt.get_cmap("RdYlGn")(np.linspace(0.12, 0.88, 5))
-    fig, ax = _new(6.6, 4.2)
+    counts = np.array([[float(rows[q][f"score_{s}"]) for s in range(1, 6)] for q in qids])
+    share = counts / counts.sum(1, keepdims=True).clip(min=1)
+    fig, ax = _new(*HALF_TALL)
     left = np.zeros(len(qids))
     for s in range(1, 6):
-        vals = np.array([float(rows[q][f"score_{s}"]) for q in qids])
-        ax.barh(labels, vals, left=left, color=colors[s - 1], edgecolor="black",
-                linewidth=0.5, label=f"{s}")
-        left += vals
-    ax.set_xlabel("Number of ratings")
-    ax.legend(title="Score (1–5)", ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.12))
-    ax.grid(axis="x", visible=True)
-    ax.grid(axis="y", visible=False)
+        ax.barh(labels, share[:, s - 1], left=left, height=0.72, color=SCORE[s], label=str(s), **BAR)
+        left += share[:, s - 1]
+    y = np.arange(len(qids))
+    _hbars_style(ax, labels, y)
+    ax.set_xlim(0, 1)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0], ["0", "25", "50", "75", "100"])
+    ax.set_xlabel("Share of ratings, %")
+    ax.legend(title="Score", ncol=5, loc="lower center", bbox_to_anchor=(0.4, 1.0),
+              handlelength=0.8, columnspacing=0.6, title_fontsize=FS_SMALL + 0.5)
     fig.savefig(FIG_DIR / f"{ds['label']}_val_rubric_{_judge_slug(judge)}.pdf")
     plt.close(fig)
 
@@ -168,22 +167,20 @@ def fig_agreement_ac1(agreements: Dict[str, List[Dict[str, Any]]]) -> None:
     qids = QUESTION_ORDER[::-1]
     labels = [QUESTION_SHORT.get(q, nice(q)) for q in qids]
     dss = list(agreements)
-    colors = {dss[0]: BLUE, dss[1]: ORANGE}
+    colors = {dss[0]: DATASET["music4all"], dss[1]: DATASET["mtg_jamendo"]}
     y = np.arange(len(qids))
-    h = 0.38
-    fig, ax = _new(6.6, 4.4)
+    h = 0.4
+    fig, ax = _new(*HALF_TALL)
     for i, ds_pretty in enumerate(dss):
         row_by_q = {r["question_id"]: r for r in agreements[ds_pretty]}
         vals = [float(row_by_q[q].get("accept_ac1") or 0.0) for q in qids]
-        off = (i - 0.5) * h
-        b = ax.barh(y + off, vals, height=h, color=colors[ds_pretty], label=ds_pretty, **BAR)
-        _bar_labels(ax, b, vals, fmt="{:.2f}", horizontal=True)
-    ax.set_yticks(y, labels)
-    ax.set_xlim(0, 1.12)
-    ax.set_xlabel("Cross-judge agreement  (Gwet's AC1 on accept)")
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2)
-    ax.grid(axis="x", visible=True)
-    ax.grid(axis="y", visible=False)
+        b = ax.barh(y + (0.5 - i) * h, vals, height=h, color=colors[ds_pretty], label=ds_pretty, **BAR)
+        _bar_labels(ax, b, vals, fmt="{:.2f}", horizontal=True, pad=1.5)
+    _hbars_style(ax, labels, y)
+    ax.set_xlim(0, 1.15)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_xlabel("Gwet's AC1 (accept decision)")
+    ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2)
     fig.savefig(FIG_DIR / "remix_val_agreement_ac1.pdf")
     plt.close(fig)
 
@@ -200,10 +197,9 @@ def _paired_scores(ratings: Dict[str, List[Dict[str, Any]]], judges: Sequence[st
 
 def fig_joint_scatter(ds: Dict[str, Any], ratings: Dict[str, List[Dict[str, Any]]],
                       qid: str = "overall_validity") -> None:
-    """Bubble scatter of the two judges' scores on one question: marker area and
-    color encode how many items sit at each (Qwen, Gemma) integer cell. The honest
-    form of a scatterplot for discrete 1-5 ratings; the dashed diagonal is exact
-    agreement, and off-diagonal mass shows the direction of disagreement."""
+    """Dot plot of the two judges' scores on one question: marker area and colour
+    encode how many items sit at each (Qwen, Gemma) cell. The dashed diagonal is
+    exact agreement; off-diagonal mass shows the direction of disagreement."""
     judges = list(ds["judges"])
     xs, ys = _paired_scores(ratings, judges, qid)
     if len(xs) == 0:
@@ -214,32 +210,35 @@ def fig_joint_scatter(ds: Dict[str, Any], ratings: Dict[str, List[Dict[str, Any]
         grid[int(round(x)) - 1, int(round(y)) - 1] += 1
     gx, gy = np.meshgrid(np.arange(1, 6), np.arange(1, 6), indexing="ij")
     mask = grid > 0
-    counts = grid[mask]
-    frac = counts / n
-    sizes = 90 + 1450 * (counts / counts.max())
+    frac = grid[mask] / n
+    sizes = 12 + 330 * np.sqrt(frac / frac.max())       # area ~ share (sqrt keeps small cells visible)
 
-    fig, ax = _new(4.9, 4.3)
-    ax.plot([0.5, 5.5], [0.5, 5.5], ls="--", lw=1.0, color="#999", zorder=0)
-    sc = ax.scatter(gx[mask], gy[mask], s=sizes, c=counts, cmap="Blues",
-                    edgecolor="black", linewidth=0.8, alpha=0.9, zorder=2)
+    fig, ax = _new(HALF_W, 2.35)
+    ax.plot([0.5, 5.5], [0.5, 5.5], ls="--", lw=0.7, color="#999999", zorder=0)
+    sc = ax.scatter(gx[mask], gy[mask], s=sizes, c=frac, cmap=SEQ, vmin=0, vmax=frac.max(),
+                    edgecolor=EDGE, linewidth=0.5, zorder=2)
     for x, y, f in zip(gx[mask], gy[mask], frac):
         if f >= 0.02:
-            ax.annotate(f"{100 * f:.0f}%", (x, y), ha="center", va="center",
-                        fontsize=8, color="black" if f < 0.35 else "white", zorder=3)
+            ax.annotate(f"{100 * f:.0f}", (x, y), ha="center", va="center", fontsize=FS_SMALL,
+                        color="white" if f > 0.6 * frac.max() else INK, zorder=3)
     exact = float(np.mean(xs == ys))
     within1 = float(np.mean(np.abs(xs - ys) <= 1))
-    ax.text(0.03, 0.97, f"exact {100 * exact:.0f}%\n$\\pm$1 {100 * within1:.0f}%",
-            transform=ax.transAxes, ha="left", va="top", fontsize=10,
-            bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="#cccccc"))
-    ax.set_xlim(0.5, 5.5)
-    ax.set_ylim(0.5, 5.5)
+    ax.text(0.03, 0.97, f"exact {100 * exact:.0f}%\nwithin 1: {100 * within1:.0f}%", transform=ax.transAxes,
+            ha="left", va="top", fontsize=FS_SMALL,
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#BBBBBB", lw=0.5))
+    ax.set_xlim(0.4, 5.6)
+    ax.set_ylim(0.4, 5.6)
     ax.set_xticks(range(1, 6))
     ax.set_yticks(range(1, 6))
-    ax.set_xlabel(f"{judges[0]}  score")
-    ax.set_ylabel(f"{judges[1]}  score")
+    ax.set_xlabel(f"{judges[0]} score")
+    ax.set_ylabel(f"{judges[1]} score")
     ax.set_aspect("equal")
-    ax.grid(True, color="#eeeeee")
-    fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.04, label="Items")
+    ax.grid(True)
+    cb = fig.colorbar(sc, ax=ax, fraction=0.05, pad=0.03)
+    cb.set_label("Share of items, %")
+    cb.ax.yaxis.set_major_formatter(lambda v, _: f"{100 * v:.0f}")
+    cb.ax.tick_params(labelsize=FS_SMALL)
+    cb.outline.set_linewidth(0.5)
     fig.savefig(FIG_DIR / f"{ds['label']}_val_joint_{qid}.pdf")
     plt.close(fig)
 
@@ -255,16 +254,14 @@ def fig_mean_dumbbell(ds: Dict[str, Any], agreement_rows: List[Dict[str, Any]]) 
     y = np.arange(len(rows))
     lm = [r[f"{lslug}_mean"] for r in rows]
     rm = [r[f"{rslug}_mean"] for r in rows]
-    fig, ax = _new(6.2, 4.2)
+    fig, ax = _new(*HALF_TALL)
     for yi, a, b in zip(y, lm, rm):
-        ax.plot([a, b], [yi, yi], color="#bbbbbb", lw=2.0, zorder=1)
-    ax.scatter(lm, y, s=70, color=BLUE, edgecolor="black", linewidth=0.7, label=judges[0], zorder=2)
-    ax.scatter(rm, y, s=70, color=ORANGE, edgecolor="black", linewidth=0.7, label=judges[1], zorder=2)
-    ax.set_yticks(y, labels)
-    ax.set_xlabel("Mean rubric score  (1–5)")
-    ax.legend(loc="upper left")
-    ax.grid(axis="x", visible=True)
-    ax.grid(axis="y", visible=False)
+        ax.plot([a, b], [yi, yi], color="#C8C8C8", lw=1.4, zorder=1)
+    ax.scatter(lm, y, s=18, color=JUDGE[judges[0]], label=judges[0], zorder=2, edgecolor=EDGE, linewidths=0.5)
+    ax.scatter(rm, y, s=18, color=JUDGE[judges[1]], label=judges[1], zorder=2, edgecolor=EDGE, linewidths=0.5)
+    _hbars_style(ax, labels, y)
+    ax.set_xlabel("Mean rubric score (1-5)")
+    ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2)
     fig.savefig(FIG_DIR / f"{ds['label']}_val_mean_dumbbell.pdf")
     plt.close(fig)
 

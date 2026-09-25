@@ -34,14 +34,11 @@ GRADES = (6, 5, 4, 3, 2, 1, 0)
 POSITIVE_MIN = 3  # grade >= 3 (partial or better) counts as a relevant positive
 POS_GRADES = (6, 5, 4, 3)  # relevant grades (grade 0-2 dwarf them in raw counts)
 
-# Publication style shared with scripts/paper_data_stats.py (Okabe-Ito, colorblind-safe).
-BLUE, ORANGE, GREEN, VERM, PURPLE, SKY, YELLOW, GREY = (
-    "#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#999999",
-)
-BAR = dict(alpha=0.85, edgecolor="black", linewidth=0.7)
-# Grade ramp: bright, saturated green (relevant) -> amber/orange -> red -> grey (non-rel).
-GRADE_COLOR = {6: "#0A7D3E", 5: "#22C55E", 4: "#A7E32C", 3: "#F7B500", 2: "#FB6A0A", 1: "#E4231B", 0: "#CBD0D6"}
-WEDGE_EDGE = dict(edgecolor="#2A2A2A", linewidth=1.0)
+# Shared paper style (scripts/paper_style.py): Inter, print-size figures, Okabe-Ito.
+from paper_style import BAR, BLUE, FS, FS_SMALL, FULL, GRADE as GRADE_COLOR, HALF, HALF_TALL, ORANGE, SEQ, VERM  # noqa: E402
+from paper_style import apply as _setup_style  # noqa: E402
+
+WEDGE_EDGE = dict(edgecolor="#333333", linewidth=0.5)
 FAILURE_MODE_LABEL = {
     "change_missing": "change missing", "change_partial": "change partial",
     "change_overshoot": "overshoot", "preservation_violated": "preservation broken",
@@ -63,22 +60,22 @@ PTYPE_LABEL = {
 }
 
 
-def _setup_style() -> None:
-    import matplotlib.pyplot as plt
-    plt.rcParams.update({
-        "pdf.fonttype": 42, "ps.fonttype": 42,
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Helvetica", "Arial", "DejaVu Sans"],
-        "font.size": 11, "axes.labelsize": 12,
-        "xtick.labelsize": 10, "ytick.labelsize": 10,
-        "legend.fontsize": 9, "legend.frameon": False, "legend.handlelength": 1.3,
-        "axes.spines.top": False, "axes.spines.right": False,
-        "axes.grid": True, "axes.axisbelow": True,
-        "grid.color": "#dddddd", "grid.linewidth": 0.6, "figure.dpi": 150,
-    })
+def _gate_steps(root: str):
+    """(chain_id, turn_index) of benchmark queries (the gate-filtered export), or None."""
+    q = Path(root) / FOLDER / "benchmark" / "queries.jsonl"
+    if not q.is_file():
+        return None
+    out = set()
+    with open(q, encoding="utf-8") as fh:
+        for line in fh:
+            if line.strip():
+                cid, turn = json.loads(line)["query_id"].rsplit("#", 1)
+                out.add((cid, int(turn)))
+    return out
 
 
 def _iter_pool(root: str) -> Iterable[Dict[str, Any]]:
+    keep = _gate_steps(root)   # pools of steps that left the gate (chain refreshes) are skipped
     files = sorted(glob.glob(str(Path(root) / FOLDER / "relevance_pool" / "chain_step_relevance_pools.shard*.jsonl")))
     if not files:
         merged = Path(root) / FOLDER / "relevance_pool" / "chain_step_relevance_pools.jsonl"
@@ -88,7 +85,9 @@ def _iter_pool(root: str) -> Iterable[Dict[str, Any]]:
             for line in fh:
                 line = line.strip()
                 if line:
-                    yield json.loads(line)
+                    r = json.loads(line)
+                    if keep is None or (r.get("chain_id"), int(r.get("turn_index", 0))) in keep:
+                        yield r
 
 
 def _instructions_for(root: str, keys, field: str = "history_unaware_instruction") -> Dict[Any, str]:
@@ -113,12 +112,12 @@ def _instructions_for(root: str, keys, field: str = "history_unaware_instruction
     return out
 
 
-def _fig(name: str, plotter, size=(4.6, 3.2)) -> None:
+def _fig(name: str, plotter, size=HALF) -> None:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     _setup_style()
-    fig, ax = plt.subplots(figsize=size, constrained_layout=True)
+    fig, ax = plt.subplots(figsize=size)
     plotter(ax)
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_DIR / name)
@@ -140,27 +139,28 @@ def _write_pool_pie(slug: str, pool_frac: Dict[int, float], steps: int) -> None:
     means = {g: pool_frac.get(g, 0.0) / max(1, steps) for g in order}
     rest_total = sum(means[g] for g in tail) or 1.0
 
-    fig = plt.figure(figsize=(9.6, 4.9))
-    ax1 = fig.add_axes([0.00, 0.20, 0.50, 0.76]); ax1.set_aspect("equal")
+    fig = plt.figure(figsize=(FULL[0], 2.3), layout="none")
+    ax1 = fig.add_axes([0.03, 0.03, 0.38, 0.86]); ax1.set_aspect("equal")
     w1, _, _ = ax1.pie(
         [means[g] for g in order], colors=[GRADE_COLOR[g] for g in order],
         startangle=90, counterclock=False, explode=[0.0] + [0.06] * 6,
-        wedgeprops=WEDGE_EDGE, autopct=lambda p: f"{p:.0f}%" if p > 50 else "",
-        pctdistance=0.62, textprops=dict(fontsize=11, color="#222222", fontweight="bold"),
+        wedgeprops=WEDGE_EDGE, autopct=lambda p: f"Non-relevant\n{p:.0f}%" if p > 50 else "",
+        pctdistance=0.45, textprops=dict(fontsize=FS + 1, color="#222222", fontweight="bold"),
     )
 
     # bar-chart inset (real axes: spines, ticks, grid) to the right of the pie
-    axins = ax1.inset_axes([1.16, 0.06, 0.80, 0.88])
+    axins = ax1.inset_axes([1.42, 0.14, 1.12, 0.72])
     vals = [means[g] / rest_total * 100 for g in tail]
     axins.bar(range(len(tail)), vals, color=[GRADE_COLOR[g] for g in tail], **WEDGE_EDGE)
     axins.set_xticks(range(len(tail))); axins.set_xticklabels([GRADE_LABEL[g] for g in tail], rotation=25, ha="right")
     axins.set_ylabel("Share of tail (%)")
-    axins.set_title(f"Relevant + failure tail  ({rest_total*100:.1f}% of pool)", fontsize=10)
+    axins.set_title(f"Relevant + failure tail ({rest_total*100:.1f}% of pool)", fontsize=FS, pad=8)
+    axins.set_ylim(0, max(vals) * 1.15)
     axins.grid(axis="y", alpha=0.7); axins.grid(axis="x", visible=False)
     for sp in ("left", "bottom"):
         axins.spines[sp].set_visible(True)
     for i, v in enumerate(vals):
-        axins.text(i, v + max(vals) * 0.02, f"{v:.0f}", ha="center", va="bottom", fontsize=8)
+        axins.text(i, v + max(vals) * 0.02, f"{v:.0f}", ha="center", va="bottom", fontsize=FS_SMALL)
 
     # box the source region (tail wedges) on the pie + leader lines to the inset
     pts = []
@@ -172,15 +172,7 @@ def _write_pool_pie(slug: str, pool_frac: Dict[int, float], steps: int) -> None:
     xs, ys = [p[0] for p in pts], [p[1] for p in pts]
     pad = 0.06
     bounds = [min(xs) - pad, min(ys) - pad, (max(xs) - min(xs)) + 2 * pad, (max(ys) - min(ys)) + 2 * pad]
-    ax1.indicate_inset(bounds, inset_ax=axins, edgecolor="#333333", linewidth=1.2, alpha=0.9)
-
-    # framed legend below, grade + share of the whole pool
-    handles = [plt.Rectangle((0, 0), 1, 1, facecolor=GRADE_COLOR[g], edgecolor="#2A2A2A", linewidth=0.6) for g in order]
-    labels = [f"{GRADE_LABEL[g]} ({means[g]*100:.1f}%)" for g in order]
-    leg = fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.5, 0.0),
-                     ncol=7, frameon=True, fontsize=8.5, handlelength=1.1, columnspacing=1.2,
-                     title="Grade (share of pool)", borderpad=0.7)
-    leg.get_frame().set_edgecolor("#9aa0a6"); leg.get_frame().set_linewidth(0.8)
+    ax1.indicate_inset(bounds, inset_ax=axins, edgecolor="#333333", linewidth=0.7, alpha=0.9)
 
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_DIR / f"{slug}_relpool_pool_composition_pie.pdf")
@@ -230,9 +222,10 @@ def analyse(label: str, root: str, n_examples: int) -> None:
             if not c.get("is_exact_target"):
                 asim, csim = c.get("audio_sim_to_target"), c.get("caption_sim_to_target")
                 sg = sim_by_grade[g]
-                if isinstance(asim, (int, float)) and len(sg["audio"]) < SIM_CAP:
+                # exactly 0.0 = similarity never computed for that candidate (placeholder), not a real cosine
+                if isinstance(asim, (int, float)) and asim != 0.0 and len(sg["audio"]) < SIM_CAP:
                     sg["audio"].append(float(asim))
-                if isinstance(csim, (int, float)) and len(sg["caption"]) < SIM_CAP:
+                if isinstance(csim, (int, float)) and csim != 0.0 and len(sg["caption"]) < SIM_CAP:
                     sg["caption"].append(float(csim))
             if g >= POSITIVE_MIN:
                 pos += 1
@@ -279,8 +272,8 @@ def analyse(label: str, root: str, n_examples: int) -> None:
 
     from matplotlib.ticker import FuncFormatter, PercentFormatter
     _kfmt = FuncFormatter(lambda v, _: f"{v:,.0f}")
-    _POS_LEG = dict(ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.16),
-                    columnspacing=1.0, handletextpad=0.4, handlelength=1.1)
+    _POS_LEG = dict(ncol=4, loc="lower center", bbox_to_anchor=(0.5, 1.0),
+                    columnspacing=0.8, handletextpad=0.4, handlelength=0.9)
 
     def _grade_bar(ax):
         gs = list(GRADES)
@@ -294,40 +287,43 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     def _pos_hist(ax):
         m = max(per_step_positives)
         ax.hist(per_step_positives, bins=range(0, m + 2), color=BLUE, **BAR)
-        ax.set_xlabel(r"Relevant candidates per query ($\geq$ partial)"); ax.set_ylabel("Queries")
+        ax.set_xlabel("Relevant candidates per query (≥ partial)"); ax.set_ylabel("Queries")
         ax.yaxis.set_major_formatter(_kfmt); ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_positives_per_query.pdf", _pos_hist)
 
     def _axis_bar(ax):
         import numpy as np
-        top_axes = [a for a, _ in Counter({a: sum(c.values()) for a, c in grade_by_axis.items()}).most_common(6)]
+        top_axes = [a for a, _ in Counter({a: sum(c.values()) for a, c in grade_by_axis.items()
+                                           if a not in ("other", "unknown")}).most_common(6)]
         x = np.arange(len(top_axes)); bottoms = np.zeros(len(top_axes))
         for g in POS_GRADES:  # relevant grades only; grade 0-2 would flatten the differences
             vals = np.array([grade_by_axis[a].get(g, 0) / max(1, sum(grade_by_axis[a].values())) for a in top_axes])
-            ax.bar(x, vals, bottom=bottoms, color=GRADE_COLOR[g], label=GRADE_LABEL[g], edgecolor="white", linewidth=0.5)
+            ax.bar(x, vals, bottom=bottoms, color=GRADE_COLOR[g], label=GRADE_LABEL[g], **BAR)
             bottoms += vals
         ax.set_xticks(x); ax.set_xticklabels([AXIS_LABEL.get(a, a.replace("_", " ").title()) for a in top_axes],
-                                             rotation=20, ha="right")
+                                             rotation=30, ha="right")
         ax.set_ylabel("Share of candidates"); ax.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
         ax.legend(**_POS_LEG); ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_grade_by_axis.pdf", _axis_bar)
 
     # ---- (1) grade x candidate provenance ----
     SRC_ORDER = ["target_neighborhood", "source_neighborhood", "seed_neighborhood",
-                 "history_reference_neighborhood", "chain_history_target", "exact_target"]
-    SRC_LABEL = {"target_neighborhood": "Target", "source_neighborhood": "Source",
-                 "seed_neighborhood": "Seed", "history_reference_neighborhood": "History",
-                 "chain_history_target": "Hist-tgt", "exact_target": "Exact"}
+                 "history_reference_neighborhood", "chain_history_target"]
+    SRC_LABEL = {"target_neighborhood": "Target nbhd.", "source_neighborhood": "Source nbhd.",
+                 "seed_neighborhood": "Seed nbhd.", "history_reference_neighborhood": "History nbhd.",
+                 "chain_history_target": "Earlier targets", "exact_target": "Designated target"}
 
     def _prov_bar(ax):
         import numpy as np
-        srcs = [s for s in SRC_ORDER if s in prov] + [s for s in prov if s not in SRC_ORDER]
-        srcs = srcs[:6]
+        # the designated target is injected, not a pool source: left out
+        srcs = [s for s in SRC_ORDER if s in prov] + [s for s in prov if s not in SRC_ORDER and s != "exact_target"]
+        tot = sum(sum(prov[x].get(g, 0) for g in POS_GRADES) for x in srcs) or 1
+        srcs = [x for x in srcs if sum(prov[x].get(g, 0) for g in POS_GRADES) / tot >= 0.01][:5]  # drop <1% sources
         bottoms = np.zeros(len(srcs))
         for g in POS_GRADES:
             vals = np.array([prov[s].get(g, 0) for s in srcs], float)
             ax.bar(range(len(srcs)), vals, bottom=bottoms, color=GRADE_COLOR[g],
-                   label=GRADE_LABEL[g], edgecolor="white", linewidth=0.5)
+                   label=GRADE_LABEL[g], **BAR)
             bottoms += vals
         ax.set_xticks(range(len(srcs))); ax.set_xticklabels([SRC_LABEL.get(s, s) for s in srcs], rotation=20, ha="right")
         ax.set_ylabel("Relevant candidates"); ax.yaxis.set_major_formatter(_kfmt)
@@ -342,10 +338,10 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         for off, key, col in ((-0.2, "audio", BLUE), (0.2, "caption", ORANGE)):
             bp = ax.boxplot([sim_by_grade[g][key] for g in gs], positions=x + off, widths=0.36,
                             showfliers=False, patch_artist=True, whis=(5, 95),
-                            medianprops=dict(color="black", linewidth=1.2),
-                            whiskerprops=dict(color="#555555"), capprops=dict(color="#555555"))
+                            medianprops=dict(color="black", linewidth=0.9),
+                            whiskerprops=dict(color="#555555", linewidth=0.6), capprops=dict(color="#555555", linewidth=0.6))
             for b in bp["boxes"]:
-                b.set(facecolor=col, alpha=0.85, edgecolor="black", linewidth=0.7)
+                b.set(facecolor=col, alpha=0.9, edgecolor="#333333", linewidth=0.5)
         ax.set_xticks(x); ax.set_xticklabels([GRADE_LABEL[g] for g in gs], rotation=20, ha="right")
         ax.set_ylabel("Similarity to target"); ax.set_xlabel("Verified grade"); ax.set_ylim(0, 1.02)
         from matplotlib.patches import Patch
@@ -361,7 +357,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
                color=[GRADE_COLOR[g] for g in gs], **BAR)
         ax.set_ylabel("Steps"); ax.set_xlabel("Grade of the designated target")
         ax.yaxis.set_major_formatter(_kfmt)
-        ax.set_title(f"Present in {100*steps_with_exact/steps:.1f}% of steps", fontsize=10)
+        ax.set_title(f"Present in {100*steps_with_exact/steps:.1f}% of steps", fontsize=FS)
         ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_target_recovery.pdf", _target_bar)
 
@@ -371,7 +367,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         pts = [p for p, _ in sorted(ptype_grade.items(), key=lambda kv: -sum(kv[1].values())) if p][:6]
         M = np.array([[ptype_grade[p].get(g, 0) for g in GRADES] for p in pts], float)
         Mn = M / np.clip(M.sum(1, keepdims=True), 1, None)
-        im = ax.imshow(Mn, cmap="Blues", aspect="auto", vmin=0, vmax=1)
+        im = ax.imshow(Mn, cmap=SEQ, aspect="auto", vmin=0, vmax=1)
         ax.set_xticks(range(len(GRADES))); ax.set_xticklabels([GRADE_LABEL[g] for g in GRADES], rotation=20, ha="right")
         ax.set_yticks(range(len(pts))); ax.set_yticklabels([PTYPE_LABEL.get(p, p) for p in pts])
         ax.set_xlabel("LLM-verified grade"); ax.set_ylabel("Heuristic pool type"); ax.grid(False)
@@ -379,10 +375,10 @@ def analyse(label: str, root: str, n_examples: int) -> None:
             for j in range(len(GRADES)):
                 if Mn[i, j] >= 0.01:
                     ax.text(j, i, f"{Mn[i, j]*100:.0f}", ha="center", va="center",
-                            fontsize=9, color="white" if Mn[i, j] > 0.5 else "#222222")
+                            fontsize=FS_SMALL, color="white" if Mn[i, j] > 0.5 else "#222222")
         cb = ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
         cb.ax.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0)); cb.outline.set_visible(False)
-    _fig(f"{slug}_relpool_judge_vs_heuristic.pdf", _heur, size=(5.2, 3.2))
+    _fig(f"{slug}_relpool_judge_vs_heuristic.pdf", _heur, size=HALF_TALL)
 
     # ---- (5) failure-mode taxonomy ----
     def _fmode_bar(ax):
@@ -392,7 +388,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         ax.set_xlabel("Candidates flagged"); ax.xaxis.set_major_formatter(_kfmt)
         ax.grid(axis="y", visible=False)
     if any(m != "off_topic" for m in fmodes):
-        _fig(f"{slug}_relpool_failure_modes.pdf", _fmode_bar, size=(4.8, 3.2))
+        _fig(f"{slug}_relpool_failure_modes.pdf", _fmode_bar, size=HALF)
 
     # ---- (6) average per-step pool composition: bar-of-pie zoomed on the relevant tail ----
     _write_pool_pie(slug, pool_frac, steps)
