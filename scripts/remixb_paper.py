@@ -70,8 +70,9 @@ def _style(ax):
 OFFSETS = {
     "cost": {"remix_c_unfiltered": (-5, 4, "right"), "remix_c": (5, -7, "left"), "hybrid_score_fusion": (4, 3, "left"),
              "llm_caption_rewrite": (5, -6, "left"), "llm_pointwise_rerank": (-5, 0, "right")},
-    "pr": {"remix_c_unfiltered": (5, 3, "left"), "remix_c": (5, -8, "left"), "llm_caption_rewrite": (-5, 3, "right"),
-           "hybrid_score_fusion": (5, 0, "left"), "random": None},
+    "pr": {"remix_c_unfiltered": (4, -9, "left"), "remix_c": (5, -8, "left"), "llm_caption_rewrite": (-6, 3, "right"),
+           "hybrid_score_fusion": (6, 2, "left"), "analogy_steering": (-7, -3, "right"), "bm25": (7, 0, "left"),
+           "random": None},
 }
 
 

@@ -224,9 +224,8 @@ def fig_joint_scatter(ds: Dict[str, Any], ratings: Dict[str, List[Dict[str, Any]
                         color="white" if f > 0.6 * frac.max() else INK, zorder=3)
     exact = float(np.mean(xs == ys))
     within1 = float(np.mean(np.abs(xs - ys) <= 1))
-    ax.text(0.03, 0.97, f"exact {100 * exact:.0f}%\nwithin 1: {100 * within1:.0f}%", transform=ax.transAxes,
-            ha="left", va="top", fontsize=FS_SMALL,
-            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#BBBBBB", lw=0.5))
+    ax.set_title(f"exact {100 * exact:.0f}%, within 1 point {100 * within1:.0f}%", fontsize=FS_SMALL + 0.5,
+                 color="#444444")
     ax.set_xlim(0.4, 5.6)
     ax.set_ylim(0.4, 5.6)
     ax.set_xticks(range(1, 6))
@@ -261,8 +260,8 @@ def fig_mean_dumbbell(ds: Dict[str, Any], agreement_rows: List[Dict[str, Any]]) 
     ax.scatter(lm, y, s=18, color=JUDGE[judges[0]], label=judges[0], zorder=2, edgecolor=EDGE, linewidths=0.5)
     ax.scatter(rm, y, s=18, color=JUDGE[judges[1]], label=judges[1], zorder=2, edgecolor=EDGE, linewidths=0.5)
     _hbars_style(ax, labels, y)
-    ax.set_xlabel("Mean rubric score (1-5)")
-    ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2)
+    ax.set_xlabel("Mean score (1-5)")
+    ax.legend(loc="lower center", bbox_to_anchor=(0.35, 1.0), ncol=1)
     savefig(fig, FIG_DIR / f"{ds['label']}_val_mean_dumbbell.pdf")
     plt.close(fig)
 

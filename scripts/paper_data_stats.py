@@ -600,6 +600,8 @@ def fig_llm_issue_tags(ctx):
     fig, ax = _new()
     b = ax.barh([nice(x) for x in it["issue_tag"]], it["count"].values, color=VERM, **BAR)
     _bar_labels(ax, b, it["count"].values, horizontal=True)
+    ax.set_xlim(0, it["count"].max() * 1.4)            # room for the value labels
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
     ax.set_xlabel("Flagged instructions")
     _finish(fig, ax, ctx, "val_issue_tags", grid="x")
 
@@ -728,7 +730,7 @@ def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[
                 linewidth=1.8, color=DS_COLOR[lab], label=DS_TITLE[lab], density=True)
     ax.set_xlabel("Transition score")
     ax.set_ylabel("Density")
-    ax.legend()
+    ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2, handlelength=0.8, columnspacing=0.6)
     save(fig, "trans_score")
 
     # chain length (grouped bar, % of chains)

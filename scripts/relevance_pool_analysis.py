@@ -141,22 +141,24 @@ def _write_pool_pie(slug: str, pool_frac: Dict[int, float], steps: int) -> None:
     rest_total = sum(means[g] for g in tail) or 1.0
 
     fig = plt.figure(figsize=(FULL[0], 2.3), layout="none")
-    ax1 = fig.add_axes([0.03, 0.03, 0.38, 0.86]); ax1.set_aspect("equal")
+    ax1 = fig.add_axes([0.04, 0.08, 0.36, 0.84]); ax1.set_aspect("equal")
     w1, _, _ = ax1.pie(
         [means[g] for g in order], colors=[GRADE_COLOR[g] for g in order],
         startangle=90, counterclock=False, explode=[0.0] + [0.06] * 6,
-        wedgeprops=WEDGE_EDGE, autopct=lambda p: f"Non-relevant\n{p:.0f}%" if p > 50 else "",
+        wedgeprops=WEDGE_EDGE, autopct=lambda p: "",
         pctdistance=0.45, textprops=dict(fontsize=FS + 1, color="#222222", fontweight="bold"),
     )
 
+    ax1.set_xlim(-1.2, 1.2); ax1.set_ylim(-1.2, 1.2)
+    ax1.text(-0.05, -0.72, f"Non-relevant\n{means[0] * 100:.0f}%", ha="center", va="center",
+             fontsize=FS + 1, color="#222222", fontweight="bold")
     # bar-chart inset (real axes: spines, ticks, grid) to the right of the pie
-    axins = ax1.inset_axes([1.42, 0.14, 1.12, 0.72])
+    axins = ax1.inset_axes([1.55, 0.2, 1.05, 0.75])
     vals = [means[g] / rest_total * 100 for g in tail]
     axins.bar(range(len(tail)), vals, color=[GRADE_COLOR[g] for g in tail], **WEDGE_EDGE)
-    axins.set_xticks(range(len(tail))); axins.set_xticklabels([GRADE_LABEL[g] for g in tail], rotation=25, ha="right")
+    axins.set_xticks(range(len(tail))); axins.set_xticklabels([GRADE_LABEL[g] for g in tail], rotation=45, ha="right")
     axins.set_ylabel("Share of tail (%)")
-    axins.set_title(f"Relevant + failure tail ({rest_total*100:.1f}% of pool)", fontsize=FS, pad=8)
-    axins.set_ylim(0, max(vals) * 1.15)
+    axins.set_ylim(0, max(vals) * 1.15)   # tail share of the pool is given in the caption
     axins.grid(axis="y", alpha=0.7); axins.grid(axis="x", visible=False)
     for sp in ("left", "bottom"):
         axins.spines[sp].set_visible(True)
@@ -281,7 +283,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         ax.bar([GRADE_LABEL[g] for g in gs], [grade.get(g, 0) for g in gs],
                color=[GRADE_COLOR[g] for g in gs], **BAR)
         ax.set_ylabel("Candidates"); ax.set_yscale("log")
-        ax.tick_params(axis="x", labelrotation=20)
+        ax.tick_params(axis="x", labelrotation=45); [t.set_ha("right") for t in ax.get_xticklabels()]
         ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_grade_dist.pdf", _grade_bar)
 
@@ -343,7 +345,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
                             whiskerprops=dict(color="#555555", linewidth=0.6), capprops=dict(color="#555555", linewidth=0.6))
             for b in bp["boxes"]:
                 b.set(facecolor=col, alpha=0.9, edgecolor="#333333", linewidth=0.5)
-        ax.set_xticks(x); ax.set_xticklabels([GRADE_LABEL[g] for g in gs], rotation=20, ha="right")
+        ax.set_xticks(x); ax.set_xticklabels([GRADE_LABEL[g] for g in gs], rotation=45, ha="right")
         ax.set_ylabel("Similarity to target"); ax.set_xlabel("Verified grade"); ax.set_ylim(0, 1.02)
         from matplotlib.patches import Patch
         ax.legend(handles=[Patch(facecolor=BLUE, label="Audio"), Patch(facecolor=ORANGE, label="Caption")],
@@ -386,7 +388,8 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         top = [(m, n) for m, n in fmodes.most_common() if m != "off_topic"][:9]
         top = top[::-1]  # largest ends at the top in barh
         ax.barh([FAILURE_MODE_LABEL.get(m, m) for m, _ in top], [n for _, n in top], color=VERM, **BAR)
-        ax.set_xlabel("Candidates flagged"); ax.xaxis.set_major_formatter(_kfmt)
+        ax.set_xlabel("Candidates flagged")
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v / 1000:.0f}k"))
         ax.grid(axis="y", visible=False)
     if any(m != "off_topic" for m in fmodes):
         _fig(f"{slug}_relpool_failure_modes.pdf", _fmode_bar, size=HALF)

@@ -56,7 +56,8 @@ def _panel(name, ylabel, series, figdir, refs=()):
     if "loss" in name and len(series) == 1:      # single run: avoid a zoom that makes noise look like a trend
         ys = series[0][3]
         ax.set_ylim(min(ys) - 0.3, max(ys) + 0.3)
-    ax.legend(loc="best", handlelength=1.4)
+    if name.endswith("_r10"):                   # the three panels share one legend
+        ax.legend(loc="lower right", handlelength=1.4)
     savefig(fig, figdir / f"{name}.pdf")
     plt.close(fig)
 
