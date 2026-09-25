@@ -227,13 +227,16 @@ class RemixCBaseline:
         return torch.cat(out)
 
     def _load_model(self, ckpt):
-        return RemixC.load_from_checkpoint(ckpt, map_location="cuda")
+        return RemixC.load_from_checkpoint(ckpt, map_location="cuda", weights_only=False)  # our own ckpt (OmegaConf hparams)
 
     def prepare(self, corpus) -> None:
         from .data import Clips
         self.model = self._load_model(self.ckpt).eval()
         dm = torch.load(self.ckpt, map_location="cpu", weights_only=False)["datamodule_hyper_parameters"]
-        self.clips = Clips(pd.read_parquet(Path(dm["index_dir"]) / "clips.parquet"), dm["n_windows"])
+        # every catalogue clip (the corpus includes test clips that no chain uses, so not clips.parquet)
+        manifest = Path(dm["index_dir"]).parents[1] / "ingest" / "normalized_track_manifest.csv"
+        cols = ["clip_id", "track_id", "file_path", "start_time", "end_time"]
+        self.clips = Clips(pd.read_csv(manifest, usecols=cols).drop_duplicates("clip_id"), dm["n_windows"])
         self.corpus = corpus
         self.T = nn.functional.normalize(self._embed(corpus.ids, lambda wav, _: self.model.encode_target(wav)), dim=-1)
 
