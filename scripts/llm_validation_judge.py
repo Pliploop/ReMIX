@@ -461,6 +461,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     data.add_argument("--instruction-field", default="history_unaware_instruction")
     data.add_argument("--chain-offset", type=int, default=0)
     data.add_argument("--max-chains", type=int, default=0, help="0 loads all chains.")
+    data.add_argument("--split", default="", help="Comma-separated splits to keep (e.g. 'test'). Empty = all.")
     data.add_argument("--limit", type=int, default=0, help="Cap number of items judged (0 = all).")
     data.add_argument("--overwrite", action="store_true", help="Re-judge items already rated by this model.")
 
@@ -527,6 +528,11 @@ def main() -> None:
     annotator_id = str(args.annotator_id) if args.annotator_id else f"llm:{args.model_id}"
 
     dataset, samples = load_samples(args)
+    keep_splits = {s.strip() for s in str(args.split).split(",") if s.strip()}
+    if keep_splits:
+        before = len(samples)
+        samples = [s for s in samples if (s.get("record") or {}).get("split") in keep_splits]
+        print(f"[llm-judge] split filter {sorted(keep_splits)}: {before} -> {len(samples)} samples", flush=True)
     if not samples:
         print("[llm-judge] no instruction variants found for the selected slice/field.", flush=True)
         return

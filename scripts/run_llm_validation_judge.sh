@@ -79,6 +79,8 @@ CMD=(
   --max-new-tokens "${MAX_NEW_TOKENS}"
   --temperature "${TEMPERATURE}"
   --max-chains "${MAX_CHAINS}"
+  --chain-offset "${CHAIN_OFFSET:-0}"
+  --split "${SPLIT:-}"
   --limit "${LIMIT}"
 )
 

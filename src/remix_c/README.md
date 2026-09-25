@@ -120,14 +120,36 @@ each query's seed clip is excluded from its own ranking.
 
 ## Benchmark (ReMIX-B)
 
-`RemixCBaseline` in `model.py` implements the harness contract (`prepare(corpus)` /
-`rank_all(queries, k)`) and is registered as `remix_c`. It embeds the test corpus
-with the target tower and ranks by the objective's retrieval score. FLOPs are
-counted exactly with `torch.utils.flop_counter`.
+`RemixCBaseline` (`remix_c`) in `model.py` implements the harness contract
+(`prepare(corpus)` / `rank_all(queries, k)`): it embeds the test catalogue with the
+target tower (reported as index-time `index_tflops`) and ranks by the objective's
+retrieval score. `RemixCUntrained` (`remix_c_untrained`) builds the same model from
+the checkpoint's config without loading its weights. FLOPs are counted with
+`torch.utils.flop_counter`.
 
 ```bash
-python scripts/run_remix_b.py --baselines remix_c --ckpt <path.ckpt> --dry-run
+python scripts/run_remix_b.py --dataset music4all --output-dir results/remix_b/music4all \
+    --baselines remix_c --ckpt <path.ckpt> --as remix_c_unfiltered
+python scripts/remixb_paper.py      # table + figures
 ```
+
+Checkpoints (hard-linked so a new "best" cannot replace them):
+`/gpfs/scratch/acw749/remix_c/ckpts/`. Keep `ModelCheckpoint(save_last=True)` out of
+the config: it only mirrors checkpoints saved by another rule, so the `latest`
+callback keeps the most recent step instead.
+
+### Results so far (Music4All test, small model, contrastive)
+
+| run | data | best val step | nDCG@10 | R@100 | MRR |
+|---|---|---|---|---|---|
+| untrained | – | – | 0.002 | 0.019 | 0.005 |
+| d2 (2-layer fusion, batch 64) | filtered (both judges ≥ 4, 58k steps) | 8k | 0.099 | 0.567 | 0.173 |
+| d4 (4-layer fusion, batch 128) | filtered | 4k | 0.097 | 0.552 | 0.170 |
+| d2 | all train variants (163k steps) | 17k (still training) | **0.113** | **0.596** | **0.194** |
+
+On the filtered set validation loss rises after ~2k steps; on all data it stays flat.
+Fusion depth does not help; data volume does. Open: retrain the filtered model once the
+train split is fully judged, `objective=lejepa`, `objective.n_swap=0`, `model=large`.
 
 ## Files
 

@@ -117,22 +117,30 @@ history-aware vs history-unaware, and #turns. A **designated-target Recall@k**
 All zero-shot baselines share the reused embeddings; only `LLMCaptionRewrite`,
 `LLMPointwiseReranker`, and `ReMIX-C` call models at eval/train time.
 
-## 7. Code layout (planned)
+## 7. Code layout
 
 ```
 src/jamendo_instruct/benchmark/
-  contracts.py     # Corpus, Query, Results dataclasses + JSONL IO
-  graded_pool.py   # grade_pool() (answer key), evaluate() (scoring), Report, metrics
+  graded_pool.py   # grade_pool() (answer key), evaluate() via ir_measures, Report
   baselines/
-    base.py        # Baseline protocol + shared embedding index helpers
-    trivial.py     # Random, oracle, seed/instruction NN, concat, BM25
-    fusion.py      # LateFusion, MuLanZeroShot
-    llm.py         # LLMCaptionRewrite, LLMPointwiseReranker
-    remix_c.py     # trained adapter (+ train loop under train/)
+    base.py        # Query/Corpus dataclasses, Baseline protocol, top-k + FLOP helpers
+    trivial.py     # Random, seed audio/caption NN, target-caption oracle, BM25
+    embed_baselines.py  # instruction text, caption+instruction, MuLan zero-shot, late fusion
+    llm.py         # LLM caption rewrite, MuLan rewrite, analogy steering, hybrid fusion, pointwise rerank
+    embedders.py   # EmbeddingGemma / MuQ-MuLan text encoders with FLOP counting
+src/remix_c/model.py   # RemixCBaseline (`remix_c`), RemixCUntrained (`remix_c_untrained`)
 scripts/
-  export_benchmark.py   # pool + run dirs -> corpus.jsonl, queries.jsonl, qrels.jsonl
-  run_benchmark.py      # --baseline X -> Report (json + table)
+  export_benchmark.py   # gate + pool -> corpus_*, queries.jsonl (qrels read from the pool)
+  run_remix_b.py        # --baselines ... --output-dir ... [--ckpt X --as ROW] [--dry-run]
+  remixb_paper.py       # results -> paper table + cost/quality and precision/recall figures
 ```
+
+Adding a result: `python scripts/run_remix_b.py --dataset music4all --output-dir
+results/remix_b/music4all --baselines <name>` (for a checkpoint: `--baselines remix_c
+--ckpt <path> --as <row name>`, and add the row to `GROUPS` in `scripts/remixb_table.py`),
+then `python scripts/remixb_paper.py` and copy the table/figures into the Overleaf clone.
+FLOPs are query-time work with precomputed catalogue embeddings; a baseline that encodes
+the catalogue itself reports that separately as `index_tflops`.
 
 ## 8. Build order
 
