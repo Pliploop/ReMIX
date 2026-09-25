@@ -87,6 +87,8 @@ def main() -> None:
     ap.add_argument("--split", default="test")
     ap.add_argument("--limit", type=int, default=0, help="cap #queries (0 = all); for quick validation")
     ap.add_argument("--ckpt", default=None, help="ReMIX-C checkpoint for the remix_c baseline")
+    ap.add_argument("--as", dest="save_as", default=None,
+                    help="save a single baseline under this name (e.g. one row per ReMIX-C checkpoint)")
     args = ap.parse_args()
     if args.ckpt:
         os.environ["REMIX_C_CKPT"] = args.ckpt
@@ -110,10 +112,13 @@ def main() -> None:
     print(f"corpus {len(corpus.ids):,} clips | {len(queries):,} queries | {len(qrels):,} judged\n", flush=True)
 
     names = B.all_names() if args.baselines == ["all"] else args.baselines
+    if args.save_as and len(names) != 1:
+        ap.error("--as needs exactly one baseline")
     rows = []
-    for name in names:
+    for key in names:
+        name = args.save_as or key
         t0 = time.time()
-        b = B.get(name)()
+        b = B.get(key)()
         b.prepare(corpus)
         if hasattr(b, "rank_all"):
             preds = b.rank_all(queries, args.k)
@@ -121,13 +126,15 @@ def main() -> None:
             preds = {q.query_id: b.rank(q, args.k) for q in queries}
         rep = evaluate(preds, qrels)
         dt = time.time() - t0
-        flops = int(getattr(b, "flops", 0) or 0)
+        flops = int(getattr(b, "flops", 0) or 0)            # query-time work
+        index_flops = int(getattr(b, "index_flops", 0) or 0)  # catalogue encoding, if the baseline does it itself
         rows.append((name, rep, dt, flops))
         if out:
             (out / f"{name}.json").write_text(json.dumps(
                 {"baseline": name, "dataset": args.dataset, "split": args.split, "k": args.k,
                  "n_queries": len(queries), "n_corpus": len(corpus.ids),
                  "seconds": round(dt, 1), "flops": flops, "tflops": round(flops / 1e12, 3),
+                 "index_tflops": round(index_flops / 1e12, 3),
                  "metrics": dict(rep)}, indent=2))
         print(f"[{name}] ({dt:.0f}s, {flops/1e12:.2f} TFLOP)\n{rep}\n", flush=True)
 

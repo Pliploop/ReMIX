@@ -239,6 +239,9 @@ class RemixCBaseline:
         self.clips = Clips(pd.read_csv(manifest, usecols=cols).drop_duplicates("clip_id"), dm["n_windows"])
         self.corpus = corpus
         self.T = nn.functional.normalize(self._embed(corpus.ids, lambda wav, _: self.model.encode_target(wav)), dim=-1)
+        # catalogue encoding is an index-time cost (other baselines use precomputed catalogue embeddings too);
+        # `flops` reports query-time work only
+        self.index_flops, self.flops = self.flops, 0
 
     def rank_all(self, queries, k: int) -> Dict[str, List[str]]:
         from jamendo_instruct.benchmark.baselines.base import batched_topk
