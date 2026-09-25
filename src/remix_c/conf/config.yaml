@@ -39,13 +39,18 @@ logger:
   offline: false
 
 callbacks:
-  checkpoint:                    # best-by-MRR + last.ckpt, written at every validation (4-12 GB each: frozen towers included)
+  checkpoint:                    # best by val/MRR (4-12 GB each: frozen towers included)
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     monitor: val/MRR
     mode: max
-    save_top_k: 1                # NB save_top_k=0 + save_last=true saves NOTHING: last.ckpt only mirrors saved ckpts
-    save_last: true
+    save_top_k: 1
     filename: "best-{step}"
+  latest:                        # most recent step. NB save_last only mirrors checkpoints another rule saved,
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint   # so it would not track the latest step on its own
+    monitor: null
+    save_top_k: 1
+    every_n_train_steps: ${trainer.val_check_interval}
+    filename: "latest-{step}"
   lr:
     _target_: lightning.pytorch.callbacks.LearningRateMonitor
     logging_interval: step

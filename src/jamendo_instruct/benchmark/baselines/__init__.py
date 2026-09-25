@@ -21,8 +21,8 @@ def _load_llm():
 
 
 def _load_trained():
-    from remix_c.model import RemixCBaseline  # checkpoint from $REMIX_C_CKPT (run_remix_b.py --ckpt)
-    REGISTRY[RemixCBaseline.name] = RemixCBaseline
+    from remix_c.model import RemixCBaseline, RemixCUntrained  # checkpoint from $REMIX_C_CKPT (--ckpt)
+    REGISTRY.update({b.name: b for b in (RemixCBaseline, RemixCUntrained)})
 
 
 def get(name: str):

@@ -226,9 +226,12 @@ class RemixCBaseline:
             i += len(wav)
         return torch.cat(out)
 
+    def _load_model(self, ckpt):
+        return RemixC.load_from_checkpoint(ckpt, map_location="cuda")
+
     def prepare(self, corpus) -> None:
         from .data import Clips
-        self.model = RemixC.load_from_checkpoint(self.ckpt, map_location="cuda").eval()
+        self.model = self._load_model(self.ckpt).eval()
         dm = torch.load(self.ckpt, map_location="cpu", weights_only=False)["datamodule_hyper_parameters"]
         self.clips = Clips(pd.read_parquet(Path(dm["index_dir"]) / "clips.parquet"), dm["n_windows"])
         self.corpus = corpus
@@ -242,3 +245,15 @@ class RemixCBaseline:
         exclude = [self.corpus.id2row.get(q.seed_clip_id, -1) for q in queries]
         preds = batched_topk(Q.cpu().numpy(), self.T.cpu().numpy(), self.corpus.ids, k, exclude)
         return {q.query_id: p for q, p in zip(queries, preds)}
+
+
+class RemixCUntrained(RemixCBaseline):
+    """Same config as the checkpoint, weights not loaded: frozen towers + randomly
+    initialised fusion (seed 0). Shows what training adds."""
+
+    name = "remix_c_untrained"
+
+    def _load_model(self, ckpt):
+        hp = torch.load(ckpt, map_location="cpu", weights_only=False)["hyper_parameters"]
+        torch.manual_seed(0)
+        return RemixC(hp["model"], hp["objective"], hp["optim"]).cuda()
