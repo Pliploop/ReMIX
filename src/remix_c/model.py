@@ -143,26 +143,30 @@ class RemixC(L.LightningModule):
             return x
         return self.all_gather(x, sync_grads=x.is_floating_point()).flatten(0, 1)
 
-    def _swaps(self, batch, K):
+    def _swaps(self, batch, K, generator=None):
         """K other batch items per anchor; invalid if same target clip or same (normalised) instruction."""
         B = len(batch["instruction"])
-        j = (torch.arange(B)[:, None] + torch.randperm(B - 1)[:K][None] + 1) % B
+        j = (torch.arange(B)[:, None] + torch.randperm(B - 1, generator=generator)[:K][None] + 1) % B
         h = torch.tensor([hash(s.strip().lower()) for s in batch["instruction"]])
         tid = batch["target_id"].cpu()
         valid = (h[j] != h[:, None]) & (tid[j] != tid[:, None])
         return j.to(self.device), valid.to(self.device)
 
-    def training_step(self, batch, _):
-        a = self.seed_tower.tokens(batch["seed"])
-        text, mask = self.instruction_tower(batch["instruction"])
+    def _loss(self, batch, a, text, mask, generator=None):
+        """Objective on one batch (shared by train and val). Returns (parts, q, t)."""
         q, t = self.fusion(a, text, mask), self.encode_target(batch["target"])
         K = min(self.objective.n_swap, len(q) - 1)
         q_swap = valid = None
         if K > 0:
-            j, valid = self._swaps(batch, K)
+            j, valid = self._swaps(batch, K, generator)
             q_swap = self.fusion(a.repeat_interleave(K, 0), text[j.flatten()], mask[j.flatten()]).view(len(q), K, -1)
         out = self.objective(q=q, t=t, target_ids=batch["target_id"], gather=self._gather,
                              offset=self.global_rank * len(q), q_swap=q_swap, swap_valid=valid)
+        return out, q, t
+
+    def training_step(self, batch, _):
+        a = self.seed_tower.tokens(batch["seed"])
+        out, q, _ = self._loss(batch, a, *self.instruction_tower(batch["instruction"]))
         self.log_dict({f"train/{k}": v for k, v in out.items()}, prog_bar=True, batch_size=len(q))
         self.log("train/peak_mem_gb", torch.cuda.max_memory_allocated() / 2**30, batch_size=len(q))
         now = time.perf_counter()                                # wall clock incl. dataloader waits
@@ -174,14 +178,17 @@ class RemixC(L.LightningModule):
     def on_validation_epoch_start(self):
         self.val_outputs.clear()
 
-    def validation_step(self, batch, _):
+    def validation_step(self, batch, batch_idx):
         a = self.seed_tower.tokens(batch["seed"])
-        instr = list(batch["instruction"])
-        shuffled = instr[1:] + instr[:1]                         # instruction ablation: neighbour's instruction
+        text, mask = self.instruction_tower(batch["instruction"])
+        swaps = torch.Generator().manual_seed(batch_idx)        # fixed swaps: val loss comparable across evals
+        out, q, t = self._loss(batch, a, text, mask, swaps)
+        self.log_dict({f"val/{k}": v for k, v in out.items() if k != "temperature"},
+                      sync_dist=True, batch_size=len(q))
         self.val_outputs.append(dict(
-            q=self.score_query(self.encode_query(None, instr, a)),
-            q_shuffled=self.score_query(self.encode_query(None, shuffled, a)),
-            t=nn.functional.normalize(self.encode_target(batch["target"]), dim=-1),
+            q=self.score_query(q),
+            q_shuffled=self.score_query(self.fusion(a, text.roll(-1, 0), mask.roll(-1, 0))),  # neighbour's instruction
+            t=nn.functional.normalize(t, dim=-1),
             seed_t=nn.functional.normalize(self.encode_target(batch["seed"]), dim=-1),
             seed_id=batch["seed_id"], target_id=batch["target_id"]))
 

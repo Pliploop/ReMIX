@@ -97,10 +97,10 @@ def export(dataset: str, split: str = "test") -> None:
                     continue
                 r = json.loads(line)
                 key = (r.get("chain_id"), r.get("turn_index"))
-                if key in seen:
+                if key in seen or key not in gate:  # stale pools from pre-refresh chains: not a validated query
                     continue
                 seen.add(key)
-                hu, ha = gate.get(key, ("", ""))
+                hu, ha = gate[key]
                 qf.write(json.dumps({
                     "query_id": f"{key[0]}#{key[1]}",
                     "seed_clip_id": r.get("source_clip_id"),
