@@ -63,6 +63,7 @@ class _LLM:
         self._decode = decode_vllm_chat_completions
         self.n_params = _PARAMS.get(MODEL_ID, 27e9)
         self.flops = 0
+        self._rewrites = {}                                    # query-set key -> (captions, flops)
 
     def chat(self, messages_batch, max_tokens: int, temperature: float = 0.0) -> List[str]:
         if not messages_batch:
@@ -77,11 +78,19 @@ class _LLM:
         return outs
 
     def rewrite(self, c: Corpus, queries: List[Query]) -> List[str]:
-        msgs = [[{"role": "system", "content": REWRITE_SYS},
-                 {"role": "user", "content": f"Seed caption:\n{_seed_caption(c, q)}\n\nEdit instruction:\n{q.instruction}\n\nRewritten caption:"}]
-                for q in queries]
-        caps = self.chat(msgs, max_tokens=200)
-        return [cap or q.instruction for cap, q in zip(caps, queries)]
+        """Greedy (temperature 0) rewrite, cached per query set: the 4 rewrite-based baselines
+        share one generation pass; each still books the rewrite FLOPs it would have spent."""
+        key = tuple((q.seed_clip_id, q.instruction) for q in queries)
+        if key not in self._rewrites:
+            msgs = [[{"role": "system", "content": REWRITE_SYS},
+                     {"role": "user", "content": f"Seed caption:\n{_seed_caption(c, q)}\n\nEdit instruction:\n{q.instruction}\n\nRewritten caption:"}]
+                    for q in queries]
+            before = self.flops
+            caps = self.chat(msgs, max_tokens=200)
+            self._rewrites[key] = ([cap or q.instruction for cap, q in zip(caps, queries)], self.flops - before)
+        else:
+            self.flops += self._rewrites[key][1]
+        return self._rewrites[key][0]
 
 
 class LLMCaptionRewrite(Baseline):

@@ -131,16 +131,17 @@ def main() -> None:
                  "metrics": dict(rep)}, indent=2))
         print(f"[{name}] ({dt:.0f}s, {flops/1e12:.2f} TFLOP)\n{rep}\n", flush=True)
 
-    metrics = list(rows[0][1]) if rows else []
-    if out:
+    if out:  # combined tables cover every <baseline>.json in out/, so separate jobs can share one dir
+        done = [json.loads(p.read_text()) for p in sorted(out.glob("*.json")) if p.name != "results.json"]
+        table = [(d["baseline"], d["metrics"], d["seconds"], d["flops"]) for d in done]
+        metrics = list(table[0][1]) if table else []
         (out / "results.json").write_text(json.dumps(
-            {n: {"metrics": dict(r), "seconds": round(s, 1), "tflops": round(fl / 1e12, 3)}
-             for n, r, s, fl in rows}, indent=2))
+            {n: {"metrics": r, "seconds": s, "tflops": round(fl / 1e12, 3)} for n, r, s, fl in table}, indent=2))
         with (out / "results.md").open("w") as f:
             cols = metrics + ["sec", "TFLOP"]
             f.write("| baseline | " + " | ".join(cols) + " |\n")
             f.write("|" + "---|" * (len(cols) + 1) + "\n")
-            for name, rep, sec, fl in rows:
+            for name, rep, sec, fl in table:
                 f.write(f"| {name} | " + " | ".join(f"{rep[m]:.4f}" for m in metrics)
                         + f" | {sec:.0f} | {fl/1e12:.2f} |\n")
     print()

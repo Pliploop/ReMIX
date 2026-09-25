@@ -18,7 +18,10 @@ def main(cfg: DictConfig) -> None:
     L.seed_everything(cfg.seed, workers=True)
     logger = WandbLogger(**cfg.logger, config=OmegaConf.to_container(cfg, resolve=True))
     trainer = L.Trainer(**cfg.trainer, logger=logger, callbacks=[instantiate(c) for c in cfg.callbacks.values()])
-    trainer.fit(RemixC(cfg.model, cfg.objective, cfg.optim), instantiate(cfg.data), ckpt_path=cfg.resume)
+    model, data = RemixC(cfg.model, cfg.objective, cfg.optim), instantiate(cfg.data)
+    if cfg.validate_first and not cfg.resume:
+        trainer.validate(model, data)                        # full val pass logged at step 0
+    trainer.fit(model, data, ckpt_path=cfg.resume)
 
 
 if __name__ == "__main__":

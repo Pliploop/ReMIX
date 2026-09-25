@@ -6,6 +6,7 @@ defaults:
 
 seed: 0
 resume: null                     # path to a .ckpt to resume from
+validate_first: true             # full validation at step 0 (untrained fusion = reference point)
 run_name: ${hydra:runtime.choices.model}_${hydra:runtime.choices.objective}
 out_root: /gpfs/scratch/acw749/remix_c/runs
 
@@ -26,7 +27,7 @@ trainer:
   check_val_every_n_epoch: null
   log_every_n_steps: 20
   gradient_clip_val: 1.0
-  num_sanity_val_steps: 2
+  num_sanity_val_steps: 0         # validate_first covers it
   default_root_dir: ${hydra:runtime.output_dir}
 
 logger:
@@ -38,12 +39,11 @@ logger:
   offline: false
 
 callbacks:
-  checkpoint:
+  checkpoint:                    # keeps only the most recent checkpoint (4-12 GB each: frozen towers are included).
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    monitor: val/R@10
-    mode: max
-    save_top_k: 2
-    save_last: true
+    monitor: null                # NB save_top_k=0 + save_last=true saves NOTHING: last.ckpt only copies saved ckpts
+    save_top_k: 1
+    every_n_train_steps: ${trainer.val_check_interval}
     filename: "{step}"
   lr:
     _target_: lightning.pytorch.callbacks.LearningRateMonitor
