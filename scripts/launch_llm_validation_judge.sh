@@ -69,7 +69,7 @@ sbatch \
   -n 1 \
   --cpus-per-gpu=12 \
   --mem-per-cpu=7500M \
-  -t 12:00:00 \
+  -t "${TIME_LIMIT:-12:00:00}" \
   -o "${LOG_DIR}/slurm-%x_%j.out" \
   -e "${LOG_DIR}/slurm-%x_%j.err" \
   --export="${EXPORTS}" \
