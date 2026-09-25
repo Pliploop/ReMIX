@@ -15,8 +15,8 @@ from matplotlib import font_manager
 
 TEXT_W = 5.5
 HALF_W = 2.65
-HALF = (HALF_W, 1.95)
-HALF_TALL = (HALF_W, 2.45)
+HALF = (HALF_W, HALF_W)          # square by default
+HALF_TALL = HALF
 FULL = (TEXT_W, 2.1)
 
 FS = 7.5          # base text

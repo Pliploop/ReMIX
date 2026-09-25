@@ -368,7 +368,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         M = np.array([[ptype_grade[p].get(g, 0) for g in GRADES] for p in pts], float)
         Mn = M / np.clip(M.sum(1, keepdims=True), 1, None)
         im = ax.imshow(Mn, cmap=SEQ, aspect="auto", vmin=0, vmax=1)
-        ax.set_xticks(range(len(GRADES))); ax.set_xticklabels([GRADE_LABEL[g] for g in GRADES], rotation=20, ha="right")
+        ax.set_xticks(range(len(GRADES))); ax.set_xticklabels([GRADE_LABEL[g] for g in GRADES], rotation=45, ha="right")
         ax.set_yticks(range(len(pts))); ax.set_yticklabels([PTYPE_LABEL.get(p, p) for p in pts])
         ax.set_xlabel("LLM-verified grade"); ax.set_ylabel("Heuristic pool type"); ax.grid(False)
         for i in range(len(pts)):

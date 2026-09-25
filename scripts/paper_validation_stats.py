@@ -213,7 +213,7 @@ def fig_joint_scatter(ds: Dict[str, Any], ratings: Dict[str, List[Dict[str, Any]
     frac = grid[mask] / n
     sizes = 12 + 330 * np.sqrt(frac / frac.max())       # area ~ share (sqrt keeps small cells visible)
 
-    fig, ax = _new(HALF_W, 2.35)
+    fig, ax = _new()
     ax.plot([0.5, 5.5], [0.5, 5.5], ls="--", lw=0.7, color="#999999", zorder=0)
     sc = ax.scatter(gx[mask], gy[mask], s=sizes, c=frac, cmap=SEQ, vmin=0, vmax=frac.max(),
                     edgecolor=EDGE, linewidth=0.5, zorder=2)

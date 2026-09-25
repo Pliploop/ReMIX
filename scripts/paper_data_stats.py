@@ -298,7 +298,7 @@ def fig_genre(ctx):
         )
     ax.set(aspect="equal")
     ax.set_xlim(-1.52, 1.52)
-    ax.set_ylim(-1.28, 1.28)
+    ax.set_ylim(-1.52, 1.52)   # equal limits: the figure stays square after tight cropping
     _finish(fig, ax, ctx, "corpus_genre", grid=None)
 
 
@@ -380,7 +380,7 @@ def fig_genre_matrix(ctx):
     sub = su[su["source_genre"].isin(top) & su["target_genre"].isin(top)]
     mat = pd.crosstab(sub["source_genre"], sub["target_genre"], normalize="index").reindex(index=top, columns=top).fillna(0)
     fig, ax = _new(*HALF_TALL)
-    im = ax.imshow(mat.values, cmap=PROB, vmin=0, aspect="auto")
+    im = ax.imshow(mat.values, cmap=PROB, vmin=0, aspect="equal")
     ax.set_xticks(range(len(top)), [nice(t) for t in top], rotation=90)
     ax.set_yticks(range(len(top)), [nice(t) for t in top])
     ax.tick_params(length=0)
@@ -399,7 +399,7 @@ def _transition_heatmap(ctx, src_col, tgt_col, order, name):
         return
     mat = pd.crosstab(su[src_col], su[tgt_col], normalize="index").reindex(index=cats, columns=cats).fillna(0)
     fig, ax = _new(*HALF_TALL)
-    im = ax.imshow(mat.values, cmap=PROB, vmin=0, vmax=1, aspect="auto")
+    im = ax.imshow(mat.values, cmap=PROB, vmin=0, vmax=1, aspect="equal")
     ax.set_xticks(range(len(cats)), [nice(c) for c in cats], rotation=30, ha="right")
     ax.set_yticks(range(len(cats)), [nice(c) for c in cats])
     for i in range(len(cats)):
@@ -464,12 +464,17 @@ def fig_axis_cooccurrence(ctx):
                 co[idx[a], idx[b]] += 1
     np.fill_diagonal(co, 0)  # self-co-occurrence is uninformative; drop it
     fig, ax = _new(*HALF_TALL)
-    im = ax.imshow(co, cmap=COOC_CMAP, aspect="auto")
-    ax.set_xticks(range(len(top)), [nice(a) for a in top], rotation=90)
-    ax.set_yticks(range(len(top)), [nice(a) for a in top])
+    im = ax.imshow(co, cmap=COOC_CMAP, aspect="equal")
+    short = {"genre_style": "Genre", "texture_production": "Texture", "speed": "Tempo", "mood": "Mood",
+             "vocal_style_or_gender": "Vocals", "instrumentation": "Instrum.", "energy": "Energy",
+             "theme_or_language": "Theme", "rhythm": "Rhythm"}
+    labels = [short.get(a, nice(a)) for a in top]
+    ax.set_xticks(range(len(top)), labels, rotation=90)
+    ax.set_yticks(range(len(top)), labels)
     ax.tick_params(length=0)
     ax.grid(False)
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04).set_label("Co-occurring instructions")
+    cb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
+    cb.set_label("Instructions"); cb.ax.yaxis.set_major_formatter(lambda v, _: _abbrev(v))
     _finish(fig, ax, ctx, "recipe_cooccurrence", grid=None)
 
 
@@ -593,7 +598,7 @@ def fig_llm_issue_tags(ctx):
     fig, ax = _new()
     b = ax.barh([nice(x) for x in it["issue_tag"]], it["count"].values, color=VERM, **BAR)
     _bar_labels(ax, b, it["count"].values, horizontal=True)
-    ax.set_xlabel("Number of flagged instructions")
+    ax.set_xlabel("Flagged instructions")
     _finish(fig, ax, ctx, "val_issue_tags", grid="x")
 
 
@@ -603,7 +608,7 @@ def fig_leakage(ctx):
     art = {s: set(corpus_df[corpus_df["split"] == s]["artist_id"]) - {""} for s in splits}
     mat = np.array([[len(art[a] & art[b]) / max(1, len(art[a])) for b in splits] for a in splits])
     fig, ax = _new(*HALF_TALL)
-    im = ax.imshow(mat, cmap="Reds", vmin=0, vmax=1, aspect="auto")
+    im = ax.imshow(mat, cmap="Reds", vmin=0, vmax=1, aspect="equal")
     ax.set_xticks(range(len(splits)), [nice(s) for s in splits])
     ax.set_yticks(range(len(splits)), [nice(s) for s in splits])
     for i in range(len(splits)):
