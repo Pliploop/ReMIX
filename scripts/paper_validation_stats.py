@@ -41,6 +41,7 @@ from jamendo_instruct.demo.human_validation_app import (  # noqa: E402
 from jamendo_instruct.demo.validation_rubric import RATING_QUESTIONS  # noqa: E402
 
 from paper_data_stats import QUESTION_SHORT, _bar_labels, _new, nice, setup_style  # noqa: E402
+from paper_style import savefig  # noqa: E402
 from paper_style import BAR, DATASET, EDGE, FS_SMALL, HALF_TALL, HALF_W, INK, JUDGE, SCORE, SEQ  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
@@ -135,7 +136,7 @@ def fig_accept_by_question(ds: Dict[str, Any], ratings: Dict[str, List[Dict[str,
     ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0], ["0", "25", "50", "75", "100"])
     ax.set_xlabel("Accepted (score ≥ 4), %")
     ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2)
-    fig.savefig(FIG_DIR / f"{ds['label']}_val_accept_by_question.pdf")
+    savefig(fig, FIG_DIR / f"{ds['label']}_val_accept_by_question.pdf")
     plt.close(fig)
 
 
@@ -158,7 +159,7 @@ def fig_rubric_dist(ds: Dict[str, Any], judge: str, records: Sequence[Dict[str, 
     ax.set_xlabel("Share of ratings, %")
     ax.legend(title="Score", ncol=5, loc="lower center", bbox_to_anchor=(0.4, 1.0),
               handlelength=0.8, columnspacing=0.6, title_fontsize=FS_SMALL + 0.5)
-    fig.savefig(FIG_DIR / f"{ds['label']}_val_rubric_{_judge_slug(judge)}.pdf")
+    savefig(fig, FIG_DIR / f"{ds['label']}_val_rubric_{_judge_slug(judge)}.pdf")
     plt.close(fig)
 
 
@@ -181,7 +182,7 @@ def fig_agreement_ac1(agreements: Dict[str, List[Dict[str, Any]]]) -> None:
     ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
     ax.set_xlabel("Gwet's AC1 (accept decision)")
     ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2)
-    fig.savefig(FIG_DIR / "remix_val_agreement_ac1.pdf")
+    savefig(fig, FIG_DIR / "remix_val_agreement_ac1.pdf")
     plt.close(fig)
 
 
@@ -239,7 +240,7 @@ def fig_joint_scatter(ds: Dict[str, Any], ratings: Dict[str, List[Dict[str, Any]
     cb.ax.yaxis.set_major_formatter(lambda v, _: f"{100 * v:.0f}")
     cb.ax.tick_params(labelsize=FS_SMALL)
     cb.outline.set_linewidth(0.5)
-    fig.savefig(FIG_DIR / f"{ds['label']}_val_joint_{qid}.pdf")
+    savefig(fig, FIG_DIR / f"{ds['label']}_val_joint_{qid}.pdf")
     plt.close(fig)
 
 
@@ -262,7 +263,7 @@ def fig_mean_dumbbell(ds: Dict[str, Any], agreement_rows: List[Dict[str, Any]]) 
     _hbars_style(ax, labels, y)
     ax.set_xlabel("Mean rubric score (1-5)")
     ax.legend(loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2)
-    fig.savefig(FIG_DIR / f"{ds['label']}_val_mean_dumbbell.pdf")
+    savefig(fig, FIG_DIR / f"{ds['label']}_val_mean_dumbbell.pdf")
     plt.close(fig)
 
 

@@ -23,7 +23,7 @@ GROUPS = [
                       ("analogy_steering", "Analogy steering"), ("hybrid_score_fusion", "Hybrid score fusion"),
                       ("llm_pointwise_rerank", "LLM pointwise rerank")]),
     ("Trained on ReMIX", [("remix_c_untrained", "ReMIX-C, untrained"), ("remix_c", "ReMIX-C, filtered"),
-                          ("remix_c_d4", "ReMIX-C, filtered, 4 layers"), ("remix_c_unfiltered", "ReMIX-C, all data")]),
+                          ("remix_c_d4", "ReMIX-C, filtered, 4 layers"), ("remix_c_unfiltered", "ReMIX-C")]),
 ]
 COLS = [("nDCG@10", "nDCG@10"), ("nDCG@100", "nDCG@100"), ("AP(rel=3)", "MAP"),
         ("R(rel=3)@10", "R@10"), ("R(rel=3)@100", "R@100"), ("RR(rel=3)", "MRR")]

@@ -96,6 +96,7 @@ from paper_style import (  # noqa: E402  shared figure style (Inter, print sizes
     BAR, BLUE, DATASET, FS, FS_SMALL, GREEN, GREY, HALF, HALF_TALL, HIST, ORANGE, PURPLE, SEQ, SKY, VERM, YELLOW,
 )
 from paper_style import apply as setup_style  # noqa: E402
+from paper_style import savefig  # noqa: E402
 
 BLACK = "#111111"
 QUAL = [BLUE, ORANGE, GREEN, VERM, PURPLE, SKY, GREY, YELLOW]
@@ -191,7 +192,7 @@ def _new(w: float = HALF[0], h: float = HALF[1]):
 def _finish(fig, ax, ctx: Dict[str, Any], name: str, *, grid: str | None = "y") -> None:
     ax.grid(axis="x", visible=grid in ("x", "both"))
     ax.grid(axis="y", visible=grid in ("y", "both"))
-    fig.savefig(ctx["figures_dir"] / f"{ctx['label']}_{name}.pdf")
+    savefig(fig, ctx["figures_dir"] / f"{ctx['label']}_{name}.pdf")
     plt.close(fig)
 
 
@@ -326,6 +327,7 @@ def fig_tags_per_clip(ctx):
     tc = ctx["corpus_df"]["tag_count"].dropna()
     fig, ax = _new()
     ax.hist(tc, bins=range(0, int(tc.max()) + 2), color=PURPLE, **HIST)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_xlabel("Tags per clip")
     ax.set_ylabel("Number of clips")
     _finish(fig, ax, ctx, "corpus_tags_per_clip")
@@ -376,7 +378,7 @@ def fig_transition_score(ctx):
 
 def fig_genre_matrix(ctx):
     su = ctx["steps_unique"]
-    top = su["source_genre"].value_counts().head(12).index.tolist()
+    top = su["source_genre"].value_counts().head(8).index.tolist()
     sub = su[su["source_genre"].isin(top) & su["target_genre"].isin(top)]
     mat = pd.crosstab(sub["source_genre"], sub["target_genre"], normalize="index").reindex(index=top, columns=top).fillna(0)
     fig, ax = _new(*HALF_TALL)
@@ -387,7 +389,7 @@ def fig_genre_matrix(ctx):
     ax.set_xlabel("Target genre")
     ax.set_ylabel("Source genre")
     ax.grid(False)
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04).set_label("P(target | source)")
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)   # P(target | source): stated in the caption
     _finish(fig, ax, ctx, "trans_genre_matrix", grid=None)
 
 
@@ -410,7 +412,7 @@ def _transition_heatmap(ctx, src_col, tgt_col, order, name):
     ax.set_xlabel("Target")
     ax.set_ylabel("Source")
     ax.grid(False)
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04).set_label("P(target | source)")
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)   # P(target | source): stated in the caption
     _finish(fig, ax, ctx, name, grid=None)
 
 
@@ -491,7 +493,7 @@ def fig_num_axes(ctx):
 
 def fig_caption_only(ctx):
     r = ctx["instr"]["caption_only_change"].value_counts(normalize=True)
-    labels = {True: "Caption-grounded", False: "Tag / metadata"}
+    labels = {True: "Caption only", False: "Tags"}
     order = [k for k in [True, False] if k in r.index]
     fig, ax = _new(*HALF_TALL)
     b = ax.bar([labels[k] for k in order], [r[k] for k in order],
@@ -581,7 +583,7 @@ def fig_llm_accept_hardness(ctx):
     b = ax.barh([nice(x) for x in by.index], by.values, color=BLUE, **BAR)
     _bar_labels(ax, b, by.values, fmt="{:.0%}", horizontal=True)
     ax.set_xlim(0, 1.1)
-    ax.set_xlabel("Acceptance rate  (overall validity ≥ 4)")
+    ax.set_xlabel("Share accepted")
     _finish(fig, ax, ctx, "val_accept_hardness", grid="x")
 
 
@@ -604,7 +606,7 @@ def fig_llm_issue_tags(ctx):
 
 def fig_leakage(ctx):
     corpus_df = ctx["corpus_df"]
-    splits = [s for s in ["train", "validation", "test"] if s in set(corpus_df["split"])] or sorted(corpus_df["split"].unique())
+    splits = [s for s in ["train", "val", "validation", "test"] if s in set(corpus_df["split"])] or sorted(corpus_df["split"].unique())
     art = {s: set(corpus_df[corpus_df["split"] == s]["artist_id"]) - {""} for s in splits}
     mat = np.array([[len(art[a] & art[b]) / max(1, len(art[a])) for b in splits] for a in splits])
     fig, ax = _new(*HALF_TALL)
@@ -681,7 +683,7 @@ def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[
     pre = out["label"]
 
     def save(fig, name, grid="y"):
-        fig.savefig(fd / f"{pre}_{name}.pdf")
+        savefig(fig, fd / f"{pre}_{name}.pdf")
         plt.close(fig)
 
     # overview table (both datasets side by side)
@@ -716,7 +718,7 @@ def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[
     fig, ax = _new()
     _grouped_barh(ax, gcats, gseries, order)
     ax.set_xlabel("Fraction of clips")
-    ax.legend()
+    ax.legend(loc="lower center", bbox_to_anchor=(0.4, 1.0), ncol=2)
     save(fig, "corpus_genre", grid="x")
 
     # transition score (overlaid step hists)
@@ -791,7 +793,7 @@ def combined_figures(ds: Dict[str, Dict[str, Any]], order: List[str], out: Dict[
     _grouped_barh(ax, ccats, covs, order)
     ax.set_xlim(0, 1.1)
     ax.set_xlabel("Fraction of clips")
-    ax.legend()
+    ax.legend(loc="lower center", bbox_to_anchor=(0.4, 1.0), ncol=2)
     save(fig, "corpus_coverage", grid="x")
 
 

@@ -26,6 +26,7 @@ import numpy as np  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paper_style import EDGE, FS_SMALL, GREY, HALF, INK, apply  # noqa: E402
 from remixb_table import GROUPS, write_table  # noqa: E402
+from paper_style import savefig  # noqa: E402
 
 FAMILY_COLOR = {"Reference": GREY, "Seed only": "#56B4E9", "Instruction only": "#009E73",
                 "Composed, no training": "#0072B2", "LLM-assisted": "#D55E00", "Trained on ReMIX": "#CC79A7"}
@@ -35,6 +36,8 @@ SHORT = {"random": "Random", "seed_audio_nn": "Seed audio", "instruction_text": 
          "llm_pointwise_rerank": "LLM rerank", "remix_c": "ReMIX-C (filtered)",
          "remix_c_unfiltered": "ReMIX-C", "bm25": "BM25", "analogy_steering": "Analogy"}
 SKIP = {"target_caption_oracle", "remix_c_untrained"}  # oracle is annotated; untrained sits on random
+# Runs kept out of the main table/figures (filtered-data ReMIX-C: not at full data scale; appendix curves)
+NOT_IN_MAIN = {"remix_c", "remix_c_d4"}
 
 
 def load(results_dir: Path) -> dict:
@@ -108,7 +111,7 @@ def fig_cost_quality(res, path: Path) -> None:
                     color="#666666", va="top")
     ax.set_xlim(FLOOR / 2, pts[-1][1] * 3)
     _style(ax)
-    fig.savefig(path)
+    savefig(fig, path)
     plt.close(fig)
 
 
@@ -130,7 +133,7 @@ def fig_precision_recall(res, path: Path) -> None:
     handles = [plt.Line2D([], [], marker="o", ls="", color=FAMILY_COLOR[f], markeredgecolor=EDGE,
                           markeredgewidth=0.5, markersize=4, label=f) for f in fams]
     ax.legend(handles=handles, loc="upper left", fontsize=FS_SMALL - 0.5, handletextpad=0.2, borderaxespad=0.2)
-    fig.savefig(path)
+    savefig(fig, path)
     plt.close(fig)
 
 
@@ -140,7 +143,7 @@ def main() -> None:
     ap.add_argument("--out", default="paper")
     a = ap.parse_args()
     apply()
-    res = load(Path(a.results_dir))
+    res = {k: v for k, v in load(Path(a.results_dir)).items() if k not in NOT_IN_MAIN}
     out = Path(a.out)
     (out / "figures").mkdir(parents=True, exist_ok=True)
     (out / "tables").mkdir(parents=True, exist_ok=True)

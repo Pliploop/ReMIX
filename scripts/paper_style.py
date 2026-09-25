@@ -17,6 +17,8 @@ TEXT_W = 5.5
 HALF_W = 2.65
 HALF = (HALF_W, HALF_W)          # square by default
 HALF_TALL = HALF
+THIRD_W = 1.8                      # three panels per row: \begin{subfigure}{0.325\linewidth}
+THIRD = (THIRD_W, THIRD_W)
 FULL = (TEXT_W, 2.1)
 
 FS = 7.5          # base text
@@ -70,3 +72,28 @@ def apply() -> None:
 EDGE = "#333333"
 BAR = dict(edgecolor=EDGE, linewidth=0.5)
 HIST = dict(edgecolor=EDGE, linewidth=0.4)
+
+
+# Printed size per figure, keyed by file stem; anything not listed keeps the size it was
+# drawn at (HALF by default). This is the single place that encodes the paper layout.
+_THIRD_PANELS = """
+remix_corpus_coverage remix_corpus_genre music4all_split_leakage
+music4all_corpus_caption_length music4all_corpus_tags_per_clip music4all_corpus_tempo
+remix_trans_score remix_chain_length music4all_trans_tag_churn
+music4all_trans_genre_matrix music4all_trans_vocals_matrix music4all_trans_tempo_matrix
+music4all_instr_length music4all_recipe_cooccurrence music4all_recipe_caption_only
+music4all_val_joint_overall_validity mtg_jamendo_val_joint_overall_validity music4all_val_accept_hardness
+music4all_relpool_grade_dist music4all_relpool_positives_per_query music4all_relpool_target_recovery
+music4all_relpool_grade_by_source music4all_relpool_sim_by_grade music4all_relpool_grade_by_axis
+remixc_curve_r10 remixc_curve_mrr remixc_curve_loss
+remixc_overfit_r10 remixc_overfit_mrr remixc_overfit_loss
+""".split()
+PANEL = {stem: THIRD for stem in _THIRD_PANELS} | {"music4all_relpool_pool_composition_pie": (TEXT_W, 2.0)}
+
+
+def savefig(fig, path) -> None:
+    """Save at the printed size from PANEL (constrained layout re-flows at save time)."""
+    size = PANEL.get(Path(path).stem)
+    if size:
+        fig.set_size_inches(*size)
+    fig.savefig(path)

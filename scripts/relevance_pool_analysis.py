@@ -37,6 +37,7 @@ POS_GRADES = (6, 5, 4, 3)  # relevant grades (grade 0-2 dwarf them in raw counts
 # Shared paper style (scripts/paper_style.py): Inter, print-size figures, Okabe-Ito.
 from paper_style import BAR, BLUE, FS, FS_SMALL, FULL, GRADE as GRADE_COLOR, HALF, HALF_TALL, ORANGE, SEQ, VERM  # noqa: E402
 from paper_style import apply as _setup_style  # noqa: E402
+from paper_style import savefig  # noqa: E402
 
 WEDGE_EDGE = dict(edgecolor="#333333", linewidth=0.5)
 FAILURE_MODE_LABEL = {
@@ -49,7 +50,7 @@ FAILURE_MODE_LABEL = {
 }
 # Prettier axis / pool-type labels.
 AXIS_LABEL = {
-    "genre_style": "Genre / style", "texture_production": "Texture / prod.",
+    "genre_style": "Genre", "texture_production": "Texture",
     "energy": "Energy", "instrumentation": "Instrumentation", "mood": "Mood",
     "vocals": "Vocals", "tempo": "Tempo", "harmony": "Harmony",
     "structure": "Structure", "other": "Other", "unknown": "Unknown",
@@ -120,7 +121,7 @@ def _fig(name: str, plotter, size=HALF) -> None:
     fig, ax = plt.subplots(figsize=size)
     plotter(ax)
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    fig.savefig(FIG_DIR / name)
+    savefig(fig, FIG_DIR / name)
     plt.close(fig)
     print(f"  figure -> paper/figures/{name}")
 
@@ -175,7 +176,7 @@ def _write_pool_pie(slug: str, pool_frac: Dict[int, float], steps: int) -> None:
     ax1.indicate_inset(bounds, inset_ax=axins, edgecolor="#333333", linewidth=0.7, alpha=0.9)
 
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    fig.savefig(FIG_DIR / f"{slug}_relpool_pool_composition_pie.pdf")
+    savefig(fig, FIG_DIR / f"{slug}_relpool_pool_composition_pie.pdf")
     plt.close(fig)
     print(f"  figure -> paper/figures/{slug}_relpool_pool_composition_pie.pdf")
 
@@ -287,7 +288,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
     def _pos_hist(ax):
         m = max(per_step_positives)
         ax.hist(per_step_positives, bins=range(0, m + 2), color=BLUE, **BAR)
-        ax.set_xlabel("Relevant candidates per query (≥ partial)"); ax.set_ylabel("Queries")
+        ax.set_xlabel("Relevant per query"); ax.set_ylabel("Queries")
         ax.yaxis.set_major_formatter(_kfmt); ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_positives_per_query.pdf", _pos_hist)
 
@@ -301,7 +302,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
             ax.bar(x, vals, bottom=bottoms, color=GRADE_COLOR[g], label=GRADE_LABEL[g], **BAR)
             bottoms += vals
         ax.set_xticks(x); ax.set_xticklabels([AXIS_LABEL.get(a, a.replace("_", " ").title()) for a in top_axes],
-                                             rotation=30, ha="right")
+                                             rotation=45, ha="right")
         ax.set_ylabel("Share of candidates"); ax.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
         ax.legend(**_POS_LEG); ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_grade_by_axis.pdf", _axis_bar)
@@ -325,7 +326,7 @@ def analyse(label: str, root: str, n_examples: int) -> None:
             ax.bar(range(len(srcs)), vals, bottom=bottoms, color=GRADE_COLOR[g],
                    label=GRADE_LABEL[g], **BAR)
             bottoms += vals
-        ax.set_xticks(range(len(srcs))); ax.set_xticklabels([SRC_LABEL.get(s, s) for s in srcs], rotation=20, ha="right")
+        ax.set_xticks(range(len(srcs))); ax.set_xticklabels([SRC_LABEL.get(s, s) for s in srcs], rotation=45, ha="right")
         ax.set_ylabel("Relevant candidates"); ax.yaxis.set_major_formatter(_kfmt)
         ax.legend(**_POS_LEG); ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_grade_by_source.pdf", _prov_bar)
@@ -355,9 +356,9 @@ def analyse(label: str, root: str, n_examples: int) -> None:
         gs = [g for g in GRADES if exact_grade.get(g, 0)]
         ax.bar([GRADE_LABEL[g] for g in gs], [exact_grade[g] for g in gs],
                color=[GRADE_COLOR[g] for g in gs], **BAR)
-        ax.set_ylabel("Steps"); ax.set_xlabel("Grade of the designated target")
+        ax.set_ylabel("Queries"); ax.set_xlabel("Target's grade")
         ax.yaxis.set_major_formatter(_kfmt)
-        ax.set_title(f"Present in {100*steps_with_exact/steps:.1f}% of steps", fontsize=FS)
+        ax.set_title(f"In {100*steps_with_exact/steps:.0f}% of pools", fontsize=FS)
         ax.grid(axis="x", visible=False)
     _fig(f"{slug}_relpool_target_recovery.pdf", _target_bar)
 
