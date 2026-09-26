@@ -145,11 +145,13 @@ callback keeps the most recent step instead.
 | untrained | – | – | 0.002 | 0.019 | 0.005 |
 | d2 (2-layer fusion, batch 64) | filtered (both judges ≥ 4, 58k steps) | 8k | 0.099 | 0.567 | 0.173 |
 | d4 (4-layer fusion, batch 128) | filtered | 4k | 0.097 | 0.552 | 0.170 |
-| d2 | all train variants (163k steps) | 17k (still training) | **0.113** | **0.596** | **0.194** |
+| d2 | all train variants (163k steps) | 21k (of 30k) | **0.115** | **0.602** | **0.195** |
+| d2, no instruction swaps (`objective.n_swap=0`) | all train variants | 21k | 0.113 | 0.593 | 0.193 |
 
 On the filtered set validation loss rises after ~2k steps; on all data it stays flat.
-Fusion depth does not help; data volume does. Open: retrain the filtered model once the
-train split is fully judged, `objective=lejepa`, `objective.n_swap=0`, `model=large`.
+Fusion depth does not help; data volume does. Instruction swaps add ~2% on every metric and
+raise the val instruction gap (0.139 vs 0.125). Open: retrain the filtered model once the train
+split is fully judged, `objective=lejepa`, `model=large`, seeds.
 
 ## Files
 

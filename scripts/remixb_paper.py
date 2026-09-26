@@ -37,7 +37,7 @@ SHORT = {"random": "Random", "seed_audio_nn": "Seed audio", "instruction_text": 
          "remix_c_unfiltered": "ReMIX-C", "bm25": "BM25", "analogy_steering": "Analogy"}
 SKIP = {"target_caption_oracle", "remix_c_untrained"}  # oracle is annotated; untrained sits on random
 # Runs kept out of the main table/figures (filtered-data ReMIX-C: not at full data scale; appendix curves)
-NOT_IN_MAIN = {"remix_c", "remix_c_d4"}
+NOT_IN_MAIN = {"remix_c", "remix_c_d4", "remix_c_unfiltered_30k", "remix_c_noswap"}  # ablation / reference rows
 
 
 def load(results_dir: Path) -> dict:
