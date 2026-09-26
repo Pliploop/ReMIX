@@ -20,13 +20,18 @@ def _load_llm():
     REGISTRY.update(_L)
 
 
+def _load_lalm():
+    from .lalm import REGISTRY as _A  # audio-language models; named explicitly, not part of "all"
+    REGISTRY.update(_A)
+
+
 def _load_trained():
     from remix_c.model import RemixCBaseline, RemixCUntrained  # checkpoint from $REMIX_C_CKPT (--ckpt)
     REGISTRY.update({b.name: b for b in (RemixCBaseline, RemixCUntrained)})
 
 
 def get(name: str):
-    for load in (_load_embed, _load_llm, _load_trained):
+    for load in (_load_embed, _load_llm, _load_lalm, _load_trained):
         if name in REGISTRY:
             break
         load()

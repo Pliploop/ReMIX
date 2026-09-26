@@ -96,6 +96,7 @@ def main() -> None:
         ap.error("--output-dir is required unless --dry-run")
 
     root = Path(DATASETS[args.dataset]) / FOLDER
+    os.environ["REMIX_RUN_ROOT"] = DATASETS[args.dataset]  # baselines that load raw audio read the manifest from here
     bench, pool = root / "benchmark", root / "relevance_pool"
     out = None
     if not args.dry_run:

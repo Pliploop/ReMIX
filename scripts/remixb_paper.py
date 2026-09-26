@@ -29,12 +29,14 @@ from remixb_table import GROUPS, write_table  # noqa: E402
 from paper_style import savefig  # noqa: E402
 
 FAMILY_COLOR = {"Reference": GREY, "Seed only": "#56B4E9", "Instruction only": "#009E73",
-                "Composed, no training": "#0072B2", "LLM-assisted": "#D55E00", "Trained on ReMIX": "#CC79A7"}
+                "Composed, no training": "#0072B2", "LLM-assisted": "#D55E00",
+                "Audio-language model (Qwen3-Omni)": "#E69F00", "Trained on ReMIX": "#CC79A7"}
 FLOOR = 1e-2  # TFLOP shown for baselines with (almost) no query-time compute
 SHORT = {"random": "Random", "seed_audio_nn": "Seed audio", "instruction_text": "Instruction",
          "late_fusion": "Late fusion", "llm_caption_rewrite": "LLM rewrite", "hybrid_score_fusion": "Hybrid fusion",
          "llm_pointwise_rerank": "LLM rerank", "remix_c": "ReMIX-C (filtered)",
-         "remix_c_unfiltered": "ReMIX-C", "bm25": "BM25", "analogy_steering": "Analogy"}
+         "remix_c_unfiltered": "ReMIX-C", "bm25": "BM25", "analogy_steering": "Analogy",
+         "lalm_hybrid": "LALM hybrid", "lalm_rerank": "LALM rerank"}
 SKIP = {"target_caption_oracle", "remix_c_untrained"}  # oracle is annotated; untrained sits on random
 # Runs kept out of the main table/figures (filtered-data ReMIX-C: not at full data scale; appendix curves)
 NOT_IN_MAIN = {"remix_c", "remix_c_d4", "remix_c_unfiltered_30k", "remix_c_noswap"}  # ablation / reference rows
