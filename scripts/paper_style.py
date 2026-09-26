@@ -87,6 +87,7 @@ PANEL = {stem: THIRD for stem in _THIRD_PANELS} | {
     "music4all_relpool_pool_composition_pie": (0.7 * TEXT_W, 1.75),   # placed at .7\linewidth
     "music4all_val_mean_dumbbell": (2.3, 2.3),                          # wrapfigures at .42\linewidth
     "music4all_relpool_failure_modes": (2.3, 2.3),
+    "remixb_lalm_stages": (2.3, 2.3),
     "music4all_recipe_caption_only": (1.45, 1.7),      # narrow wrapfigure next to its paragraph
 }
 

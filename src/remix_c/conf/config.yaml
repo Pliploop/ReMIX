@@ -33,10 +33,12 @@ trainer:
 logger:
   entity: jul-guinot
   project: remix-C
-  log_model: false               # true = upload checkpoints to wandb at the end of training
+  log_model: false               # keep false: checkpoints stay under out_root on scratch (wandb staging fills home quota)
   name: ${run_name}
   save_dir: ${hydra:runtime.output_dir}
   offline: false
+  id: null                       # set to an existing run id (with resume=<ckpt>) to continue that wandb run
+  resume: allow
 
 callbacks:
   checkpoint:                    # best by val/MRR (4-12 GB each: frozen towers included)

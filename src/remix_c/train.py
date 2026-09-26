@@ -21,7 +21,7 @@ def main(cfg: DictConfig) -> None:
     model, data = RemixC(cfg.model, cfg.objective, cfg.optim), instantiate(cfg.data)
     if cfg.validate_first and not cfg.resume:
         trainer.validate(model, data)                        # full val pass logged at step 0
-    trainer.fit(model, data, ckpt_path=cfg.resume)
+    trainer.fit(model, data, ckpt_path=cfg.resume, weights_only=False)  # own checkpoints hold OmegaConf hparams
 
 
 if __name__ == "__main__":

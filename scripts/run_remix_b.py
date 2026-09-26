@@ -86,6 +86,10 @@ def main() -> None:
     ap.add_argument("--k", type=int, default=200, help="ranking depth submitted to the scorer")
     ap.add_argument("--split", default="test")
     ap.add_argument("--limit", type=int, default=0, help="cap #queries (0 = all); for quick validation")
+    ap.add_argument("--qrels", default=None,
+                    help="alternative grades (scripts/audio_judge_pool.py output): score only its queries, "
+                         "against its --qrels-key grades")
+    ap.add_argument("--qrels-key", default="audio", help="'audio' or 'text' (same queries, text-judge grades)")
     ap.add_argument("--ckpt", default=None, help="ReMIX-C checkpoint for the remix_c baseline")
     ap.add_argument("--suffix", default="", help="append to every saved baseline name (e.g. _mflamingo)")
     ap.add_argument("--as", dest="save_as", default=None,
@@ -109,8 +113,12 @@ def main() -> None:
         queries = queries[:args.limit]
     # score only the queries we rank: --limit / a pool that outgrew the export
     # would otherwise count every unranked judged query as a zero.
+    if args.qrels:  # e.g. audio-judge grades for a query subsample
+        alt = json.loads(Path(args.qrels).read_text())[args.qrels_key]
+        queries = [q for q in queries if q.query_id in alt]
+        pool = {q: {c: g for c, g in d.items() if g >= 0} for q, d in alt.items()}
     qids = {q.query_id for q in queries}
-    qrels = {k: v for k, v in _read_qrels(str(pool), min_grade=3).items() if k in qids}
+    qrels = {k: v for k, v in _read_qrels(pool if args.qrels else str(pool), min_grade=3).items() if k in qids}
     print(f"corpus {len(corpus.ids):,} clips | {len(queries):,} queries | {len(qrels):,} judged\n", flush=True)
 
     names = B.all_names() if args.baselines == ["all"] else args.baselines

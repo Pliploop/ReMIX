@@ -1,0 +1,20 @@
+{
+  "baseline": "lalm_describe_mflamingo",
+  "dataset": "music4all",
+  "split": "test",
+  "k": 200,
+  "n_queries": 9107,
+  "n_corpus": 5444,
+  "seconds": 124.6,
+  "flops": 140362772938761728,
+  "tflops": 140362.773,
+  "index_tflops": 0.0,
+  "metrics": {
+    "nDCG@10": 0.10000864248056245,
+    "nDCG@100": 0.19676095194067708,
+    "AP(rel=3)": 0.08861528593711358,
+    "R(rel=3)@10": 0.1209507917889074,
+    "R(rel=3)@100": 0.4326259970971184,
+    "RR(rel=3)": 0.16407498098517917
+  }
+}

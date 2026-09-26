@@ -69,7 +69,10 @@ def _decode(args) -> np.ndarray:
         sr = f.samplerate
         f.seek(int(start * sr))
         x = f.read(int(CLIP_SEC * sr), dtype="float32", always_2d=True).mean(1)
-    return torchaudio.functional.resample(torch.from_numpy(x), sr, SR).numpy().astype(np.float16)
+    x = torchaudio.functional.resample(torch.from_numpy(x), sr, SR).numpy()
+    # fixed length: clips at a track's end are short, and vLLM's Kimi-Audio can only batch equal-shape features
+    x = np.pad(x[:CLIP_SEC * SR], (0, max(0, CLIP_SEC * SR - len(x))))
+    return x.astype(np.float16)
 
 
 class _Audio:
@@ -130,16 +133,20 @@ class _LALM:
         return {"prompt": self.processor.apply_chat_template(msgs, add_generation_prompt=True, tokenize=False),
                 "multi_modal_data": mm}
 
-    def generate(self, system: str, audios: List[List[np.ndarray]], texts: List[str], max_tokens: int) -> List[str]:
-        """One prompt per (audio list, text); audio precedes the text in the user turn."""
+    def generate(self, system: str, clips: List[List[str]], texts: List[str], max_tokens: int) -> List[str]:
+        """One prompt per (clip-id list, text); audio precedes the text in the user turn.
+        Waveforms are materialised per chunk: 182k rerank pairs at once would need ~700 GB of RAM."""
+        aud = _audio()
         from vllm import SamplingParams
         params = SamplingParams(temperature=0.0, max_tokens=max_tokens)
         outs = []
         for i in range(0, len(texts), CHUNK):
-            prompts = [self._prompt(system, auds, text) for auds, text in zip(audios[i:i + CHUNK], texts[i:i + CHUNK])]
+            prompts = [self._prompt(system, [aud[c] for c in cids], text)
+                       for cids, text in zip(clips[i:i + CHUNK], texts[i:i + CHUNK])]
             for o in self.llm.generate(prompts, params, use_tqdm=False):
                 outs.append(o.outputs[0].text.strip())
                 self.flops += 2 * self.n_active * (len(o.prompt_token_ids) + len(o.outputs[0].token_ids))
+            print(f"[lalm] {len(outs)}/{len(texts)} prompts", flush=True)
         return outs
 
 
@@ -176,7 +183,7 @@ def describe(queries: List[Query]) -> tuple[List[str], float]:
         aud = _audio()
         aud.load([q.seed_clip_id for q in todo])        # decode before the engine starts
         eng = _engine()
-        texts = eng.generate(DESCRIBE_SYS, [[aud[q.seed_clip_id]] for q in todo],
+        texts = eng.generate(DESCRIBE_SYS, [[q.seed_clip_id] for q in todo],
                              [f"Edit instruction: {q.instruction}\n\nDescription of the wanted track:" for q in todo],
                              max_tokens=200)
         per_q = eng.flops / max(1, len(todo))
@@ -255,7 +262,7 @@ class LALMRerank(Baseline):
         eng, aud = _engine(), _audio()
         aud.load([q.seed_clip_id for q in queries] + [c for q in queries for c in base[q.query_id][:self.n]])
         pairs = [(q, cid) for q in queries for cid in base[q.query_id][:self.n]]
-        grades = eng.generate(RERANK_SYS, [[aud[q.seed_clip_id], aud[cid]] for q, cid in pairs],
+        grades = eng.generate(RERANK_SYS, [[q.seed_clip_id, cid] for q, cid in pairs],
                               [f"The first audio is the seed track, the second is the candidate.\n"
                                f"Edit instruction: {q.instruction}\n\nScore (0-6):" for q, _ in pairs],
                               max_tokens=4)
