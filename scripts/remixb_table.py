@@ -22,8 +22,10 @@ GROUPS = [
     ("LLM-assisted", [("llm_caption_rewrite", "LLM caption rewrite"), ("mulan_rewrite", "MuLan rewrite"),
                       ("analogy_steering", "Analogy steering"), ("hybrid_score_fusion", "Hybrid score fusion"),
                       ("llm_pointwise_rerank", "LLM pointwise rerank")]),
-    ("Audio-language model (Qwen3-Omni)", [("lalm_describe", "Listen and describe"), ("lalm_hybrid", "Listen and describe + seed audio"),
-                                           ("lalm_rerank", "Audio pointwise rerank")]),
+    ("Audio-language models", [(f"lalm_{v}{m}", f"{name}, {label}") for m, name in
+                               [("", "Qwen3-Omni"), ("_mflamingo", "Music Flamingo"), ("_kimi", "Kimi-Audio")]
+                               for v, label in [("describe", "describe"), ("hybrid", "describe + seed audio"),
+                                                ("rerank", "audio rerank")]]),
     ("Trained on ReMIX", [("remix_c_untrained", "ReMIX-C, untrained"), ("remix_c", "ReMIX-C, filtered"),
                           ("remix_c_d4", "ReMIX-C, filtered, 4 layers"), ("remix_c_unfiltered", "ReMIX-C")]),
 ]

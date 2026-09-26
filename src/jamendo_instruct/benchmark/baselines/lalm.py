@@ -7,8 +7,9 @@
   LALMRerank   (lalm_rerank)  : first stage lalm_hybrid top-N; the LALM hears the seed and the
       candidate, reads the instruction, grades 0-6; re-rank.
 
-Model via env REMIX_LALM (default Qwen/Qwen3-Omni-30B-A3B-Instruct), tensor parallel via
-REMIX_LALM_TP. Audio is decoded from the catalogue manifest under $REMIX_RUN_ROOT (set by
+Model via env REMIX_LALM (default Qwen/Qwen3-Omni-30B-A3B-Instruct; also nvidia/music-flamingo-hf and
+moonshotai/Kimi-Audio-7B-Instruct), tensor parallel via REMIX_LALM_TP. Run each model with
+`run_remix_b.py --suffix` so its rows get their own names. Audio is decoded from the catalogue manifest under $REMIX_RUN_ROOT (set by
 run_remix_b.py) at 16 kHz mono, 30 s per clip. Descriptions are cached to
 <run>/instructions_axis_focused_5/benchmark/lalm_descriptions_<model>.json so the three
 baselines, and re-runs, share one generation pass. FLOPs: 2 * active params * tokens, where
@@ -31,7 +32,13 @@ from .embedders import GemmaText
 
 MODEL_ID = os.environ.get("REMIX_LALM", "Qwen/Qwen3-Omni-30B-A3B-Instruct")
 TP = int(os.environ.get("REMIX_LALM_TP", "2"))
-_ACTIVE_PARAMS = {"Qwen/Qwen3-Omni-30B-A3B-Instruct": 3.3e9}
+_ACTIVE_PARAMS = {"Qwen/Qwen3-Omni-30B-A3B-Instruct": 3.3e9, "nvidia/music-flamingo-hf": 8.3e9,
+                  "moonshotai/Kimi-Audio-7B-Instruct": 7.6e9}
+KIMI = "kimi-audio" in MODEL_ID.lower()
+# Audio Flamingo and Kimi-Audio accept one clip per prompt: several clips are joined with 1 s of silence
+# and the prompt says so (a documented deviation for these two models)
+ONE_CLIP = KIMI or "flamingo" in MODEL_ID.lower()
+JOINED_NOTE = "The audio contains the seed track, then one second of silence, then the candidate track.\n"
 SR = 16_000
 CLIP_SEC = 30
 CHUNK = 256          # prompts per vLLM call (bounds host memory for decoded audio)
@@ -86,14 +93,42 @@ class _Audio:
 # ---------------------------------------------------------------- engine
 class _LALM:
     def __init__(self):
-        from transformers import AutoProcessor
         from vllm import LLM
         # ~61 GB of bf16 weights: on 2x A100-40 only a few GB remain for KV cache and audio encoding
         self.llm = LLM(model=MODEL_ID, tensor_parallel_size=TP, max_model_len=8192, gpu_memory_utilization=float(os.environ.get("REMIX_LALM_MEM", "0.85")),
-                       limit_mm_per_prompt={"audio": 2}, max_num_seqs=16)
-        self.processor = AutoProcessor.from_pretrained(MODEL_ID)
+                       limit_mm_per_prompt={"audio": 1 if ONE_CLIP else 2}, max_num_seqs=16, trust_remote_code=KIMI)
+        if KIMI:   # Kimi-Audio has no HF chat processor; vLLM ships its tokenizer
+            from vllm.tokenizers import cached_get_tokenizer
+            from vllm.tokenizers.kimi_audio import KimiAudioTokenizer
+            self.tokenizer = cached_get_tokenizer(MODEL_ID, tokenizer_cls=KimiAudioTokenizer, trust_remote_code=True)
+        else:
+            from transformers import AutoProcessor
+            self.processor = AutoProcessor.from_pretrained(MODEL_ID)
         self.n_active = _ACTIVE_PARAMS.get(MODEL_ID, 3.3e9)
         self.flops = 0
+
+    def _prompt(self, system: str, auds: List[np.ndarray], text: str) -> dict:
+        """Audio clips first, then the text, in each model's own chat format."""
+        if ONE_CLIP and len(auds) > 1:
+            gap = np.zeros(SR, dtype=np.float32)
+            joined = auds[0]
+            for a in auds[1:]:
+                joined = np.concatenate([joined, gap, a])
+            auds, text = [joined], JOINED_NOTE + text
+        mm = {"audio": [(a, SR) for a in auds]}
+        if KIMI:
+            from vllm.inputs import TokensPrompt
+            ph = "<|im_media_begin|><|im_kimia_text_blank|><|im_media_end|>"   # KimiAudio.AUDIO_PLACEHOLDER
+            prompt = (f"<|im_kimia_user_msg_start|>{system}\n\n{ph}\n{text}"
+                      f"<|im_msg_end|><|im_kimia_assistant_msg_start|>")
+            return TokensPrompt(prompt_token_ids=self.tokenizer.encode(prompt), multi_modal_data=mm)
+        if ONE_CLIP:   # Audio Flamingo: its chat template drops audio items, so the token goes in the text
+            user = [{"type": "text", "text": self.processor.audio_token + "\n" + text}]
+        else:
+            user = [{"type": "audio", "audio": "x"} for _ in auds] + [{"type": "text", "text": text}]
+        msgs = [{"role": "system", "content": [{"type": "text", "text": system}]}, {"role": "user", "content": user}]
+        return {"prompt": self.processor.apply_chat_template(msgs, add_generation_prompt=True, tokenize=False),
+                "multi_modal_data": mm}
 
     def generate(self, system: str, audios: List[List[np.ndarray]], texts: List[str], max_tokens: int) -> List[str]:
         """One prompt per (audio list, text); audio precedes the text in the user turn."""
@@ -101,13 +136,7 @@ class _LALM:
         params = SamplingParams(temperature=0.0, max_tokens=max_tokens)
         outs = []
         for i in range(0, len(texts), CHUNK):
-            prompts = []
-            for auds, text in zip(audios[i:i + CHUNK], texts[i:i + CHUNK]):
-                msgs = [{"role": "system", "content": [{"type": "text", "text": system}]},
-                        {"role": "user", "content": [{"type": "audio", "audio": "x"} for _ in auds]
-                         + [{"type": "text", "text": text}]}]
-                prompt = self.processor.apply_chat_template(msgs, add_generation_prompt=True, tokenize=False)
-                prompts.append({"prompt": prompt, "multi_modal_data": {"audio": [(a, SR) for a in auds]}})
+            prompts = [self._prompt(system, auds, text) for auds, text in zip(audios[i:i + CHUNK], texts[i:i + CHUNK])]
             for o in self.llm.generate(prompts, params, use_tqdm=False):
                 outs.append(o.outputs[0].text.strip())
                 self.flops += 2 * self.n_active * (len(o.prompt_token_ids) + len(o.outputs[0].token_ids))

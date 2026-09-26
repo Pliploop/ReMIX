@@ -30,7 +30,7 @@ from paper_style import savefig  # noqa: E402
 
 FAMILY_COLOR = {"Reference": GREY, "Seed only": "#56B4E9", "Instruction only": "#009E73",
                 "Composed, no training": "#0072B2", "LLM-assisted": "#D55E00",
-                "Audio-language model (Qwen3-Omni)": "#E69F00", "Trained on ReMIX": "#CC79A7"}
+                "Audio-language models": "#E69F00", "Trained on ReMIX": "#CC79A7"}
 FLOOR = 1e-2  # TFLOP shown for baselines with (almost) no query-time compute
 SHORT = {"random": "Random", "seed_audio_nn": "Seed audio", "instruction_text": "Instruction",
          "late_fusion": "Late fusion", "llm_caption_rewrite": "LLM rewrite", "hybrid_score_fusion": "Hybrid fusion",

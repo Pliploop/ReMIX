@@ -87,6 +87,7 @@ def main() -> None:
     ap.add_argument("--split", default="test")
     ap.add_argument("--limit", type=int, default=0, help="cap #queries (0 = all); for quick validation")
     ap.add_argument("--ckpt", default=None, help="ReMIX-C checkpoint for the remix_c baseline")
+    ap.add_argument("--suffix", default="", help="append to every saved baseline name (e.g. _mflamingo)")
     ap.add_argument("--as", dest="save_as", default=None,
                     help="save a single baseline under this name (e.g. one row per ReMIX-C checkpoint)")
     args = ap.parse_args()
@@ -117,7 +118,7 @@ def main() -> None:
         ap.error("--as needs exactly one baseline")
     rows = []
     for key in names:
-        name = args.save_as or key
+        name = (args.save_as or key) + args.suffix
         t0 = time.time()
         b = B.get(key)()
         b.prepare(corpus)
