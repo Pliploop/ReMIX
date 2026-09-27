@@ -1,0 +1,20 @@
+{
+  "baseline": "llm_pointwise_rerank_gemma",
+  "dataset": "music4all",
+  "split": "test",
+  "k": 200,
+  "n_queries": 9107,
+  "n_corpus": 5444,
+  "seconds": 16161.7,
+  "flops": 8078812338768392192,
+  "tflops": 8078812.339,
+  "index_tflops": 0.0,
+  "metrics": {
+    "nDCG@10": 0.199889843949743,
+    "nDCG@100": 0.2635534846125428,
+    "AP(rel=3)": 0.14429008749890518,
+    "R(rel=3)@10": 0.2031691003011942,
+    "R(rel=3)@100": 0.4642629531445327,
+    "RR(rel=3)": 0.3325339101622356
+  }
+}

@@ -35,7 +35,7 @@ FAMILY_COLOR = {"Reference": GREY, "Seed only": "#56B4E9", "Instruction only": "
 FLOOR = 1e-2  # TFLOP shown for baselines with (almost) no query-time compute
 SHORT = {"random": "Random", "seed_audio_nn": "Seed audio", "instruction_text": "Instruction",
          "late_fusion": "Late fusion", "llm_caption_rewrite": "LLM rewrite", "hybrid_score_fusion": "Hybrid fusion",
-         "llm_pointwise_rerank": "LLM rerank", "remix_c": "ReMIX-C (filtered)",
+         "llm_pointwise_rerank": "Qwen rerank", "llm_pointwise_rerank_gemma": "Gemma rerank", "remix_c": "ReMIX-C (filtered)",
          "remix_c_unfiltered": "ReMIX-C", "bm25": "BM25", "analogy_steering": "Analogy",
          "lalm_hybrid": "Qwen3-Omni hybrid", "lalm_rerank": "Qwen3-Omni rerank",
          "lalm_hybrid_kimi": "Kimi hybrid", "lalm_rerank_mflamingo": "Flamingo rerank"}
@@ -73,12 +73,13 @@ def _style(ax):
 # per-figure label offsets (points) for crowded neighbours; default (4, 3), left-aligned
 OFFSETS = {
     "cost": {"remix_c_unfiltered": (-5, 4, "right"), "remix_c": (5, -7, "left"), "hybrid_score_fusion": (7, 6, "left"),
-             "llm_caption_rewrite": (8, -14, "left"), "llm_pointwise_rerank": (-5, 0, "right"),
+             "llm_caption_rewrite": (8, -14, "left"), "llm_pointwise_rerank": (-5, -4, "right"), "llm_pointwise_rerank_gemma": (-5, 6, "right"),
              "lalm_hybrid_kimi": None, "lalm_rerank_mflamingo": None,
              "lalm_hybrid": (-4, 6, "right"), "lalm_rerank": (-5, 0, "right")},
     "pr": {"remix_c_unfiltered": (4, -9, "left"), "remix_c": (5, -8, "left"), "llm_caption_rewrite": (-6, 3, "right"),
            "hybrid_score_fusion": (6, 2, "left"), "analogy_steering": (-7, -3, "right"), "bm25": (7, 0, "left"),
-           "random": None, "instruction_text": (-5, 0, "right"), "lalm_hybrid_kimi": None,
+           "random": None, "llm_pointwise_rerank": (6, 4, "left", "LLM rerankers"), "llm_pointwise_rerank_gemma": None,
+           "instruction_text": (-5, 0, "right"), "lalm_hybrid_kimi": None,
            "lalm_rerank_mflamingo": None},
 }
 
@@ -86,8 +87,8 @@ OFFSETS = {
 def _label(ax, name, x, y, fig):
     off = OFFSETS[fig].get(name, (4, 3, "left"))
     if name in SHORT and off is not None:
-        dx, dy, ha = off
-        ax.annotate(SHORT[name], (x, y), xytext=(dx, dy), textcoords="offset points", fontsize=FS_SMALL,
+        dx, dy, ha, *text = off                  # optional 4th item overrides the label text
+        ax.annotate(text[0] if text else SHORT[name], (x, y), xytext=(dx, dy), textcoords="offset points", fontsize=FS_SMALL,
                     color=INK, ha=ha, va="center")
 
 
@@ -135,19 +136,20 @@ def fig_precision_recall(res, path: Path) -> None:
     ax.set_xlabel("Recall@100 (grade ≥ 3)")
     ax.set_ylabel("nDCG@10")
     ax.set_xlim(0, max(p[3] for p in pts) * 1.3)
-    ax.set_ylim(0, max(p[2] for p in pts) * 1.2)
+    ax.set_ylim(0, max(p[2] for p in pts) * 1.3)            # headroom for the legend
     _style(ax)
     fams = [f for f in FAMILY_COLOR if any(p[4] == f for p in pts)]
     handles = [plt.Line2D([], [], marker="o", ls="", color=FAMILY_COLOR[f], markeredgecolor=EDGE,
-                          markeredgewidth=0.5, markersize=4, label=f) for f in fams]
-    ax.legend(handles=handles, loc="upper left", fontsize=FS_SMALL - 0.5, handletextpad=0.2, borderaxespad=0.2)
+                          markeredgewidth=0.5, markersize=3.5, label=f) for f in fams]
+    ax.legend(handles=handles, loc="upper left", fontsize=FS_SMALL - 1.5, handletextpad=0.1, borderaxespad=0.2,
+              labelspacing=0.25, frameon=False)
     savefig(fig, path)
     plt.close(fig)
 
 
 LALMS = [("", "Qwen3-\nOmni"), ("_mflamingo", "Music\nFlamingo"), ("_kimi", "Kimi-\nAudio")]
 STAGES = [("describe", "Describe", "#F6D28B"), ("hybrid", "+ seed audio", "#E69F00"), ("rerank", "+ audio rerank", "#9A6400")]
-REFS = [("llm_pointwise_rerank", "LLM rerank (text)", ":"), ("hybrid_score_fusion", "Hybrid fusion (text)", "--"),
+REFS = [("llm_pointwise_rerank_gemma", "LLM rerank (text)", ":"), ("hybrid_score_fusion", "Hybrid fusion (text)", "--"),
         ("remix_c_unfiltered", "ReMIX-C", "-.")]
 
 

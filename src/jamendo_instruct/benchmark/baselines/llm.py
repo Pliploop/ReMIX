@@ -26,6 +26,7 @@ from .embedders import GemmaText, MuLanText, _l2
 
 MODEL_ID = os.environ.get("REMIX_LLM", "Qwen/Qwen3.6-27B-FP8")
 TP = int(os.environ.get("REMIX_LLM_TP", "1"))
+KV = os.environ.get("REMIX_LLM_KV", "fp8")   # "auto" for Gemma-4 on A100: its Triton attention path lacks this fp8 type
 # rough parameter counts for the FLOPs estimate (name -> params)
 _PARAMS = {"Qwen/Qwen3.6-27B-FP8": 27e9, "google/gemma-4-31B-it": 31e9}
 
@@ -59,7 +60,7 @@ class _LLM:
     def __init__(self):
         from jamendo_instruct.llm_backends import build_vllm_offline_chat_model, decode_vllm_chat_completions
         self.ctx = build_vllm_offline_chat_model(
-            model_id=MODEL_ID, tensor_parallel_size=TP, kv_cache_dtype="fp8",
+            model_id=MODEL_ID, tensor_parallel_size=TP, kv_cache_dtype=KV,
             max_model_len=8192, gpu_memory_utilization=0.75)  # leave room for MuLan/Gemma encoders on the same GPU
         self._decode = decode_vllm_chat_completions
         self.n_params = _PARAMS.get(MODEL_ID, 27e9)

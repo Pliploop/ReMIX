@@ -60,7 +60,7 @@ Ordered by dependency. `[gate]` marks items that must finish before the final ev
    `scripts/remixb_paper.py`).
 7. **Cross-dataset transfer**: ReMIX-C trained on Music4All evaluated on MTG-Jamendo
    and vice versa (needs an MTG ReMIX-C and an MTG `data/` config).
-8. **Reranker from a different model family** (e.g. Gemma-4-31B) so the strongest
+8. ~~**Reranker from a different model family**~~ done: Gemma-4-31B scores 0.200 vs 0.196 (Qwen3.6), so the strongest
    baseline does not share a model with the pool judge.
 9. **Per-query analysis**: save per-query metrics from `run_remix_b.py`, then report
    results by edit axis, transition difficulty, and candidate provenance, plus
