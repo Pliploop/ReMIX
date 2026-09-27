@@ -8,7 +8,7 @@ labels bias the benchmark. Output: an alternative qrels file on the same 0-6
 scale, plus the text grades for comparison.
 
   PYTHONPATH=src REMIX_LALM_TP=2 python scripts/audio_judge_pool.py --n 500 \
-      --out results/remix_b/music4all/audio_judge_qwen3omni.json
+      --out results/remix_b/audio_judge/music4all_qwen3omni.json
 
 Model/engine settings come from baselines/lalm.py (REMIX_LALM, REMIX_LALM_TP, REMIX_LALM_MEM).
 """

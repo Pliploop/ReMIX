@@ -261,21 +261,31 @@ class LALMRerank(Baseline):
         first_flops = self.first.flops
         eng, aud = _engine(), _audio()
         aud.load([q.seed_clip_id for q in queries] + [c for q in queries for c in base[q.query_id][:self.n]])
+        # grades are cached per (query, candidate) and saved every block, so a crash loses one block, not hours
+        path = _cache_path().with_name(_cache_path().name.replace("lalm_descriptions_", "lalm_rerank_grades_"))
+        cache = json.loads(path.read_text()) if path.exists() else {"flops": 0.0, "grades": {}}
         pairs = [(q, cid) for q in queries for cid in base[q.query_id][:self.n]]
-        grades = eng.generate(RERANK_SYS, [[q.seed_clip_id, cid] for q, cid in pairs],
-                              [f"The first audio is the seed track, the second is the candidate.\n"
-                               f"Edit instruction: {q.instruction}\n\nScore (0-6):" for q, _ in pairs],
-                              max_tokens=4)
+        todo = [(q, cid) for q, cid in pairs if f"{q.query_id}\t{cid}" not in cache["grades"]]
+        for i in range(0, len(todo), 8192):
+            block, f0 = todo[i:i + 8192], eng.flops
+            grades = eng.generate(RERANK_SYS, [[q.seed_clip_id, cid] for q, cid in block],
+                                  [f"The first audio is the seed track, the second is the candidate.\n"
+                                   f"Edit instruction: {q.instruction}\n\nScore (0-6):" for q, _ in block],
+                                  max_tokens=4)
+            cache["grades"].update({f"{q.query_id}\t{cid}": self._grade(g) for (q, cid), g in zip(block, grades)})
+            cache["flops"] += eng.flops - f0
+            path.write_text(json.dumps(cache))
+            print(f"[lalm] rerank {min(i + 8192, len(todo)) + len(pairs) - len(todo)}/{len(pairs)} graded", flush=True)
         by_q: Dict[str, Dict[str, float]] = {}
-        for (q, cid), g in zip(pairs, grades):
-            by_q.setdefault(q.query_id, {})[cid] = self._grade(g)
+        for q, cid in pairs:
+            by_q.setdefault(q.query_id, {})[cid] = cache["grades"][f"{q.query_id}\t{cid}"]
         out = {}
         for q in queries:
             head = base[q.query_id][:self.n]
             s = by_q.get(q.query_id, {})
             out[q.query_id] = (sorted(head, key=lambda cid: (-s.get(cid, 0.0), head.index(cid)))
                                + base[q.query_id][self.n:])[:k]
-        self.flops = first_flops + eng.flops
+        self.flops = first_flops + cache["flops"]   # all grading work, including earlier (crashed) runs' cached blocks
         return out
 
 

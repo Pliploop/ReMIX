@@ -72,9 +72,10 @@ def _style(ax):
 
 # per-figure label offsets (points) for crowded neighbours; default (4, 3), left-aligned
 OFFSETS = {
-    "cost": {"remix_c_unfiltered": (-5, 4, "right"), "remix_c": (5, -7, "left"), "hybrid_score_fusion": (-3, 8, "right"),
+    "cost": {"remix_c_unfiltered": (-5, 4, "right"), "remix_c": (5, -7, "left"), "hybrid_score_fusion": (7, 6, "left"),
              "llm_caption_rewrite": (8, -14, "left"), "llm_pointwise_rerank": (-5, 0, "right"),
-             "lalm_hybrid_kimi": None, "lalm_rerank_mflamingo": (0, 7, "center")},
+             "lalm_hybrid_kimi": None, "lalm_rerank_mflamingo": None,
+             "lalm_hybrid": (-4, 6, "right"), "lalm_rerank": (-5, 0, "right")},
     "pr": {"remix_c_unfiltered": (4, -9, "left"), "remix_c": (5, -8, "left"), "llm_caption_rewrite": (-6, 3, "right"),
            "hybrid_score_fusion": (6, 2, "left"), "analogy_steering": (-7, -3, "right"), "bm25": (7, 0, "left"),
            "random": None, "instruction_text": (-5, 0, "right"), "lalm_hybrid_kimi": None,

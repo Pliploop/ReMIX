@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections import Counter
 from typing import Dict, List
 
 import numpy as np
@@ -26,7 +27,7 @@ from .embedders import GemmaText, MuLanText, _l2
 MODEL_ID = os.environ.get("REMIX_LLM", "Qwen/Qwen3.6-27B-FP8")
 TP = int(os.environ.get("REMIX_LLM_TP", "1"))
 # rough parameter counts for the FLOPs estimate (name -> params)
-_PARAMS = {"Qwen/Qwen3.6-27B-FP8": 27e9}
+_PARAMS = {"Qwen/Qwen3.6-27B-FP8": 27e9, "google/gemma-4-31B-it": 31e9}
 
 REWRITE_SYS = ("You rewrite a music caption so it describes the track a listener wants after "
                "applying an edit instruction to a seed track. Output only the rewritten caption: "
@@ -195,6 +196,7 @@ class LLMPointwiseReranker(Baseline):
                              {"role": "user", "content": f"Seed caption:\n{_seed_caption(self.c, q)}\n\nEdit instruction:\n{q.instruction}\n\nCandidate caption:\n{cap}\n\nScore (0-6):"}])
                 index.append((q.query_id, cid))
         scores = self.llm.chat(msgs, max_tokens=4)
+        print(f"[{self.name}] grade counts: {sorted(Counter(self._score(s) for s in scores).items())}", flush=True)
         by_q: Dict[str, Dict[str, float]] = {}
         for (qid, cid), s in zip(index, scores):
             by_q.setdefault(qid, {})[cid] = self._score(s)
