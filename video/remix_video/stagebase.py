@@ -12,34 +12,52 @@ from typing import List
 
 from manim import *
 
-from .glass import StagePanel
 from .theme import (
-    EASE_IN, EASE_MOVE, INK, MUTED, PAPER, RAIL_LEFT, RAIL_TOP, STAGE_COLORS, STAGE_NAMES,
-    T_ENTER, T_MOVE, T_SMALL, T_TINY, Y_EXPLAIN, Y_FIGURES, Y_HEADER, txt,
+    BG, EASE_IN, EASE_MOVE, FAINT, INK, INK2, LINE, MUTED, PAPER, STAGE_COLORS, STAGE_NAMES, STROKE,
+    T_ENTER, T_MOVE, T_SMALL, T_TINY, Y_EXPLAIN, Y_FIGURES, Y_HEADER, eyebrow, txt,
 )
 
-# Where finished stages stack: a discreet rail of square cards, padded down from
-# the top edge and kept tight to the left so it never crowds the stage content.
+# The progress rail: five small dots top-right, one per stage. Finished stages are
+# filled in their colour, the current one is a ring, the rest are grey. At the end
+# the dots grow into the five panels of the paper's main figure (s06_assemble).
+DOT_GAP = 0.34
+DOT_Y = 3.3
+MARGIN_X = 6.3
+# Kept for the assembled figure's panel size.
 SLOT_W = 0.92
 SLOT_H = 0.92
-SLOT_GAP = 0.2
 
 
-def slot_position(i: int) -> np.ndarray:
-    return np.array([RAIL_LEFT, RAIL_TOP, 0.0]) + RIGHT * (i * (SLOT_W + SLOT_GAP) + SLOT_W / 2)
+def dot_position(i: int) -> np.ndarray:
+    return np.array([MARGIN_X - (4 - i) * DOT_GAP, DOT_Y, 0.0])
+
+
+def slot_position(i: int) -> np.ndarray:   # backwards-compatible name
+    return dot_position(i)
+
+
+def done_dot(i: int) -> Dot:
+    return Dot(dot_position(i), radius=0.055, color=STAGE_COLORS[i])
+
+
+def current_dot(i: int) -> VGroup:
+    return VGroup(
+        Circle(radius=0.09, fill_color=PAPER, fill_opacity=1, stroke_color=STAGE_COLORS[i], stroke_width=1.6),
+        Dot(radius=0.035, color=STAGE_COLORS[i]),
+    ).move_to(dot_position(i))
 
 
 class StageScene(Scene):
     """Base for the five stage scenes.
 
     Subclasses set `stage_index` and implement `body()`. The header, the
-    accumulated rail, and the shrink-away are handled here.
+    progress rail, and the close are handled here.
     """
 
     stage_index: int = 0
 
     def setup(self):
-        self.camera.background_color = PAPER
+        self.camera.background_color = BG
 
     # House motion for every stage: the shared easing unless a call picks its own, and no
     # step shorter than MIN_STEP (sub-half-second steps read as stutter, not speed).
@@ -61,67 +79,51 @@ class StageScene(Scene):
         return STAGE_NAMES[self.stage_index]
 
     def build_rail(self, upto: int) -> VGroup:
-        """Panels for stages already finished (0..upto-1), parked top-left."""
-        rail = VGroup()
-        for i in range(upto):
-            p = StagePanel(i + 1, STAGE_NAMES[i], STAGE_COLORS[i], SLOT_W, SLOT_H, label_size=0.58)
-            p.move_to(slot_position(i))
-            p.set_opacity(0.8)
-            rail.add(p)
-        return rail
-
-    def title_in(self) -> VGroup:
-        """Big stage title, centred, that then retreats to make room."""
-        n = txt(str(self.stage_index + 1), 1.5, self.color(), SEMIBOLD)
-        name = txt(self.name(), 0.62, INK, SEMIBOLD)
-        g = VGroup(n, name).arrange(RIGHT, buff=0.34)
-        return g
+        """Hairline track with a dot per stage: 0..upto-1 filled, the rest grey."""
+        track = Line(dot_position(0), dot_position(4), color=LINE, stroke_width=STROKE)
+        dots = VGroup(*[
+            done_dot(i) if i < upto else Dot(dot_position(i), radius=0.045, color=FAINT)
+            for i in range(5)
+        ])
+        return VGroup(track, dots)
 
     def open_stage(self, upto: int) -> tuple[VGroup, VGroup]:
-        """Show the rail so far, then announce this stage.
-
-        The whole film is 60s, so five stages get ~7s each. There is no room for
-        a centred title card that then retreats -- the header goes straight in.
+        """Show the rail so far, then announce this stage: a small tracked eyebrow
+        in the stage colour over the title in ink, set flush left.
 
         Returns (rail, header) so the body can position around them.
         """
         rail = self.build_rail(upto)
-        if len(rail):
-            self.add(rail)
+        self.add(rail)
+        self.ring = current_dot(self.stage_index)
 
         header = VGroup(
-            txt(f"{self.stage_index + 1}", 0.5, self.color(), SEMIBOLD),
-            txt(self.name(), 0.4, INK, SEMIBOLD),
-        ).arrange(RIGHT, buff=0.2)
-        # Right of the rail, never over it.
-        header.move_to(RIGHT * 1.6 + UP * Y_HEADER)
-        self.play(FadeIn(header, shift=DOWN * 0.12), run_time=T_ENTER, rate_func=EASE_IN)
+            eyebrow(f"Stage {self.stage_index + 1:02d}", self.color()),
+            txt(self.name(), 0.42, INK, MEDIUM),
+        ).arrange(DOWN, buff=0.14, aligned_edge=LEFT)
+        header.move_to(np.array([-MARGIN_X, 3.42, 0.0]), aligned_edge=UL)
+        self.play(FadeIn(header, shift=RIGHT * 0.12), FadeIn(self.ring, scale=0.6),
+                  run_time=T_ENTER, rate_func=EASE_IN)
         return rail, header
 
     def close_stage(self, content: VGroup, rail: VGroup, header: VGroup):
-        """Collapse this stage into its slot while everything else fades away.
+        """Clear the stage and mark it done on the rail.
 
         Fades whatever is actually on screen rather than whatever `content`
-        happens to list. Two reasons: FadeOut re-adds a mobject that was already
-        removed (which made the stage-2 encoders reappear), and animating a
-        VGroup's children individually -- `*[Create(x) for x in group]` -- adds
-        the children, not the wrapper, so a `content`-based list silently missed
-        them and they hard-cut at the scene boundary instead of fading.
+        happens to list: FadeOut re-adds a mobject that was already removed, and
+        animating a VGroup's children individually adds the children, not the
+        wrapper, so a `content`-based list silently missed them and they hard-cut
+        at the scene boundary instead of fading.
         """
-        panel = StagePanel(self.stage_index + 1, self.name(), self.color(),
-                           SLOT_W, SLOT_H, label_size=0.58)
-        panel.move_to(slot_position(self.stage_index))
-        panel.set_opacity(0.8)
-
-        protected = {header, rail}
+        done = done_dot(self.stage_index)
+        protected = {rail, self.ring}
         live = Group(*[m for m in self.mobjects if m not in protected])
-
         self.play(
-            FadeOut(live, shift=DOWN * 0.12),
-            FadeTransform(header, panel),   # a crossfade: a letter-by-letter morph shows garbled text mid-way
+            FadeOut(live, shift=UP * 0.1),
+            Transform(self.ring, done),
             run_time=T_MOVE, rate_func=EASE_MOVE,
         )
-        return panel
+        return done
 
 
 def stat_row(pairs: List[tuple[str, str]], color: str = INK, buff: float = 1.1) -> VGroup:
@@ -129,11 +131,11 @@ def stat_row(pairs: List[tuple[str, str]], color: str = INK, buff: float = 1.1) 
     explain line. Numbers only where we actually have them."""
     from .glass import StatBadge
 
-    g = VGroup(*[StatBadge(v, l, color, 0.46) for v, l in pairs]).arrange(RIGHT, buff=buff)
+    g = VGroup(*[StatBadge(v, l, color, 0.46) for v, l in pairs]).arrange(RIGHT, buff=buff, aligned_edge=UP)
     return g.move_to(UP * Y_FIGURES)
 
 
 def explain(text: str, at=None, size: float = T_SMALL) -> Text:
     """One plain sentence per stage, on its own band. The film is silent; this
     carries it, so it must never collide with the figures below."""
-    return txt(text, size, MUTED).move_to(at if at is not None else UP * Y_EXPLAIN)
+    return txt(text, size * 1.08, INK2).move_to(at if at is not None else UP * Y_EXPLAIN)

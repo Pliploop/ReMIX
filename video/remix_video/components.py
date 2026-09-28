@@ -13,8 +13,8 @@ from typing import Sequence
 from manim import *
 
 from .theme import (
-    FAINT, HAIR, INK, INSTRUCT, MUTED, PAPER, STAGE_COLORS, STAGE_NAMES,
-    T_SMALL, T_TINY, card, tint, txt,
+    FAINT, FILL, HAIR, INK, INK2, INSTRUCT, LINE, MUTED, PAPER, STAGE_COLORS, STAGE_NAMES,
+    STROKE, T_SMALL, T_TINY, card, shadow, tint, txt,
 )
 
 
@@ -94,10 +94,11 @@ class TrackCard(VGroup):
 
 
 def _chip(label: str, color: str) -> VGroup:
-    t = txt(_clip(label, 14), T_TINY * 0.92, color)
+    """A neutral tag pill: grey fill, secondary ink. Tags are metadata, not accents."""
+    t = txt(_clip(label, 14), T_TINY * 0.82, INK2)
     bg = RoundedRectangle(
-        width=t.width + 0.22, height=t.height + 0.14, corner_radius=0.08,
-        fill_color=tint(color, 0.16), fill_opacity=1, stroke_width=0,
+        width=t.width + 0.24, height=t.height + 0.14, corner_radius=(t.height + 0.14) / 2,
+        fill_color=FILL, fill_opacity=1, stroke_width=0,
     )
     return VGroup(bg, t.move_to(bg.get_center()))
 
@@ -128,14 +129,14 @@ class InstructionBubble(VGroup):
             _wrapped_rich(segments, width - 0.5) if segments else _wrapped(text, width - 0.5)
         )
         self.bg = RoundedRectangle(
-            width=max(width, self.label.width + 0.5),
-            height=self.label.height + 0.45,
+            width=max(width, self.label.width + 0.6),
+            height=self.label.height + 0.5,
             corner_radius=0.14,
-            fill_color=tint(color, 0.07), fill_opacity=1,
-            stroke_color=color, stroke_width=1.8,
+            fill_color=PAPER, fill_opacity=1,
+            stroke_color=LINE, stroke_width=STROKE,
         )
         self.label.move_to(self.bg.get_center())
-        self.add(self.bg, self.label)
+        self.add(shadow(self.bg), self.bg, self.label)
 
 
 def _wrapped_rich(segments, max_w: float, size: float = T_SMALL) -> VGroup:
@@ -159,7 +160,7 @@ def _wrapped_rich(segments, max_w: float, size: float = T_SMALL) -> VGroup:
 
     rows = VGroup()
     for line in lines:
-        row = VGroup(*[txt(w, size, c, SEMIBOLD if c != INK else NORMAL) for w, c in line])
+        row = VGroup(*[txt(w, size, c, MEDIUM if c != INK else NORMAL) for w, c in line])
         row.arrange(RIGHT, buff=size * 0.28)
         rows.add(row)
     return rows.arrange(DOWN, buff=0.11)
@@ -399,10 +400,10 @@ def link_pill(label: str, kind: str, color: str = INK) -> VGroup:
     bg = RoundedRectangle(
         width=row.width + 0.44, height=row.height + 0.26,
         corner_radius=(row.height + 0.26) / 2,
-        fill_color=PAPER, fill_opacity=1, stroke_color=FAINT, stroke_width=1.6,
+        fill_color=PAPER, fill_opacity=1, stroke_color=LINE, stroke_width=STROKE,
     )
     row.move_to(bg.get_center())
-    return VGroup(bg, row)
+    return VGroup(shadow(bg, 0.6), bg, row)
 
 
 def caption(scene: Scene, text: str, at=DOWN * 3.1, size: float = T_SMALL) -> Text:
@@ -412,8 +413,8 @@ def caption(scene: Scene, text: str, at=DOWN * 3.1, size: float = T_SMALL) -> Te
 
 
 def title_card(text: str, color: str = INK, size: float = 0.56) -> VGroup:
-    """A short statement, centred, with a coloured underline."""
-    t = txt(text, size, INK, SEMIBOLD)
-    rule = Line(LEFT, RIGHT, color=color, stroke_width=4).set_width(min(t.width, 4.2))
-    rule.next_to(t, DOWN, buff=0.22)
+    """A short statement, centred, with a short accent rule beneath it."""
+    t = txt(text, size, INK, MEDIUM)
+    rule = Line(LEFT, RIGHT, color=color, stroke_width=2.2).set_width(0.7)
+    rule.next_to(t, DOWN, buff=0.24)
     return VGroup(t, rule)

@@ -14,7 +14,7 @@ from typing import Sequence
 import numpy as np
 from manim import *
 
-from .theme import FAINT, FONT, INK, MUTED, PAPER, T_TINY, tint, txt
+from .theme import FAINT, FILL, FONT, INK, INK2, LINE, MUTED, PAPER, STROKE, T_TINY, shadow, tint, txt
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
 QWEN_LOGO = ASSETS / "qwen-icon-logo-png_seeklogo-669128 (1).png"
@@ -61,19 +61,19 @@ def cylinder(color: str, w: float = 1.5, h: float = 1.15, ry: float = 0.19) -> V
 
     # Closed body: down the left wall, round the front of the base, up the right.
     silhouette = VMobject(
-        fill_color=tint(color, 0.1), fill_opacity=1,
-        stroke_color=color, stroke_width=2,
+        fill_color=PAPER, fill_opacity=1,
+        stroke_color=MUTED, stroke_width=STROKE,
     )
     silhouette.set_points_as_corners(
         [np.array([-hw, h / 2, 0.0])] + front_pts + [np.array([hw, h / 2, 0.0])]
     )
 
     # The base's back half, drawn faint, is what makes it read as 3D.
-    back = VMobject(stroke_color=color, stroke_width=1.2, stroke_opacity=0.35)
+    back = VMobject(stroke_color=MUTED, stroke_width=1.0, stroke_opacity=0.3)
     back.set_points_as_corners(back_pts)
 
-    top = Ellipse(width=w, height=ry * 2, fill_color=tint(color, 0.26), fill_opacity=1,
-                  stroke_color=color, stroke_width=2)
+    top = Ellipse(width=w, height=ry * 2, fill_color=FILL, fill_opacity=1,
+                  stroke_color=MUTED, stroke_width=STROKE)
     top.move_to(np.array([0.0, h / 2, 0.0]))
 
     return VGroup(silhouette, back, top)
@@ -85,40 +85,27 @@ def catalogue(label: str, count: str, color: str, w: float = 1.5, h: float = 1.1
     note = music_note(color, 0.52).move_to(np.array([0.0, -0.08, 0.0]))
     body = VGroup(shell, note)
 
-    name = txt(label, T_TINY, INK, SEMIBOLD).next_to(body, DOWN, buff=0.16)
-    n = txt(count, T_TINY * 0.95, color, SEMIBOLD).next_to(name, DOWN, buff=0.05)
+    name = txt(label, T_TINY * 1.05, INK, MEDIUM).next_to(body, DOWN, buff=0.18)
+    n = txt(count + " clips", T_TINY * 0.9, INK2).next_to(name, DOWN, buff=0.06)
     return VGroup(body, name, n)
 
 
 def latent_grid(width: float = 9.6, height: float = 3.9, color: str = "#2E6FD6",
-                spacing: float = 0.62) -> VGroup:
-    """A grid that fades out at the edges: a coordinate space, not a rectangle
-    with dust in it. The fade is per-line opacity keyed to distance from centre,
-    so the field has no hard border to bump against."""
-    lines = VGroup()
+                spacing: float = 0.42) -> VGroup:
+    """A faint dot field that fades toward the edges: a coordinate space, quieter than
+    ruled grid lines. Neutral grey whatever the stage -- it is ground, not figure."""
+    dots = VGroup()
     hw, hh = width / 2, height / 2
-
-    n_v = int(hw / spacing)
-    for i in range(-n_v, n_v + 1):
-        x = i * spacing
-        fade = max(0.0, 1.0 - (abs(x) / hw) ** 1.7)
-        if fade <= 0.02:
-            continue
-        lines.add(Line([x, -hh, 0], [x, hh, 0], color=color,
-                       stroke_width=1.0, stroke_opacity=0.3 * fade))
-
-    n_h = int(hh / spacing)
-    for j in range(-n_h, n_h + 1):
-        y = j * spacing
-        fade = max(0.0, 1.0 - (abs(y) / hh) ** 1.7)
-        if fade <= 0.02:
-            continue
-        lines.add(Line([-hw, y, 0], [hw, y, 0], color=color,
-                       stroke_width=1.0, stroke_opacity=0.3 * fade))
-
-    label = txt("latent space", T_TINY * 0.8, color).set_opacity(0.45)
-    label.move_to(np.array([-hw + 0.85, -hh + 0.3, 0.0]))
-    return VGroup(lines, label)
+    for x in np.arange(-hw, hw + 1e-6, spacing):
+        for y in np.arange(-hh, hh + 1e-6, spacing):
+            r = (x / hw) ** 2 + (y / hh) ** 2
+            fade = max(0.0, 1.0 - r ** 1.2)
+            if fade <= 0.05:
+                continue
+            dots.add(Dot([x, y, 0], radius=0.014, color=MUTED, fill_opacity=0.45 * fade))
+    label = txt("latent space", T_TINY * 0.8, INK2).set_opacity(0.6)
+    label.move_to(np.array([-hw + 0.9, -hh + 0.3, 0.0]))
+    return VGroup(dots, label)
 
 
 # --- the graph shared by stages 2 and 3 ------------------------------------ #
@@ -142,10 +129,12 @@ GRAPH_EDGES = [
 GRAPH_WALK = [(0, 3), (3, 5), (5, 6), (6, 7)]
 
 
-def graph_nodes(color: str, radius: float = 0.14) -> VGroup:
+def graph_nodes(color: str, radius: float = 0.11) -> VGroup:
+    """Neutral nodes: white, hairline grey ring. Stages colour only the nodes they
+    are about (the walk, the anchor)."""
     return VGroup(*[
         Circle(radius=radius, fill_color=PAPER, fill_opacity=1,
-               stroke_color=color, stroke_width=2).move_to(p)
+               stroke_color=INK2, stroke_width=STROKE).move_to(p)
         for p in GRAPH_PTS
     ])
 
@@ -154,8 +143,8 @@ def graph_edges(color: str, width: float = 1.5, opacity: float = 0.55) -> VGroup
     """Straight edges. The graph is the one place the first draft's curves made
     the layout unreadable once the node count went up."""
     return VGroup(*[
-        Line(GRAPH_PTS[a], GRAPH_PTS[b], color=color, stroke_width=width,
-             stroke_opacity=opacity)
+        Line(GRAPH_PTS[a], GRAPH_PTS[b], color=MUTED, stroke_width=min(width, 1.2),
+             stroke_opacity=min(1.0, opacity + 0.2))
         for a, b in GRAPH_EDGES
     ])
 
@@ -178,12 +167,12 @@ def json_frame(
     """A metadata frame with real JSON formatting: coloured keys, quoted values,
     braces. The first draft dumped raw text and it looked like a log file."""
     key_color = key_color or color
-    head = txt(title, T_TINY * 0.85, color, SEMIBOLD)
+    head = txt(title, T_TINY * 0.85, INK2, MEDIUM)
 
     lines = VGroup()
     lines.add(txt("{", T_TINY * 0.9, MUTED, weight=NORMAL))
     for k, v in rows:
-        k_t = txt(f'"{k}"', T_TINY * 0.82, key_color, SEMIBOLD)
+        k_t = txt(f'"{k}"', T_TINY * 0.82, key_color, MEDIUM)
         c_t = txt(":", T_TINY * 0.82, MUTED)
         v_t = txt(f'"{_clip(v, 20)}"', T_TINY * 0.82, INK)
         row = VGroup(k_t, c_t, v_t).arrange(RIGHT, buff=0.05)
@@ -196,9 +185,9 @@ def json_frame(
         width=max(width, lines.width + 0.5), height=lines.height + head.height + 0.55,
         corner_radius=0.12,
         fill_color=PAPER, fill_opacity=1,
-        stroke_color=color, stroke_width=1.6,
+        stroke_color=LINE, stroke_width=STROKE,
     )
-    head.move_to(bg.get_top() + DOWN * 0.2)
+    head.move_to(bg.get_top() + DOWN * 0.22)
     lines.next_to(head, DOWN, buff=0.14)
     lines.align_to(bg.get_left() + RIGHT * 0.24, LEFT)
     return VGroup(bg, head, lines)

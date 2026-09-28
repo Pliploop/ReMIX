@@ -17,7 +17,8 @@ from remix_video.glass import elbow_link
 from remix_video.parts import judge_logo, person
 from remix_video.stagebase import StageScene, explain, stat_row
 from remix_video.theme import (
-    CHAIN, ENRICH, FONT, INK, MUTED, NEIGHBOUR, PAPER, T_TINY, VALIDATE, card, tint, txt,
+    CHAIN, ENRICH, FONT, INK, INK2, LINE, MUTED, NEIGHBOUR, PAPER, STROKE, T_TINY, VALIDATE, card, shadow,
+    tint, txt,
 )
 
 # (question, score out of 5). These are the rubric's own questions; the scores
@@ -51,8 +52,8 @@ def person_icon(color: str, height: float = 0.62):
 
 
 def rater_box(title: str, badge: Mobject, color: str) -> VGroup:
-    box = card(2.5, 1.15, color, alpha=0.11, radius=0.13)
-    t = txt(title, T_TINY * 0.95, color, SEMIBOLD).move_to(box.get_center() + DOWN * 0.38)
+    box = card(2.5, 1.15, color, radius=0.13)
+    t = txt(title, T_TINY * 0.95, INK2, MEDIUM).move_to(box.get_center() + DOWN * 0.38)
     g = Group(box, badge, t)
     badge.move_to(box.get_center() + UP * 0.18)
     return g
@@ -77,13 +78,16 @@ class Validation(StageScene):
         st = steps()[1]
 
         # --- the instruction under test -------------------------------------- #
-        real = txt(f'"{st["instruction"]}"', 0.28, INK, SEMIBOLD)
+        real = txt(f'"{st["instruction"]}"', 0.28, INK, MEDIUM)
         rbg = RoundedRectangle(
-            width=real.width + 0.5, height=real.height + 0.38, corner_radius=0.13,
-            fill_color=tint(VALIDATE, 0.1), fill_opacity=1,
-            stroke_color=VALIDATE, stroke_width=2,
+            width=real.width + 0.6, height=real.height + 0.46, corner_radius=0.13,
+            fill_color=PAPER, fill_opacity=1,
+            stroke_color=LINE, stroke_width=STROKE,
         )
-        instr = VGroup(rbg, real.move_to(rbg.get_center())).move_to(LEFT * 4.0 + UP * 0.5)
+        mark = RoundedRectangle(width=0.05, height=real.height + 0.2, corner_radius=0.025,
+                                fill_color=VALIDATE, fill_opacity=1, stroke_width=0)
+        mark.move_to(rbg.get_left() + RIGHT * 0.16)
+        instr = VGroup(shadow(rbg), rbg, mark, real.move_to(rbg.get_center() + RIGHT * 0.06)).move_to(LEFT * 4.0 + UP * 0.5)
 
         line = explain("The same instruction goes to two judges and to a person.")
         self.play(FadeIn(instr, shift=RIGHT * 0.15), FadeIn(line), run_time=0.8)
@@ -94,7 +98,7 @@ class Validation(StageScene):
         llm.move_to(RIGHT * 0.1 + UP * 1.45)
 
         # 0.5 units in a 1.15-unit box. At 1.0 the icon overflowed its own card.
-        human = rater_box("Human rater", person_icon(NEIGHBOUR, 0.5), NEIGHBOUR)
+        human = rater_box("Human rater", person_icon(INK2, 0.5), NEIGHBOUR)
         human.move_to(RIGHT * 0.1 + DOWN * 0.85)
 
         feeds = VGroup(
@@ -114,11 +118,11 @@ class Validation(StageScene):
         for label, score in RUBRIC:
             box = RoundedRectangle(width=0.19, height=0.19, corner_radius=0.05,
                                    fill_color=PAPER, fill_opacity=1,
-                                   stroke_color=VALIDATE, stroke_width=1.6)
+                                   stroke_color=MUTED, stroke_width=STROKE)
             tick = Text("✓", font=FONT, color=VALIDATE, weight=SEMIBOLD).scale(0.17).move_to(box)
             tick.set_opacity(0)
             ticks.add(tick)
-            name = txt(label, T_TINY * 0.85, MUTED)
+            name = txt(label, T_TINY * 0.85, INK2)
             stars = star_row(score, VALIDATE)
             row = VGroup(VGroup(box, tick), name, stars).arrange(RIGHT, buff=0.18)
             rows.add(row)
@@ -130,7 +134,7 @@ class Validation(StageScene):
         for r in rows:
             r[2].next_to([name_right, r[1].get_center()[1], 0], RIGHT, buff=0.28)
 
-        panel = card(rows.width + 0.7, rows.height + 0.65, VALIDATE, alpha=0.06, radius=0.13)
+        panel = card(rows.width + 0.7, rows.height + 0.65, VALIDATE, radius=0.13)
         rows.move_to(panel.get_center())
         rubric = VGroup(panel, rows).move_to(RIGHT * 4.0 + UP * 0.5)
 
@@ -184,7 +188,7 @@ class Validation(StageScene):
             b = star_row(sb, NEIGHBOUR, 0.085)
             for s in b[:sb]:
                 s.set_fill(NEIGHBOUR, opacity=1)
-            name = txt(label, T_TINY * 0.85, MUTED)
+            name = txt(label, T_TINY * 0.85, INK2)
             link = Line(LEFT * 0.75, RIGHT * 0.75, color=CHAIN, stroke_width=2, stroke_opacity=0.5)
             row = VGroup(a, link, name, link.copy(), b).arrange(RIGHT, buff=0.14)
             # The name sits on the link, so the link reads as "these two, on this".
@@ -207,7 +211,7 @@ class Validation(StageScene):
             run_time=0.8,
         )
 
-        agree = txt(f"AC1 {FIGURES['ac1_lo']}–{FIGURES['ac1_hi']}", 0.4, CHAIN, SEMIBOLD)
+        agree = txt(f"AC1 {FIGURES['ac1_lo']}–{FIGURES['ac1_hi']}", 0.4, INK, MEDIUM)
         agree.next_to(pair_rows, DOWN, buff=0.4)
         self.play(FadeIn(agree, scale=0.9), run_time=0.5)
         self.wait(0.9)

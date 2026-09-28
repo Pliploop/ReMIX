@@ -20,7 +20,7 @@ from remix_video.parts import (
     GRAPH_EDGES, GRAPH_PTS, edge_index, graph_edges, graph_nodes, latent_grid,
 )
 from remix_video.stagebase import StageScene, explain
-from remix_video.theme import INK, MUTED, NEIGHBOUR, PAPER, T_TINY, card, tint, txt
+from remix_video.theme import INK, INK2, MUTED, NEIGHBOUR, PAPER, T_TINY, card, tint, txt
 
 # Edges the pruning removes. Stage 3 keeps the same list, so the two views agree.
 WEAK = [(2, 7), (1, 3), (5, 8), (4, 2), (8, 7)]
@@ -39,9 +39,9 @@ def vector_strip(n: int = 7, color: str = NEIGHBOUR, seed: int = 0) -> VGroup:
 
 
 def model_box(name: str, dim: int, color: str) -> VGroup:
-    box = card(2.1, 0.64, color, alpha=0.13, radius=0.12)
-    t = txt(name, T_TINY * 1.05, color, SEMIBOLD).move_to(box.get_center() + UP * 0.08)
-    d = txt(f"{dim}-d", T_TINY * 0.85, MUTED).move_to(box.get_center() + DOWN * 0.15)
+    box = card(2.2, 0.7, color, radius=0.12)
+    t = txt(name, T_TINY * 1.05, INK, MEDIUM).move_to(box.get_center() + UP * 0.1)
+    d = txt(f"{dim}-d", T_TINY * 0.85, INK2).move_to(box.get_center() + DOWN * 0.16)
     return VGroup(box, t, d)
 
 
@@ -107,11 +107,11 @@ class Neighbourhood(StageScene):
         self.wait(0.6)
 
         # --- 3. the score that made those edges ------------------------------ #
-        # Between the rail (ends at x≈-5.3) and the header (starts at x≈-0.1).
-        fbox = card(3.4, 0.8, NEIGHBOUR, alpha=0.1, radius=0.12).move_to(UP * 2.5 + LEFT * 2.9)
+        # Top right, under the progress rail: the header owns the top left.
+        fbox = card(3.4, 0.8, NEIGHBOUR, radius=0.12).move_to(UP * 2.55 + RIGHT * 4.6)
         # Subscripts via U+2090/U+209C, not the Mathematical Bold block (U+1D400+):
         # the sans font has no glyphs for those and renders tofu.
-        formula = txt("s(A,B) = ½ (sₐ + sₜ)", 0.33, NEIGHBOUR, SEMIBOLD).move_to(fbox.get_center())
+        formula = txt("s(A,B) = ½ (sₐ + sₜ)", 0.33, INK, MEDIUM).move_to(fbox.get_center())
         line3 = explain("Each edge is scored: sound and description, averaged.")
         self.play(FadeIn(fbox), Write(formula), ReplacementTransform(line2, line3), run_time=0.8)
 
@@ -123,7 +123,7 @@ class Neighbourhood(StageScene):
         for (a, b) in SCORED:
             i = edge_index(a, b)
             val = rng.uniform(0.62, 0.9)
-            m = txt(f"{val:.2f}", T_TINY * 0.78, NEIGHBOUR, SEMIBOLD)
+            m = txt(f"{val:.2f}", T_TINY * 0.78, INK2, MEDIUM)
             m.move_to((GRAPH_PTS[a] + GRAPH_PTS[b]) / 2 + UP * 0.16)
             marks.add(m)
         weak_marks = VGroup()

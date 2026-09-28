@@ -14,11 +14,14 @@ from __future__ import annotations
 from manim import *
 
 # --- stage palette -------------------------------------------------------- #
-ENRICH = "#E23B34"
-NEIGHBOUR = "#2E6FD6"
-CHAIN = "#1FA347"
-INSTRUCT = "#FB8B24"
-VALIDATE = "#7B3FF2"
+# Accents only. Structure (cards, lines, text) is neutral; a stage colour marks the
+# one thing that matters in a frame -- the eyebrow, the walked path, the highlighted
+# bar -- never every box. Refined, slightly softened hues (Radix scale 9).
+ENRICH = "#E5484D"
+NEIGHBOUR = "#3E63DD"
+CHAIN = "#30A46C"
+INSTRUCT = "#F76B15"
+VALIDATE = "#8E4EC6"
 
 STAGE_COLORS = [ENRICH, NEIGHBOUR, CHAIN, INSTRUCT, VALIDATE]
 STAGE_NAMES = [
@@ -30,11 +33,15 @@ STAGE_NAMES = [
 ]
 
 # --- neutrals ------------------------------------------------------------- #
-INK = "#141414"
-MUTED = "#71717A"
+INK = "#18181B"       # primary text
+INK2 = "#52525B"      # secondary text, labels
+MUTED = "#8E8E96"     # tertiary text, connectors
 FAINT = "#D4D4D8"
-HAIR = "#E4E4E7"
-PAPER = "#FFFFFF"
+HAIR = "#E7E5E4"      # hairline borders
+LINE = "#E7E5E4"
+FILL = "#F4F4F3"      # neutral chip / track fill
+PAPER = "#FFFFFF"     # surfaces (cards)
+BG = "#FAFAF8"        # the ground: warm off-white, so white cards read as raised
 
 # Inter, matching the companion website exactly (index.html loads it from rsms.me).
 # Helvetica Neue was the ask, but it is proprietary Linotype/Apple and cannot be
@@ -46,8 +53,8 @@ FONT = "Inter"
 T_TITLE = 0.72
 T_HEAD = 0.46
 T_BODY = 0.32
-T_SMALL = 0.24
-T_TINY = 0.19
+T_SMALL = 0.25
+T_TINY = 0.205       # the floor: nothing on screen is smaller than a readable label
 
 # --- layout grid ---------------------------------------------------------- #
 # Fixed bands, so text can never land on text. Every scene uses these instead of
@@ -92,18 +99,41 @@ def txt(s: str, size: float = T_BODY, color: str = INK, weight: str = NORMAL) ->
     return Text(s, font=FONT, color=color, weight=weight).scale(size)
 
 
-def card(width: float, height: float, color: str, alpha: float = 0.06, radius: float = 0.14) -> RoundedRectangle:
-    """The figure's card: tinted fill, hairline coloured border, generous radius."""
+def card(width: float, height: float, color: str = INK, alpha: float = 0.0, radius: float = 0.12,
+         accent: bool = False) -> RoundedRectangle:
+    """A surface: white, hairline grey border. `color` is ignored unless `accent`
+    (then the border takes the stage colour, softly) -- structure stays neutral so
+    colour can mean something."""
     return RoundedRectangle(
         width=width,
         height=height,
         corner_radius=radius,
-        fill_color=tint(color, alpha * 0.75),
+        fill_color=PAPER,
         fill_opacity=1,
-        stroke_color=color,
+        stroke_color=color if accent else LINE,
         stroke_width=STROKE,
-        stroke_opacity=0.85,
+        stroke_opacity=0.7 if accent else 1.0,
     )
+
+
+def shadow(m: Mobject, depth: float = 1.0) -> VGroup:
+    """A soft two-layer drop shadow under a rounded surface: what makes a white
+    card sit on the off-white ground instead of being outlined on it."""
+    layers = VGroup()
+    for dy, grow, op in ((0.05, 0.06, 0.035), (0.02, 0.02, 0.05)):
+        s = RoundedRectangle(
+            width=m.width + grow, height=m.height + grow,
+            corner_radius=getattr(m, "corner_radius", 0.12) + grow / 2,
+            fill_color="#000000", fill_opacity=op * depth, stroke_width=0,
+        ).move_to(m.get_center() + DOWN * dy * depth)
+        layers.add(s)
+    return layers
+
+
+def eyebrow(text: str, color: str, size: float = T_TINY) -> MarkupText:
+    """Small tracked capitals: the editorial label above a title."""
+    return MarkupText(f'<span letter_spacing="2800">{text.upper()}</span>', font=FONT,
+                      color=color, weight=SEMIBOLD).scale(size * 0.95)
 
 
 def arrow(start, end, color: str = INK, width: float = STROKE_ARROW) -> Arrow:

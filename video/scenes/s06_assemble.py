@@ -13,24 +13,21 @@ from manim import *
 from remix_video.components import Logo, expansion, link_pill, wordmark
 from remix_video.facts import CATALOGUE_TOTAL, FIGURES, thousands
 from remix_video.glass import StagePanel
-from remix_video.stagebase import SLOT_H, SLOT_W, slot_position
+from remix_video.stagebase import done_dot, dot_position
 from remix_video.theme import (
-    EASE_IN, EASE_MOVE, FAINT, HOLD_READ, INK, MUTED, PAPER, STAGE_COLORS, STAGE_NAMES, STROKE_ARROW,
+    BG, EASE_IN, EASE_MOVE, FAINT, HOLD_READ, INK2, LINE, STROKE, INK, MUTED, PAPER, STAGE_COLORS, STAGE_NAMES, STROKE_ARROW,
     T_ENTER, T_EXIT, T_SMALL, T_TINY, txt,
 )
 
 
 class Assemble(Scene):
     def construct(self):
-        self.camera.background_color = PAPER
+        self.camera.background_color = BG
 
-        rail = VGroup()
-        for i in range(5):
-            p = StagePanel(i + 1, STAGE_NAMES[i], STAGE_COLORS[i], SLOT_W, SLOT_H, label_size=0.58)
-            p.move_to(slot_position(i))
-            p.set_opacity(0.8)
-            rail.add(p)
-        self.add(rail)
+        # The finished progress rail, exactly as stage 5 left it.
+        track = Line(dot_position(0), dot_position(4), color=LINE, stroke_width=STROKE)
+        rail = VGroup(*[done_dot(i) for i in range(5)])
+        self.add(track, rail)
         self.wait(0.2)
 
         # --- fly to centre and become the figure ---------------------------- #
@@ -42,7 +39,7 @@ class Assemble(Scene):
         # Bolder connectors than the draft: at this size the thin ones vanished.
         links = VGroup(*[
             Arrow(
-                big[i][0].get_right(), big[i + 1][0].get_left(),
+                big[i].bg.get_right(), big[i + 1].bg.get_left(),
                 buff=0.06, color=MUTED, stroke_width=STROKE_ARROW,
                 max_tip_length_to_length_ratio=0.35, tip_length=0.11,
             ).shift(UP * 0.16)
@@ -51,6 +48,7 @@ class Assemble(Scene):
 
         self.play(
             LaggedStart(*[ReplacementTransform(rail[i], big[i]) for i in range(5)], lag_ratio=0.08),
+            FadeOut(track),
             run_time=1.6, rate_func=EASE_MOVE,
         )
         self.play(LaggedStart(*[GrowArrow(l) for l in links], lag_ratio=0.15), run_time=0.9, rate_func=EASE_IN)
@@ -63,7 +61,7 @@ class Assemble(Scene):
             _fig(thousands(FIGURES["steps"]), "steps", STAGE_COLORS[1]),
             _fig(thousands(FIGURES["variants"]), "instructions", STAGE_COLORS[3]),
             _fig(f"{FIGURES['ac1_lo']}–{FIGURES['ac1_hi']}", "judge agreement", STAGE_COLORS[4]),
-        ).arrange(RIGHT, buff=0.85).move_to(DOWN * 2.5)
+        ).arrange(RIGHT, buff=0.95, aligned_edge=UP).move_to(DOWN * 2.45)
 
         self.play(LaggedStart(*[FadeIn(f, shift=UP * 0.1) for f in figs], lag_ratio=0.15),
                   run_time=1.3, rate_func=EASE_IN)
@@ -94,6 +92,8 @@ class Assemble(Scene):
 
 
 def _fig(value: str, label: str, color: str) -> VGroup:
-    v = txt(value, 0.42, color, SEMIBOLD)
-    l = txt(label, T_TINY * 0.9, MUTED)
-    return VGroup(v, l).arrange(DOWN, buff=0.08)
+    """Same grammar as the stages' figures: accent tick, ink number, quiet label."""
+    tick = Line(LEFT * 0.14, RIGHT * 0.14, color=color, stroke_width=2.4)
+    v = txt(value, 0.44, INK, MEDIUM)
+    l = txt(label, T_TINY * 0.95, INK2)
+    return VGroup(tick, v, l).arrange(DOWN, buff=0.1)

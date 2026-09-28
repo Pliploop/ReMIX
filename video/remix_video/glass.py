@@ -18,7 +18,8 @@ import numpy as np
 from manim import *
 
 from .components import Waveform, _chip, _clip
-from .theme import FAINT, FONT, HAIR, INK, INSTRUCT, MUTED, PAPER, STROKE, STROKE_ARROW, T_TINY, T_SMALL, tint, txt
+from .theme import (FAINT, FILL, FONT, HAIR, INK, INK2, INSTRUCT, LINE, MUTED, PAPER, STROKE, STROKE_ARROW,
+                    T_TINY, T_SMALL, eyebrow, shadow, tint, txt)
 
 
 class GlassCard(VGroup):
@@ -39,30 +40,18 @@ class GlassCard(VGroup):
         super().__init__(**kwargs)
         height = 1.62 if not tags else 1.95
 
-        # shadow -> wash -> body -> edge highlight
-        shadow = RoundedRectangle(
-            width=width, height=height, corner_radius=0.2,
-            fill_color="#000000", fill_opacity=0.05, stroke_width=0,
-        ).shift(DOWN * 0.055)
-        wash = RoundedRectangle(
-            width=width, height=height, corner_radius=0.2,
-            fill_color=color, fill_opacity=0.12, stroke_width=0,
-        )
+        # A white surface on a soft shadow, hairline edge. The accent lives only in
+        # the waveform and the play button.
         body = RoundedRectangle(
-            width=width, height=height, corner_radius=0.2,
-            fill_color=PAPER, fill_opacity=0.62,
-            stroke_color=color, stroke_width=STROKE, stroke_opacity=0.5,
+            width=width, height=height, corner_radius=0.16,
+            fill_color=PAPER, fill_opacity=1,
+            stroke_color=LINE, stroke_width=STROKE,
         )
-        gleam = RoundedRectangle(
-            width=width - 0.22, height=height * 0.42, corner_radius=0.16,
-            fill_color=PAPER, fill_opacity=0.30, stroke_width=0,
-        ).move_to(body.get_top() + DOWN * (height * 0.24))
-
-        self.plate = VGroup(shadow, wash, body, gleam)
+        self.plate = VGroup(shadow(body), body)
 
         # play button
         self.button = VGroup(
-            Circle(radius=0.19, fill_color=color, fill_opacity=1, stroke_width=0),
+            Circle(radius=0.17, fill_color=INK, fill_opacity=1, stroke_width=0),
             Triangle(fill_color=PAPER, fill_opacity=1, stroke_width=0)
             .scale(0.075).rotate(-PI / 2).shift(RIGHT * 0.022),
         )
@@ -75,12 +64,12 @@ class GlassCard(VGroup):
             )
             self.button = VGroup(self.button[0], self.button[1])
 
-        self.title = txt(_clip(title, 20), T_TINY * 1.18, INK, SEMIBOLD)
-        self.artist = txt(_clip(artist, 22), T_TINY * 0.92, MUTED)
+        self.title = txt(_clip(title, 20), T_TINY * 1.12, INK, MEDIUM)
+        self.artist = txt(_clip(artist, 22), T_TINY * 0.9, INK2)
         head = VGroup(self.title, self.artist).arrange(DOWN, buff=0.06, aligned_edge=LEFT)
         top = VGroup(self.button, head).arrange(RIGHT, buff=0.16, aligned_edge=UP)
 
-        self.wave = Waveform(seed=seed, n=26, width=width - 0.5, height=0.42,
+        self.wave = Waveform(seed=seed, n=34, width=width - 0.5, height=0.4,
                              color=color, energy=energy)
 
         stack = VGroup(top, self.wave)
@@ -117,6 +106,7 @@ def elbow_link(
     entered from the side they face.
     """
     width = min(width, STROKE_ARROW)   # hairline connectors, whatever the caller asked
+    color = MUTED   # diagram plumbing is neutral; colour is reserved for what the frame is about
     a = np.array(a, dtype=float)
     b = np.array(b, dtype=float)
     dx, dy = b[0] - a[0], b[1] - a[1]
@@ -196,6 +186,7 @@ def fork_link(
     reverse=True merges `targets` into `source` instead of fanning out.
     """
     width = min(width, STROKE_ARROW)   # hairline connectors, whatever the caller asked
+    color = MUTED   # diagram plumbing is neutral; colour is reserved for what the frame is about
     source = np.array(source, dtype=float)
     targets = [np.array(t, dtype=float) for t in targets]
 
@@ -281,9 +272,13 @@ class StatBadge(VGroup):
 
     def __init__(self, value: str, label: str, color: str = INK, size: float = 0.5, **kwargs):
         super().__init__(**kwargs)
-        v = txt(value, size * 0.9, color, SEMIBOLD)
-        l = txt(label, T_TINY, MUTED)
-        self.add(VGroup(v, l).arrange(DOWN, buff=0.09))
+        # Big ink figure, quiet label, and a short accent tick above: the stage colour
+        # marks the number without shouting it.
+        v = txt(value, size * 1.05, INK, MEDIUM)
+        l = txt(label, T_TINY * 0.95, INK2)
+        tick = Line(LEFT * 0.14, RIGHT * 0.14, color=color, stroke_width=2.4)
+        g = VGroup(tick, v, l).arrange(DOWN, buff=0.1)
+        self.add(g)
 
 
 # One graph, shared by the stage 2 and stage 3 icons. Deliberately dense with
@@ -403,18 +398,20 @@ class StagePanel(VGroup):
         # figure, not a wide tab.
         side = min(width, height)
         bg = RoundedRectangle(
-            width=width, height=height, corner_radius=side * 0.22,
-            fill_color=tint(color, 0.05), fill_opacity=1,
-            stroke_color=color, stroke_width=STROKE, stroke_opacity=0.6,
+            width=width, height=height, corner_radius=side * 0.14,
+            fill_color=PAPER, fill_opacity=1,
+            stroke_color=LINE, stroke_width=STROKE,
         )
-        self.body = panel_icon(n, color, scale=min(1.0, height / 1.05))
+        self.body = panel_icon(n, color, scale=max(1.0, 0.72 * height / 1.05))   # fill the big figure panels
         self.body.move_to(bg.get_center())
 
-        label = txt(f"{n}. {name}", T_TINY * label_size, color, MEDIUM)
+        num = eyebrow(f"{n:02d}", color, T_TINY * label_size)
+        name_t = txt(name, T_TINY * label_size * 1.1, INK, MEDIUM)
+        label = VGroup(num, name_t).arrange(DOWN, buff=0.08)
         if label.width > width + 0.3:
             label.set(width=width + 0.3)
-        label.next_to(bg, DOWN, buff=0.1)
+        label.next_to(bg, DOWN, buff=0.16)
 
-        self.add(bg, self.body, label)
+        self.add(shadow(bg), bg, self.body, label)
         self.bg = bg
         self.label = label

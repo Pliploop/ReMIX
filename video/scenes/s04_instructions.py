@@ -19,7 +19,8 @@ from remix_video.glass import elbow_link
 from remix_video.parts import json_frame, judge_logo
 from remix_video.stagebase import StageScene, explain, stat_row
 from remix_video.theme import (
-    CHAIN, ENRICH, INK, INSTRUCT, MUTED, NEIGHBOUR, PAPER, T_TINY, card, tint, txt,
+    CHAIN, ENRICH, FILL, INK, INK2, INSTRUCT, LINE, MUTED, NEIGHBOUR, PAPER, STROKE, T_TINY, card, shadow,
+    tint, txt,
 )
 
 
@@ -39,14 +40,14 @@ def axis_bars(width: float = 5.2) -> tuple[VGroup, list]:
     rows = VGroup()
     growers = []
     for name, val in top:
-        label = txt(name, T_TINY * 1.0, MUTED)
-        track = RoundedRectangle(width=width, height=0.17, corner_radius=0.06,
-                                 fill_color=tint(INSTRUCT, 0.12), fill_opacity=1, stroke_width=0)
+        label = txt(name, T_TINY * 1.0, INK2)
+        track = RoundedRectangle(width=width, height=0.1, corner_radius=0.05,
+                                 fill_color=FILL, fill_opacity=1, stroke_width=0)
         full_w = max(0.05, width * val / peak)
-        fill = RoundedRectangle(width=full_w, height=0.17, corner_radius=0.06,
+        fill = RoundedRectangle(width=full_w, height=0.1, corner_radius=0.05,
                                 fill_color=INSTRUCT, fill_opacity=1, stroke_width=0)
         fill.align_to(track, LEFT)
-        count = txt(f"{val:,}", T_TINY * 0.9, INSTRUCT, SEMIBOLD)
+        count = txt(f"{val:,}", T_TINY * 0.9, INK2, MEDIUM)
         bar = VGroup(track, fill)
         row = VGroup(label, bar, count).arrange(RIGHT, buff=0.24)
         rows.add(row)
@@ -86,7 +87,7 @@ class Instructions(StageScene):
         self.wait(0.7)
 
         # --- 2. the diff ------------------------------------------------------ #
-        diff_call = txt("diff(source, target)", T_TINY * 0.95, INSTRUCT, SEMIBOLD)
+        diff_call = txt("diff(source, target)", T_TINY * 0.95, INK2, MEDIUM)
         diff_call.move_to(LEFT * 1.55 + DOWN * 0.15)
 
         delta = json_frame(
@@ -119,20 +120,23 @@ class Instructions(StageScene):
             run_time=0.7,
         )
 
-        llm_box = card(2.6, 1.6, INSTRUCT, alpha=0.12, radius=0.14).move_to(LEFT * 0.5 + UP * 0.4)
+        llm_box = card(2.6, 1.6, INSTRUCT, radius=0.14).move_to(LEFT * 0.5 + UP * 0.4)
         logos = Group(judge_logo("qwen", 0.62), judge_logo("gemma", 0.62)).arrange(RIGHT, buff=0.3)
         logos.move_to(llm_box.get_center() + UP * 0.24)
-        llm_t = txt("LLM", T_TINY * 1.05, INSTRUCT, SEMIBOLD).move_to(llm_box.get_center() + DOWN * 0.5)
+        llm_t = txt("LLM", T_TINY * 1.05, INK2, MEDIUM).move_to(llm_box.get_center() + DOWN * 0.5)
 
         feed = elbow_link(delta.get_right() + RIGHT * 0.04, llm_box.get_left() + LEFT * 0.03, INSTRUCT, 2.2)
 
-        real = txt(f'"{st["instruction"]}"', 0.27, INK, SEMIBOLD)
+        real = txt(f'"{st["instruction"]}"', 0.27, INK, MEDIUM)
         rbg = RoundedRectangle(
-            width=real.width + 0.5, height=real.height + 0.4, corner_radius=0.13,
-            fill_color=tint(INSTRUCT, 0.13), fill_opacity=1,
-            stroke_color=INSTRUCT, stroke_width=2,
+            width=real.width + 0.6, height=real.height + 0.46, corner_radius=0.13,
+            fill_color=PAPER, fill_opacity=1,
+            stroke_color=LINE, stroke_width=STROKE,
         )
-        picked = VGroup(rbg, real.move_to(rbg.get_center())).move_to(RIGHT * 3.9 + UP * 0.4)
+        mark = RoundedRectangle(width=0.05, height=real.height + 0.2, corner_radius=0.025,
+                                fill_color=INSTRUCT, fill_opacity=1, stroke_width=0)
+        mark.move_to(rbg.get_left() + RIGHT * 0.16)
+        picked = VGroup(shadow(rbg), rbg, mark, real.move_to(rbg.get_center() + RIGHT * 0.06)).move_to(RIGHT * 3.9 + UP * 0.4)
         emit = elbow_link(llm_box.get_right() + RIGHT * 0.03, picked.get_left() + LEFT * 0.04, INSTRUCT, 2.2)
 
         line3 = explain(f"An LLM writes the edit — {VARIANTS_PER_STEP} variants per step.")
@@ -152,13 +156,13 @@ class Instructions(StageScene):
         self.play(picked.animate.move_to(UP * 2.0), run_time=0.5)
 
         budget = VGroup(
-            txt("≤ 4 clauses", 0.4, INSTRUCT, SEMIBOLD),
-            txt("per instruction", T_TINY * 0.9, MUTED),
+            txt("≤ 4 clauses", 0.4, INK, MEDIUM),
+            txt("per instruction", T_TINY * 0.9, INK2),
         ).arrange(DOWN, buff=0.1).move_to(LEFT * 5.1 + DOWN * 0.55)
 
         bars, growers = axis_bars(4.6)
         bars.move_to(RIGHT * 0.7 + DOWN * 0.6)
-        bars_title = txt("and each one lands on a named axis", T_TINY * 1.0, MUTED)
+        bars_title = txt("and each one lands on a named axis", T_TINY * 1.0, INK2)
         bars_title.next_to(bars, UP, buff=0.3)
 
         line4 = explain("A clause budget is what stops the instructions turning to mush.")

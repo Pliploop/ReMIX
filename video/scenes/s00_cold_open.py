@@ -17,7 +17,7 @@ from remix_video.chain import steps, tracks
 from remix_video.components import InstructionBubble, title_card, txt
 from remix_video.glass import GlassCard
 from remix_video.theme import (
-    CHAIN, EASE_IN, EASE_MOVE, HOLD, HOLD_READ, INK, INSTRUCT, LAG, MUTED, NEIGHBOUR, PAPER,
+    BG, CHAIN, EASE_IN, EASE_MOVE, HOLD, HOLD_READ, INK, INK2, INSTRUCT, LAG, MUTED, NEIGHBOUR, PAPER,
     STAGE_COLORS, T_BODY, T_ENTER, T_EXIT, T_MOVE, T_SMALL, VALIDATE, arrow,
 )
 
@@ -26,7 +26,7 @@ CARD_Y = 0.25
 
 class ColdOpen(Scene):
     def construct(self):
-        self.camera.background_color = PAPER
+        self.camera.background_color = BG
         st = steps()
         tr = tracks()
 
@@ -35,14 +35,14 @@ class ColdOpen(Scene):
                       tags=tr[0].get("tags", []), playing=True, width=3.5)
         a.move_to(LEFT * 4.6 + UP * CARD_Y)
 
-        lede = txt("You found something close.", T_BODY, MUTED).move_to(UP * 2.3)
+        lede = txt("You found something close.", T_BODY, INK2).move_to(UP * 2.3)
         self.play(FadeIn(a, shift=UP * 0.15), FadeIn(lede, shift=UP * 0.08), run_time=T_ENTER, rate_func=EASE_IN)
         # Let it actually play before anything else happens.
         self.play(a.pulse(1.04, 0.8), run_time=0.8)
         self.wait(0.3)
 
         # --- 2. the instruction, between, as the cause ---------------------- #
-        want = txt("But not quite right. So you say what to change.", T_BODY, MUTED).move_to(UP * 2.3)
+        want = txt("But not quite right. So you say what to change.", T_BODY, INK2).move_to(UP * 2.3)
         self.play(FadeOut(lede, shift=UP * 0.1), FadeIn(want, shift=UP * 0.1), run_time=T_ENTER, rate_func=EASE_MOVE)
 
         # Grey bubble, grey arrows: the only colours in the instruction are the
@@ -67,7 +67,7 @@ class ColdOpen(Scene):
         self.wait(0.6)
 
         # --- 4. again, identically: it composes ----------------------------- #
-        want2 = txt("And again. Each turn edits the last result.", T_BODY, MUTED).move_to(UP * 2.3)
+        want2 = txt("And again. Each turn edits the last result.", T_BODY, INK2).move_to(UP * 2.3)
         b2 = GlassCard(tr[2]["title"], tr[2]["artist"], seed=23, color=NEIGHBOUR,
                        tags=tr[2].get("tags", []), playing=True, width=3.5, energy=1.1)
         b2.move_to(RIGHT * 4.6 + UP * CARD_Y)
@@ -98,10 +98,10 @@ class ColdOpen(Scene):
 
         # the thesis, said plainly
         kw = VGroup(
-            txt("keep", T_SMALL, CHAIN, SEMIBOLD),
-            txt("one thing,", T_SMALL, MUTED),
-            txt("change", T_SMALL, INSTRUCT, SEMIBOLD),
-            txt("another", T_SMALL, MUTED),
+            txt("keep", T_SMALL * 1.1, CHAIN, MEDIUM),
+            txt("one thing,", T_SMALL * 1.1, INK2),
+            txt("change", T_SMALL * 1.1, INSTRUCT, MEDIUM),
+            txt("another", T_SMALL * 1.1, INK2),
         ).arrange(RIGHT, buff=0.14).move_to(DOWN * 1.5)
         self.play(FadeIn(kw, shift=UP * 0.1), run_time=T_ENTER, rate_func=EASE_IN)
         self.wait(1.1)
@@ -124,13 +124,13 @@ class ColdOpen(Scene):
 
         links = VGroup(*[
             arrow(minis[i].get_right() + RIGHT * 0.03, minis[i + 1].get_left() + LEFT * 0.03,
-                  NEIGHBOUR, 2.4)
+                  MUTED, 1.6)
             for i in range(len(minis) - 1)
         ])
         marks = VGroup(*[
             VGroup(
-                Circle(radius=0.14, fill_color=NEIGHBOUR, fill_opacity=1, stroke_width=0),
-                txt(str(i + 1), 0.16, PAPER, SEMIBOLD),
+                Circle(radius=0.13, fill_color=INK, fill_opacity=1, stroke_width=0),
+                txt(str(i + 1), 0.15, PAPER, MEDIUM),
             ).arrange(ORIGIN).move_to(links[i].get_center() + UP * 0.3)
             for i in range(len(links))
         ])
@@ -154,15 +154,15 @@ class ColdOpen(Scene):
         # match rather than a jump. No numbers: this claim is qualitative.
         self.play(FadeOut(VGroup(minis, links, marks, claim), shift=UP * 0.1), run_time=T_EXIT)
 
-        name = txt("ReMIX", 0.95, INK, SEMIBOLD).move_to(UP * 0.9)
+        name = txt("ReMIX", 1.0, INK, SEMIBOLD).move_to(UP * 0.9)
         sub = VGroup(
-            txt("a dataset of", T_BODY, MUTED),
-            txt("grounded transitions", T_BODY, INK, SEMIBOLD),
-        ).arrange(RIGHT, buff=0.16).next_to(name, DOWN, buff=0.32)
-        sub2 = txt("for composed music retrieval", T_BODY, MUTED).next_to(sub, DOWN, buff=0.16)
+            txt("a dataset of", T_BODY, INK2),
+            txt("grounded transitions", T_BODY, INK, MEDIUM),
+        ).arrange(RIGHT, buff=0.16).next_to(name, DOWN, buff=0.36)
+        sub2 = txt("for composed music retrieval", T_BODY, INK2).next_to(sub, DOWN, buff=0.16)
 
         dots = VGroup(*[
-            Circle(radius=0.1, fill_color=c, fill_opacity=1, stroke_width=0)
+            Circle(radius=0.055, fill_color=c, fill_opacity=1, stroke_width=0)
             for c in STAGE_COLORS
         ]).arrange(RIGHT, buff=0.22).next_to(sub2, DOWN, buff=0.6)
 

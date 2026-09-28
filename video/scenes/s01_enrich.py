@@ -13,22 +13,22 @@ from remix_video.facts import CATALOGUE_TOTAL, FIGURES, M4A_CATALOGUE, MTG_CATAL
 from remix_video.glass import _tip_dir, elbow_link, fork_link
 from remix_video.parts import catalogue
 from remix_video.stagebase import StageScene, explain, stat_row
-from remix_video.theme import (EASE_IN, ENRICH, HOLD_READ, INK, LAG, MUTED, PAPER, T_ENTER, T_TINY,
-                               card, tint, txt)
+from remix_video.theme import (EASE_IN, ENRICH, FILL, HOLD_READ, INK, INK2, LAG, LINE, MUTED, PAPER, STROKE,
+                               T_ENTER, T_TINY, card, tint, txt)
 
 COLUMNS = ("audio", "caption", "lyrics", "tags")
 
 
 def proc_box(name: str, produces: str, color: str) -> VGroup:
-    box = card(1.9, 0.72, color, alpha=0.12, radius=0.12)
-    t = txt(name, T_TINY * 1.1, color, SEMIBOLD).move_to(box.get_center() + UP * 0.1)
-    s = txt(produces, T_TINY * 0.8, MUTED).move_to(box.get_center() + DOWN * 0.15)
+    box = card(2.0, 0.78, color, radius=0.12)
+    t = txt(name, T_TINY * 1.1, INK, MEDIUM).move_to(box.get_center() + UP * 0.11)
+    s = txt(produces, T_TINY * 0.8, INK2).move_to(box.get_center() + DOWN * 0.17)
     return VGroup(box, t, s)
 
 
 def manifest_table(rows: int = 4) -> VGroup:
     """Named columns: the draft's anonymous blocks never said what a row held."""
-    heads = VGroup(*[txt(c, T_TINY * 0.72, ENRICH, SEMIBOLD) for c in COLUMNS])
+    heads = VGroup(*[txt(c, T_TINY * 0.72, INK2, MEDIUM) for c in COLUMNS])
     for h in heads:
         h.set(width=min(h.width, 0.52))
     heads.arrange(RIGHT, buff=0.16)
@@ -39,7 +39,7 @@ def manifest_table(rows: int = 4) -> VGroup:
         for c, head in enumerate(heads):
             cell = RoundedRectangle(
                 width=0.52, height=0.14, corner_radius=0.04,
-                fill_color=tint(ENRICH, 0.32 if c == 0 else 0.16),
+                fill_color=tint(ENRICH, 0.35) if c == 0 else FILL,
                 fill_opacity=1, stroke_width=0,
             )
             cell.move_to([head.get_center()[0], 0, 0])
@@ -53,7 +53,7 @@ def manifest_table(rows: int = 4) -> VGroup:
     stack = VGroup(heads, body).arrange(DOWN, buff=0.16)
     frame = RoundedRectangle(
         width=stack.width + 0.5, height=stack.height + 0.7, corner_radius=0.12,
-        fill_color=PAPER, fill_opacity=1, stroke_color=ENRICH, stroke_width=1.8,
+        fill_color=PAPER, fill_opacity=1, stroke_color=LINE, stroke_width=STROKE,
     )
     title = txt("structured manifest", T_TINY * 0.78, MUTED)
     title.move_to(frame.get_top() + DOWN * 0.2)
