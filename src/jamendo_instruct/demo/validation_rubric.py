@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
@@ -131,7 +132,16 @@ CANNOT_JUDGE_LABEL = "Cannot judge"
 NOT_APPLICABLE_LABEL = "Not applicable"
 
 
+def dataset_key(dataset: DemoDataset) -> str:
+    """'music4all' / 'mtg_jamendo': the key scripts/sync_human_ratings.py files ratings under."""
+    root = dataset.paths.run_root or dataset.paths.manifest_csv.parent
+    name = f"{root.parent.name}/{root.name}".lower()
+    return "mtg_jamendo" if "mtg" in name or "jamendo" in name else "music4all" if "music4all" in name else root.name
+
+
 def _validation_output_dir(dataset: DemoDataset) -> Path:
+    if os.environ.get("REMIX_RATINGS_DIR"):       # Hugging Face Space: synced to the ratings dataset
+        return Path(os.environ["REMIX_RATINGS_DIR"]) / dataset_key(dataset)
     if dataset.paths.instructions_jsonl is not None:
         return dataset.paths.instructions_jsonl.parent / "validation"
     if dataset.paths.run_root is not None:

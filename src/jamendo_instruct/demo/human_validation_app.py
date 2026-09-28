@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import os
 import random
@@ -52,6 +53,7 @@ from jamendo_instruct.demo.validation_rubric import (
     _record_variant_index,
     _sample_identity,
     _validation_output_dir,
+    dataset_key,
 )
 
 
@@ -1190,7 +1192,7 @@ def _render_rating_tab(st: Any, dataset: DemoDataset, samples: Sequence[Dict[str
         return
 
     annotator_id = _annotator_id(st)
-    order_key = f"rating_{instruction_field}_{annotator_id}"
+    order_key = f"rating_{dataset_key(dataset)}_{instruction_field}_{annotator_id}"
     if f"{order_key}_session_goal" not in st.session_state:
         st.session_state[f"{order_key}_session_goal"] = min(SESSION_BATCH_SIZE, len(samples))
     session_goal = min(int(st.session_state.get(f"{order_key}_session_goal", SESSION_BATCH_SIZE) or SESSION_BATCH_SIZE), len(samples))
@@ -1286,6 +1288,7 @@ def _render_rating_tab(st: Any, dataset: DemoDataset, samples: Sequence[Dict[str
                 "annotation_type": "single_variant_skip",
                 "annotated_at_utc": datetime.now(timezone.utc).isoformat(),
                 "annotator_id": annotator_id,
+                "dataset": dataset_key(dataset),
                 "instruction_field": instruction_field,
                 **_sample_identity(chain, step, record),
                 "source_label": _clip_label(source_row, step.source_clip_id),
@@ -1322,6 +1325,7 @@ def _render_rating_tab(st: Any, dataset: DemoDataset, samples: Sequence[Dict[str
                 "annotation_type": "single_variant_rating",
                 "annotated_at_utc": datetime.now(timezone.utc).isoformat(),
                 "annotator_id": annotator_id,
+                "dataset": dataset_key(dataset),
                 "instruction_field": instruction_field,
                 **_sample_identity(chain, step, record),
                 "source_label": _clip_label(source_row, step.source_clip_id),
@@ -1426,6 +1430,52 @@ def _render_pairwise_tab(st: Any, dataset: DemoDataset, pairs: Sequence[Dict[str
         st.rerun()
 
 
+def _hub_setup() -> str | None:
+    """Hugging Face Space only (DATASET_REPO + HF_TOKEN + REMIX_RATINGS_DIR set): fetch the clips and the
+    ratings saved so far from the private dataset repo, then commit new ratings back every EVERY_MINUTES.
+
+    Earlier ratings are restored BEFORE the scheduler starts: it uploads the local files over the remote
+    ones, so starting from an empty disk after a restart would erase them. Any failure here raises, and
+    the app refuses to take ratings rather than risk that.
+    """
+    repo, token, ratings_dir = (os.environ.get(k, "").strip() for k in ("DATASET_REPO", "HF_TOKEN", "REMIX_RATINGS_DIR"))
+    if not (repo and token and ratings_dir):
+        return None
+    import shutil
+
+    from huggingface_hub import CommitScheduler, snapshot_download
+
+    import jamendo_instruct.demo.chains_demo as chains_demo
+
+    hub = Path(snapshot_download(repo, repo_type="dataset", token=token, allow_patterns=["audio/**", "ratings/**"],
+                                 local_dir=Path(ratings_dir).parent / "hub"))
+    os.environ["REMIX_AUDIO_DIR"] = str(hub / "audio")
+    for f in (hub / "ratings").rglob("*.jsonl"):
+        dest = Path(ratings_dir) / f.relative_to(hub / "ratings")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(f, dest)
+    Path(ratings_dir).mkdir(parents=True, exist_ok=True)
+    scheduler = CommitScheduler(repo_id=repo, repo_type="dataset", folder_path=ratings_dir, path_in_repo="ratings",
+                                every=float(os.environ.get("EVERY_MINUTES", "5")), token=token, private=True)
+    chains_demo.WRITE_LOCK = scheduler.lock
+    print(f"[remix] clips from {hub / 'audio'}; ratings -> {repo}/ratings every {scheduler.every} min", flush=True)
+    return repo
+
+
+def _access_gate(st: Any) -> None:
+    """RATER_CODE set: nothing renders until the rater enters it (or opens a link with ?code=...)."""
+    code = os.environ.get("RATER_CODE", "").strip()
+    if not code or st.session_state.get("rater_ok"):
+        return
+    entered = str(st.query_params.get("code", "") or "") or st.text_input("Access code", type="password")
+    if entered and hmac.compare_digest(entered.strip().encode(), code.encode()):
+        st.session_state.rater_ok = True
+        st.rerun()
+    if entered:
+        st.error("Wrong access code.")
+    st.stop()
+
+
 def _render_streamlit_app(args: argparse.Namespace) -> None:
     import streamlit as st
 
@@ -1467,10 +1517,24 @@ def _render_streamlit_app(args: argparse.Namespace) -> None:
         active_instructions_jsonl = args.instructions_jsonl
 
     cache_dir = Path(tempfile.gettempdir()) / "jamendo_instruct_human_validation"
+    try:
+        st.cache_resource(show_spinner="Fetching clips and saved ratings...")(_hub_setup)()
+    except Exception as exc:          # never take ratings that could not be saved
+        st.error(f"Could not connect to the ratings dataset ({exc.__class__.__name__}: {exc}). Ratings are disabled.")
+        st.stop()
+    _access_gate(st)
     frozen_sidecar_path = Path(args.frozen_sidecar_json).expanduser().resolve() if args.frozen_sidecar_json else None
+    # REMIX_SIDECARS: several frozen sidecars (one per catalogue), picked per session
+    sidecars = [Path(p) for p in os.environ.get("REMIX_SIDECARS", "").split(os.pathsep) if p.strip()]
+    if sidecars:
+        labels = {"music4all": "Music4All", "mtg_jamendo": "MTG-Jamendo"}
+        frozen_sidecar_path = sidecars[0] if len(sidecars) == 1 else st.radio(
+            "Catalogue", sidecars, horizontal=True, key="catalogue",
+            format_func=lambda p: labels.get(p.name.split(".")[0], p.name.split(".")[0]))
     if frozen_sidecar_path is not None:
         try:
-            dataset, assignments = _dataset_from_frozen_sidecar(frozen_sidecar_path)
+            dataset, assignments = st.cache_resource(show_spinner="Loading validation slice...")(
+                _dataset_from_frozen_sidecar)(frozen_sidecar_path)
         except (FileNotFoundError, ValueError, KeyError, json.JSONDecodeError) as exc:
             st.error(f"Could not load frozen validation sidecar: {exc}")
             st.stop()

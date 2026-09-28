@@ -11,6 +11,7 @@ import sys
 import tempfile
 import time
 from collections import Counter
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -208,11 +209,20 @@ def _matching_validation_records(path: Path | None, *, chain_id: str, turn_index
     return [record for record in _iter_jsonl(path) if _validation_record_key(record) == key]
 
 
+# Set by the Hugging Face Space to its CommitScheduler's lock, so an upload never sees a half-written line.
+WRITE_LOCK = None
+
+
 def _append_validation_record(path: Path, record: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
+    with WRITE_LOCK or nullcontext(), path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=True, sort_keys=True))
         f.write("\n")
+
+
+def clip_audio_name(clip_id: str) -> str:
+    """File name of a pre-cut clip (Space deployments: REMIX_AUDIO_DIR/<dataset>/<name>)."""
+    return re.sub(r"[^A-Za-z0-9._-]+", "_", clip_id) + ".mp3"
 
 
 def _parse_json_list(raw: str) -> List[str]:
@@ -832,6 +842,11 @@ def _format_tags(row: Dict[str, str]) -> List[str]:
 
 def _audio_preview(row: Dict[str, str] | None, *, cache_dir: Path) -> tuple[str | None, str]:
     data = _safe_row(row)
+    audio_dir = os.environ.get("REMIX_AUDIO_DIR")
+    if audio_dir and data.get("clip_id"):          # pre-cut clips, no source audio (Hugging Face Space)
+        hits = list(Path(audio_dir).glob(f"*/{clip_audio_name(str(data['clip_id']))}"))
+        if hits:
+            return str(hits[0]), "Playing the 30-second clip."
     file_path = str(data.get("file_path", "") or "").strip()
     if not file_path:
         return None, "Missing `file_path` in the manifest."

@@ -53,10 +53,10 @@ def fetch(repo: str, token: str | None, revision: str) -> List[Dict[str, Any]]:
         repo_type="dataset",
         revision=revision,
         token=token,
-        allow_patterns=["**/*.jsonl"],
+        allow_patterns=["**/human_ratings*.jsonl"],   # not the pairwise-preference files
     )
     records: List[Dict[str, Any]] = []
-    for p in sorted(Path(local).rglob("*.jsonl")):
+    for p in sorted(Path(local).rglob("human_ratings*.jsonl")):
         got = list(_iter_jsonl(p))
         print(f"  {p.name}: {len(got):,} records")
         records += got

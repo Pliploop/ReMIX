@@ -1,0 +1,4 @@
+streamlit==1.57.0
+huggingface_hub==1.15.0
+plotly==6.7.0
+pandas==2.3.3
