@@ -247,7 +247,7 @@ def _render_intro_tab(st: Any, rate_page: Any = None) -> None:
             st.markdown("**The whole pipeline in about 90 seconds (no sound)**")
             st.video(str(REMIX_VIDEO))
 
-    st.caption("Rate tab: score one item against the checklist. Compare tab: pick the better of two phrasings for the same pair.")
+    st.caption("Rate tab: score one instruction against the checklist.")
 
 
 def _render_rater_instruction_block(st: Any) -> None:
@@ -1370,11 +1370,8 @@ def _render_pairwise_tab(st: Any, dataset: DemoDataset, pairs: Sequence[Dict[str
 
     _render_audio_pair(st, dataset, step, cache_dir=cache_dir)
     _render_evidence_details(st, dataset, step, cache_dir=cache_dir)
-    st.info(
-        "Choose which instruction is the better source-to-target instruction, considering audio support, "
-        "caption/tag/metadata support, meaningfulness of the requested change, edit specificity, clarity, "
-        "and absence of contradictions."
-    )
+    st.info("Listen to both tracks, then pick the instruction that better describes how to get from the "
+            "source track to the target track.")
     st.caption(
         f"Source: {_clip_label(source_row, step.source_clip_id)} | "
         f"Target: {_clip_label(target_row, step.target_clip_id)} | "
@@ -1389,7 +1386,7 @@ def _render_pairwise_tab(st: Any, dataset: DemoDataset, pairs: Sequence[Dict[str
         annotator_id = _annotator_id(st)
         st.caption(f"Annotator: `{annotator_id}`")
         preference = st.radio(
-            "Which instruction is the better validation candidate for this source-target pair?",
+            "Which instruction better describes going from the source track to the target track?",
             options=PAIRWISE_OPTIONS,
             index=None,
         )
@@ -1471,6 +1468,18 @@ def _access_gate(st: Any) -> None:
     if entered:
         st.error("Wrong access code.")
     st.stop()
+
+
+def _admin_unlocked(st: Any, admin_password: str) -> bool:
+    """One password entry per session unlocks every admin-only page."""
+    if not st.session_state.get("admin_ok"):
+        entered = st.text_input("Admin password", type="password", key="admin_gate")
+        if entered and hmac.compare_digest(entered.encode(), str(admin_password).encode()):
+            st.session_state.admin_ok = True
+            st.rerun()
+        st.info("This page is for the study team.")
+        return False
+    return True
 
 
 def _render_streamlit_app(args: argparse.Namespace) -> None:
@@ -1580,7 +1589,9 @@ def _render_streamlit_app(args: argparse.Namespace) -> None:
         st.Page(lambda: _render_intro_tab(st, rate_page), title="Intro", url_path="intro", icon="👋", default=True),
         rate_page,
         st.Page(
-            lambda: _render_pairwise_tab(st, dataset, pairs, cache_dir=cache_dir, instruction_field=instruction_field),
+            # not ready for external raters yet: study team only
+            lambda: _admin_unlocked(st, args.admin_password) and _render_pairwise_tab(
+                st, dataset, pairs, cache_dir=cache_dir, instruction_field=instruction_field),
             title="Compare Variants", url_path="compare", icon="⚖️",
         ),
         st.Page(lambda: _render_admin_tab(st, dataset, samples, pairs, args.admin_password),

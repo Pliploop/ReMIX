@@ -13,7 +13,7 @@ ENV HOME=/home/user \
     STREAMLIT_SERVER_ENABLE_CORS=false \
     STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false \
     REMIX_RATINGS_DIR=/home/user/data/ratings \
-    REMIX_SIDECARS=/home/user/data/hub/sidecars/music4all.sidecar.json:/home/user/data/hub/sidecars/mtg_jamendo.sidecar.json
+    REMIX_SIDECARS=/home/user/data/hub/sidecars/music4all.sidecar.json
 
 WORKDIR /home/user/app
 COPY --chown=user requirements.txt ./
