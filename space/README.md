@@ -35,6 +35,7 @@ The wire format is the same JSONL schema the Streamlit app writes, so
    | `DATASET_REPO` | variable | `Pliploop/remix-human-ratings` |
    | `HF_TOKEN` | **secret** | a write token |
    | `EVERY_MINUTES` | variable (optional) | commit interval, default `5` |
+   | `RATER_CODE` | **secret** (recommended) | shared access code raters type into the page; without it anyone with the URL can post ratings |
 
 Without `DATASET_REPO` and `HF_TOKEN` the app still runs, but ratings stay on the
 ephemeral disk and are lost on restart. `/api/health` reports which mode it is in
@@ -75,5 +76,5 @@ python scripts/sync_human_ratings.py --repo Pliploop/remix-human-ratings
 | Route | Purpose |
 | --- | --- |
 | `GET /api/health` | liveness, and whether ratings are actually being persisted |
-| `POST /api/ratings` | append one rating |
-| `GET /api/progress/{annotator_id}` | assignments this rater has done (resume across browsers) |
+| `POST /api/ratings` | append one rating (needs `X-Rater-Code` when `RATER_CODE` is set) |
+| `GET /api/progress/{annotator_id}` | assignments this rater has done (resume across browsers; same header) |

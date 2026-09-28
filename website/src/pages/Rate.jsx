@@ -149,6 +149,7 @@ export default function Rate() {
   const [notes, setNotes] = useState('')
   const [sending, setSending] = useState(false)
   const [nickname, setNickname] = useState('')
+  const [code, setCode] = useState('')
 
   const dataset = data?.datasets?.[dsIdx]
   const [done, markDone] = useDone(dataset?.key ?? 'none')
@@ -162,6 +163,7 @@ export default function Rate() {
 
   useEffect(() => {
     setNickname(localStorage.getItem('remix-rater-name') || '')
+    setCode(localStorage.getItem('remix-rater-code') || '')
   }, [])
 
   const items = dataset?.items ?? []
@@ -258,9 +260,14 @@ export default function Rate() {
       // browser is indistinguishable from a real one until the data is missing.
       const res = await fetch(`${API}/ratings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Rater-Code': code.trim() },
         body: JSON.stringify(payload),
       })
+      if (res.status === 401) {
+        // Keep the rater's answers on screen: fixing the code and resubmitting must not lose them.
+        window.alert('Wrong or missing access code. Enter the code you were given (top right) and submit again.')
+        return
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       markDone(item.assignment_id)
       reset()
@@ -326,6 +333,17 @@ export default function Rate() {
             }}
             placeholder="name (optional)"
             className="w-32 rounded-lg border border-neutral-200 bg-transparent px-2.5 py-1.5 text-xs outline-none focus:border-stage-validate dark:border-neutral-700"
+          />
+          <input
+            type="password"
+            value={code}
+            onChange={(e) => {
+              setCode(e.target.value)
+              localStorage.setItem('remix-rater-code', e.target.value)
+            }}
+            placeholder="access code"
+            aria-label="access code"
+            className="w-28 rounded-lg border border-neutral-200 bg-transparent px-2.5 py-1.5 text-xs outline-none focus:border-stage-validate dark:border-neutral-700"
           />
           <span className="text-xs text-neutral-500 dark:text-neutral-400">
             {doneCount}/{items.length} rated

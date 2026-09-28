@@ -16,10 +16,13 @@ Env:
   DATASET_REPO  target HF dataset repo, e.g. "Pliploop/remix-human-ratings"
   HF_TOKEN      write token (set as a Space secret)
   EVERY_MINUTES commit interval (default 5)
+  RATER_CODE    optional shared access code (Space secret); when set, rating and
+                progress requests must send it as the X-Rater-Code header
 """
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import uuid
@@ -27,7 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -36,6 +39,7 @@ from pydantic import BaseModel, Field
 DATASET_REPO = os.environ.get("DATASET_REPO", "").strip()
 HF_TOKEN = os.environ.get("HF_TOKEN", "").strip()
 EVERY_MINUTES = float(os.environ.get("EVERY_MINUTES", "5"))
+RATER_CODE = os.environ.get("RATER_CODE", "").strip()
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data/ratings"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -102,6 +106,12 @@ class Rating(BaseModel):
     notes: Optional[str] = None
 
 
+def _check_code(code: Optional[str]) -> None:
+    """A public Space URL is enough to post ratings; the shared code keeps strangers out."""
+    if RATER_CODE and not hmac.compare_digest((code or "").strip().encode(), RATER_CODE.encode()):
+        raise HTTPException(status_code=401, detail="wrong or missing access code")
+
+
 def _append(record: Dict[str, Any]) -> None:
     line = json.dumps(record, ensure_ascii=False)
     # Take the scheduler's lock so we never append mid-upload.
@@ -119,12 +129,14 @@ def health() -> Dict[str, Any]:
     return {
         "ok": True,
         "persisting_to": DATASET_REPO or None,
+        "code_required": bool(RATER_CODE),
         "ratings_on_disk": sum(1 for _ in RATINGS_PATH.open()) if RATINGS_PATH.exists() else 0,
     }
 
 
 @app.post("/api/ratings")
-def post_rating(rating: Rating) -> Dict[str, Any]:
+def post_rating(rating: Rating, x_rater_code: Optional[str] = Header(None)) -> Dict[str, Any]:
+    _check_code(x_rater_code)
     record = rating.model_dump()
     record["received_at_utc"] = datetime.now(timezone.utc).isoformat()
     # Not setdefault: the key is always present (pydantic default), just None. The
@@ -140,8 +152,9 @@ def post_rating(rating: Rating) -> Dict[str, Any]:
 
 
 @app.get("/api/progress/{annotator_id}")
-def progress(annotator_id: str) -> Dict[str, Any]:
+def progress(annotator_id: str, x_rater_code: Optional[str] = Header(None)) -> Dict[str, Any]:
     """Lets a rater resume on another browser; localStorage alone cannot."""
+    _check_code(x_rater_code)
     if not RATINGS_PATH.exists():
         return {"done": []}
     done = []
