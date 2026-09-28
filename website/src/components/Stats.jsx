@@ -1,23 +1,14 @@
 import { useState } from 'react'
 import { AgreementBar, AcceptByQuestion, AxesBar, ChainLengthBar, GenreDonut, TransitionArea } from './Charts.jsx'
-import { hexToRgba } from '../theme.js'
+import { STAGE_BY_ID } from '../theme.js'
 
-const DS_COLOR = { music4all: '#2E6FD6', mtg_jamendo: '#FB8B24' }
+const DS_COLOR = { music4all: STAGE_BY_ID.neighbour.color, mtg_jamendo: STAGE_BY_ID.instruct.color }
 
 export function DatasetToggle({ datasets, index, onChange }) {
   return (
-    <div className="inline-flex rounded-full border border-neutral-200 p-1 dark:border-neutral-700">
+    <div className="segmented">
       {datasets.map((d, i) => (
-        <button
-          key={d.key}
-          type="button"
-          onClick={() => onChange(i)}
-          className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-            i === index
-              ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
-              : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100'
-          }`}
-        >
+        <button key={d.key} type="button" data-on={i === index} onClick={() => onChange(i)}>
           {d.label}
         </button>
       ))}
@@ -27,14 +18,10 @@ export function DatasetToggle({ datasets, index, onChange }) {
 
 function Figure({ value, label, color }) {
   return (
-    <div
-      className="rounded-xl border px-4 py-3"
-      style={{ borderColor: hexToRgba(color, 0.3), backgroundColor: hexToRgba(color, 0.05) }}
-    >
-      <p className="text-xl font-semibold tracking-tight" style={{ color }}>
-        {value}
-      </p>
-      <p className="mt-0.5 text-[11px] text-neutral-600 dark:text-neutral-400">{label}</p>
+    <div className="surface px-5 py-5">
+      <span className="block h-[3px] w-4 rounded-full" style={{ backgroundColor: color }} />
+      <p className="mt-3 text-3xl font-medium tabular-nums tracking-[-0.03em] text-ink dark:text-neutral-100">{value}</p>
+      <p className="mt-1 text-xs text-ink-2 dark:text-neutral-400">{label}</p>
     </div>
   )
 }
@@ -45,23 +32,23 @@ export function DatasetStats({ stats, dark }) {
   const [i, setI] = useState(0)
   const ds = stats.datasets[i]
   if (!ds) return null
-  const color = DS_COLOR[ds.key] ?? '#7B3FF2'
+  const color = DS_COLOR[ds.key] ?? '#8E4EC6'
   const o = ds.overview
 
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <DatasetToggle datasets={stats.datasets} index={i} onChange={setI} />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        <p className="text-xs tabular-nums text-ink-3">
           {o.clips.toLocaleString()} clips · {o.artists.toLocaleString()} artists
         </p>
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Figure value={fmt(o.chains)} label="Chains" color="#1FA347" />
-        <Figure value={fmt(o.steps)} label="Steps" color="#2E6FD6" />
-        <Figure value={fmt(o.variants)} label="Instruction variants" color="#FB8B24" />
-        <Figure value={`${o.median_instruction_words}`} label="Median words per instruction" color="#7B3FF2" />
+        <Figure value={fmt(o.chains)} label="Chains" color={STAGE_BY_ID.chain.color} />
+        <Figure value={fmt(o.steps)} label="Steps" color={STAGE_BY_ID.neighbour.color} />
+        <Figure value={fmt(o.variants)} label="Instruction variants" color={STAGE_BY_ID.instruct.color} />
+        <Figure value={`${o.median_instruction_words}`} label="Median words per instruction" color={STAGE_BY_ID.validate.color} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -88,7 +75,7 @@ export function ValidationStats({ stats, dark }) {
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <DatasetToggle datasets={stats.validation} index={i} onChange={setI} />
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        <p className="text-xs tabular-nums text-ink-3">
           {v.judges.join(' vs ')} · accept = score ≥ {stats.accept_threshold}
         </p>
       </div>
@@ -99,10 +86,10 @@ export function ValidationStats({ stats, dark }) {
             key={j}
             value={overall?.[j] != null ? `${overall[j]}%` : '—'}
             label={`${j} accepts overall`}
-            color={k === 0 ? '#7B3FF2' : '#1FA347'}
+            color={k === 0 ? STAGE_BY_ID.validate.color : STAGE_BY_ID.chain.color}
           />
         ))}
-        <Figure value={meanAc1.toFixed(2)} label="Mean AC1 across questions" color="#2E6FD6" />
+        <Figure value={meanAc1.toFixed(2)} label="Mean AC1 across questions" color={STAGE_BY_ID.neighbour.color} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

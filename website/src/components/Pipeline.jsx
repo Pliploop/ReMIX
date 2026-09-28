@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { STAGES, hexToRgba } from '../theme.js'
+import { STAGES } from '../theme.js'
 import StageArt from './StageArt.jsx'
 
 export default function Pipeline() {
@@ -9,28 +9,28 @@ export default function Pipeline() {
 
   return (
     <div>
-      {/* Stage rail — the five chips from the paper figure. */}
-      <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      {/* Stepper: a hairline per stage that fills with the stage colour when active. */}
+      <div className="mb-8 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
         {STAGES.map((s, i) => {
           const on = i === active
           return (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setActive(i)}
-              className="rounded-xl border px-3 py-2.5 text-left transition-all duration-200"
-              style={{
-                borderColor: on ? s.color : hexToRgba(s.color, 0.28),
-                backgroundColor: on ? hexToRgba(s.color, 0.12) : 'transparent',
-                boxShadow: on ? `0 1px 12px ${hexToRgba(s.color, 0.18)}` : 'none',
-              }}
-            >
-              <span className="text-[11px] font-bold" style={{ color: s.color }}>
-                {s.n}
+            <button key={s.id} type="button" onClick={() => setActive(i)} className="group text-left">
+              <span className="block h-[2px] w-full overflow-hidden rounded-full bg-line dark:bg-white/10">
+                <span
+                  className="block h-full rounded-full transition-all duration-500 ease-out"
+                  style={{ width: on ? '100%' : '0%', backgroundColor: s.color }}
+                />
               </span>
               <span
-                className="mt-0.5 block text-xs font-semibold leading-tight"
-                style={{ color: on ? s.color : undefined }}
+                className="mt-3 block text-[11px] font-semibold tabular-nums tracking-[0.18em] transition-colors"
+                style={{ color: on ? s.color : '#8E8E96' }}
+              >
+                {String(s.n).padStart(2, '0')}
+              </span>
+              <span
+                className={`mt-1 block text-sm leading-snug transition-colors ${
+                  on ? 'font-medium text-ink dark:text-neutral-100' : 'text-ink-2 group-hover:text-ink dark:text-neutral-400'
+                }`}
               >
                 {s.name}
               </span>
@@ -39,10 +39,7 @@ export default function Pipeline() {
         })}
       </div>
 
-      <div
-        className="overflow-hidden rounded-2xl border"
-        style={{ borderColor: hexToRgba(stage.color, 0.35), backgroundColor: hexToRgba(stage.color, 0.04) }}
-      >
+      <div className="surface overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={stage.id}
@@ -50,61 +47,42 @@ export default function Pipeline() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.24, ease: 'easeOut' }}
-            className="grid items-center gap-6 p-6 md:grid-cols-2 md:p-8"
+            className="grid items-center gap-10 p-8 md:grid-cols-2 md:p-12"
           >
             <div>
-              <span
-                className="chip font-semibold text-white"
-                style={{ backgroundColor: stage.color }}
-              >
-                Stage {stage.n}
-              </span>
-              <h3 className="mt-3 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+              <p className="eyebrow" style={{ color: stage.color }}>
+                Stage {String(stage.n).padStart(2, '0')}
+              </p>
+              <h3 className="mt-3 text-2xl font-medium tracking-[-0.02em] text-ink dark:text-neutral-100">
                 {stage.name}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-                {stage.blurb}
-              </p>
-              <p className="mt-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-                {stage.detail}
-              </p>
+              <p className="mt-4 text-[15px] leading-relaxed text-ink dark:text-neutral-200">{stage.blurb}</p>
+              <p className="mt-3 text-[15px] leading-relaxed text-ink-2 dark:text-neutral-400">{stage.detail}</p>
             </div>
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center rounded-xl bg-ground p-6 dark:bg-white/[0.03]">
               <StageArt id={stage.id} color={stage.color} />
             </div>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-5 flex items-center justify-between">
         <button
           type="button"
           onClick={() => setActive((a) => Math.max(0, a - 1))}
           disabled={active === 0}
-          className="pill text-xs disabled:pointer-events-none disabled:opacity-30"
+          className="text-sm text-ink-2 transition-colors hover:text-ink disabled:pointer-events-none disabled:opacity-30 dark:text-neutral-400"
         >
           ← Previous
         </button>
-        <div className="flex gap-1.5">
-          {STAGES.map((s, i) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setActive(i)}
-              aria-label={s.name}
-              className="h-1.5 rounded-full transition-all duration-300"
-              style={{
-                width: i === active ? 24 : 8,
-                backgroundColor: i === active ? s.color : hexToRgba(s.color, 0.25),
-              }}
-            />
-          ))}
-        </div>
+        <span className="text-xs tabular-nums text-ink-3">
+          {active + 1} / {STAGES.length}
+        </span>
         <button
           type="button"
           onClick={() => setActive((a) => Math.min(STAGES.length - 1, a + 1))}
           disabled={active === STAGES.length - 1}
-          className="pill text-xs disabled:pointer-events-none disabled:opacity-30"
+          className="text-sm text-ink-2 transition-colors hover:text-ink disabled:pointer-events-none disabled:opacity-30 dark:text-neutral-400"
         >
           Next →
         </button>

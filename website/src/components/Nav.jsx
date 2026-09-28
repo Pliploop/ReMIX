@@ -61,24 +61,24 @@ export default function Nav({ dark, setDark, sections = [], active }) {
   const { pathname } = useLocation()
 
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-200/70 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-neutral-950/70">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-50 border-b border-line/80 bg-ground/75 backdrop-blur-xl dark:border-white/[0.08] dark:bg-ground-dark/75">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
         <Link to="/" className="group flex items-center gap-2.5">
           <Logo size={26} className="text-neutral-900 dark:text-neutral-100" />
-          <Wordmark className="text-lg text-neutral-900 dark:text-neutral-100" />
+          <Wordmark className="text-[17px] text-ink dark:text-neutral-100" />
         </Link>
 
-        <nav className="hidden items-center gap-7 text-sm md:flex">
+        <nav className="hidden items-center gap-1 text-sm md:flex">
           {sections.map((s) => (
             <a
               key={s.id}
               href={`#${s.id}`}
               onClick={(e) => scrollToSection(e, s.id)}
-              className={
+              className={`rounded-full px-3.5 py-1.5 transition-colors ${
                 active === s.id
-                  ? 'font-medium text-stage-validate'
-                  : 'text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100'
-              }
+                  ? 'bg-white font-medium text-ink shadow-soft ring-1 ring-line dark:bg-neutral-800 dark:text-neutral-100 dark:ring-white/10'
+                  : 'text-ink-2 hover:text-ink dark:text-neutral-400 dark:hover:text-neutral-100'
+              }`}
             >
               {s.label}
             </a>
@@ -88,7 +88,7 @@ export default function Nav({ dark, setDark, sections = [], active }) {
         <div className="flex items-center gap-2">
           <Link
             to={pathname === '/explore' ? '/' : '/explore'}
-            className="rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium transition-colors hover:border-neutral-900 hover:bg-neutral-900 hover:text-white dark:border-neutral-700 dark:hover:border-neutral-200 dark:hover:bg-neutral-100 dark:hover:text-neutral-900"
+            className="rounded-full bg-ink px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900"
           >
             {pathname === '/explore' ? 'Home' : 'Explore'}
           </Link>
@@ -96,7 +96,7 @@ export default function Nav({ dark, setDark, sections = [], active }) {
             type="button"
             onClick={() => setDark(!dark)}
             aria-label="Toggle theme"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-ink-2 transition-colors hover:text-ink dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-300"
           >
             {dark ? (
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">

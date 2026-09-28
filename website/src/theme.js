@@ -7,7 +7,7 @@ export const STAGES = [
     id: 'enrich',
     n: 1,
     name: 'Dataset Enrichment',
-    color: '#E23B34',
+    color: '#E5484D',
     blurb: 'Open catalogs go in. Captions come from AFNext, lyrics and transcripts from Whisper, and everything lands in one structured manifest.',
     detail: 'Music4All and MTG-Jamendo give us audio plus metadata. We caption every clip and transcribe its lyrics, so each track carries a rich text description alongside its tags.',
   },
@@ -15,7 +15,7 @@ export const STAGES = [
     id: 'neighbour',
     n: 2,
     name: 'Neighbourhood Building',
-    color: '#2E6FD6',
+    color: '#3E63DD',
     blurb: 'Every clip is embedded twice — audio with MuQ-MuLan, text with EmbeddingGemma — and the two similarities are averaged.',
     detail: 'A composite similarity s(A,B) blends what a track sounds like with what it is described as. Low-similarity edges are pruned, leaving a directed graph of plausible transitions.',
   },
@@ -23,7 +23,7 @@ export const STAGES = [
     id: 'chain',
     n: 3,
     name: 'Chain Sampling',
-    color: '#1FA347',
+    color: '#30A46C',
     blurb: 'A stochastic weighted walk over that graph draws multi-turn chains of 1–6 steps.',
     detail: 'Because transitions are sampled in proportion to similarity, chains stay musically plausible while still surprising — each hop is a change someone could actually ask for.',
   },
@@ -31,7 +31,7 @@ export const STAGES = [
     id: 'instruct',
     n: 4,
     name: 'Instruction Generation',
-    color: '#FB8B24',
+    color: '#F76B15',
     blurb: 'We diff each pair into a semantic delta, then ask an LLM to write the instruction that turns one into the other.',
     detail: 'Every step gets both a standalone instruction and a contextual one that can refer back to earlier turns ("bring back the piano from before"). Five variants are drafted per step.',
   },
@@ -39,11 +39,16 @@ export const STAGES = [
     id: 'validate',
     n: 5,
     name: 'Validation & Benchmark',
-    color: '#7B3FF2',
+    color: '#8E4EC6',
     blurb: 'Two LLM judges score every variant against a rubric, and a gate keeps only what passes.',
     detail: 'Qwen3.6-27B and Gemma-4-31B independently rate each instruction. The surviving variants form ReMIX; a graded relevance pool over held-out chains forms the ReMIX-B benchmark.',
   },
 ]
+
+// Neutrals, shared with tailwind.config.js and the film.
+export const INK = '#18181B'
+export const INK2 = '#52525B'
+export const LINE = '#E7E5E4'
 
 export const STAGE_BY_ID = Object.fromEntries(STAGES.map((s) => [s.id, s]))
 

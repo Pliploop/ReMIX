@@ -2,12 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * One design system with the film (video/remix_video/theme.py): a warm off-white
+ * ground, white surfaces on soft shadows, hairline borders, ink type in two
+ * weights, and the five stage colours used as accents only -- never as fills.
+ */
 :root {
-  --stage-enrich: #e23b34;
-  --stage-neighbour: #2e6fd6;
-  --stage-chain: #1fa347;
-  --stage-instruct: #fb8b24;
-  --stage-validate: #7b3ff2;
+  --stage-enrich: #e5484d;
+  --stage-neighbour: #3e63dd;
+  --stage-chain: #30a46c;
+  --stage-instruct: #f76b15;
+  --stage-validate: #8e4ec6;
 }
 
 html {
@@ -15,27 +20,80 @@ html {
 }
 
 body {
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+  @apply bg-ground text-ink antialiased dark:bg-ground-dark dark:text-neutral-100;
+}
+
+::selection {
+  background: rgba(62, 99, 221, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 @layer components {
-  /* The paper figure's card: tinted fill, thin coloured border, generous radius. */
+  /* A raised white surface: hairline edge, soft two-layer shadow, one radius family. */
+  .surface {
+    @apply rounded-2xl border border-line bg-white shadow-soft
+           dark:border-white/[0.08] dark:bg-neutral-900/80 dark:shadow-none;
+  }
+
+  /* Kept for components that still use it (Explore); now the same neutral surface. */
   .stage-card {
-    @apply rounded-2xl border p-5 transition-colors duration-300;
+    @apply surface p-5;
   }
 
   .glass {
-    @apply rounded-2xl border border-white/50 bg-white/60 backdrop-blur-xl
-           dark:border-white/10 dark:bg-neutral-900/50;
+    @apply rounded-2xl border border-white/60 bg-white/70 shadow-soft backdrop-blur-2xl
+           dark:border-white/10 dark:bg-neutral-900/60;
+  }
+
+  /* Small tracked capitals above a title. */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-2 dark:text-neutral-400;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white
+           shadow-soft transition-all duration-200 hover:-translate-y-px hover:bg-neutral-800
+           dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white;
   }
 
   .pill {
-    @apply inline-flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm
-           transition-colors duration-200 hover:border-neutral-900 hover:bg-neutral-900 hover:text-white
-           dark:border-neutral-700 dark:hover:border-neutral-200 dark:hover:bg-neutral-100 dark:hover:text-neutral-900;
+    @apply inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2.5 text-sm text-ink
+           transition-colors duration-200 hover:border-ink/40
+           dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:border-white/30;
   }
 
   .chip {
-    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+    @apply inline-flex items-center rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-ink-2
+           dark:bg-white/[0.06] dark:text-neutral-300;
+  }
+
+  .segmented {
+    @apply inline-flex rounded-full border border-line bg-white p-1 shadow-soft dark:border-white/10 dark:bg-neutral-900;
+  }
+
+  .segmented > button {
+    @apply rounded-full px-3.5 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:text-ink
+           dark:text-neutral-400 dark:hover:text-neutral-100;
+  }
+
+  .segmented > button[data-on='true'] {
+    @apply bg-ink text-white hover:text-white dark:bg-neutral-100 dark:text-neutral-900;
+  }
+
+  /* The faint dot field from the film's "latent space", fading out downwards. */
+  .dot-field {
+    background-image: radial-gradient(rgba(24, 24, 27, 0.13) 1px, transparent 1.2px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 70% 65% at 50% 30%, black 30%, transparent 75%);
+  }
+
+  .dark .dot-field {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1.2px);
   }
 }

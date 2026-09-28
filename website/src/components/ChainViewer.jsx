@@ -1,46 +1,35 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import AudioPlayer, { Attribution } from './AudioPlayer.jsx'
-import { hexToRgba } from '../theme.js'
+import { STAGE_BY_ID } from '../theme.js'
 
-const INSTRUCT = '#FB8B24'
-const CHAIN = '#1FA347'
+const INSTRUCT = STAGE_BY_ID.instruct.color
+const CHAIN = STAGE_BY_ID.chain.color
 
 function TrackCard({ track, badge, accent }) {
   return (
-    <div
-      className="stage-card"
-      style={{ borderColor: hexToRgba(accent, 0.35), backgroundColor: hexToRgba(accent, 0.05) }}
-    >
-      <div className="flex items-start justify-between gap-3">
+    <div className="surface p-6">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span
-              className="chip shrink-0 font-semibold text-white"
-              style={{ backgroundColor: accent }}
-            >
-              {badge}
-            </span>
-            <h4 className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-              {track.title}
-            </h4>
+          <p className="eyebrow flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
+            {badge}
+          </p>
+          <h4 className="mt-2 truncate text-lg font-medium tracking-[-0.01em] text-ink dark:text-neutral-100">
+            {track.title}
+          </h4>
+          <p className="mt-0.5 truncate text-sm text-ink-2 dark:text-neutral-400">{track.artist}</p>
+        </div>
+        {track.tags?.length > 0 && (
+          <div className="hidden flex-wrap justify-end gap-1.5 sm:flex">
+            {track.tags.slice(0, 4).map((t) => (
+              <span key={t} className="chip">
+                {t}
+              </span>
+            ))}
           </div>
-          <p className="mt-1 truncate text-xs text-neutral-600 dark:text-neutral-400">{track.artist}</p>
-        </div>
+        )}
       </div>
-
-      {track.tags?.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {track.tags.slice(0, 4).map((t) => (
-            <span
-              key={t}
-              className="chip bg-white/70 text-neutral-700 ring-1 ring-inset ring-neutral-200 dark:bg-neutral-800/60 dark:text-neutral-300 dark:ring-neutral-700"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      )}
 
       <div className="mt-4">
         <AudioPlayer audio={track.audio} accent={accent} clipId={track.clip_id} compact />
@@ -55,24 +44,20 @@ function TrackCard({ track, badge, accent }) {
 /** The instruction is the hero: it sits on the arrow between the two tracks. */
 function InstructionBridge({ step, open, onToggle }) {
   return (
-    <div className="relative py-3 pl-6">
+    <div className="relative py-4 pl-10">
+      <span className="absolute left-[15px] top-0 h-full w-px bg-line dark:bg-white/10" aria-hidden />
       <span
-        className="absolute left-[7px] top-0 h-full w-px"
-        style={{ backgroundColor: hexToRgba(CHAIN, 0.3) }}
-        aria-hidden
-      />
-      <span
-        className="absolute left-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-white dark:border-neutral-950"
-        style={{ backgroundColor: CHAIN }}
+        className="absolute left-[10px] top-1/2 h-[11px] w-[11px] -translate-y-1/2 rounded-full bg-ground ring-2 dark:bg-ground-dark"
+        style={{ '--tw-ring-color': INSTRUCT }}
         aria-hidden
       />
 
       <button
         type="button"
         onClick={onToggle}
-        className="w-full rounded-2xl border px-4 py-3 text-left transition-shadow hover:shadow-md"
-        style={{ borderColor: hexToRgba(INSTRUCT, 0.45), backgroundColor: hexToRgba(INSTRUCT, 0.07) }}
+        className="relative w-full overflow-hidden rounded-xl border border-line bg-white/60 py-3.5 pl-5 pr-4 text-left transition-colors hover:bg-white dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
       >
+        <span className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: INSTRUCT }} aria-hidden />
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke={INSTRUCT} strokeWidth="2">
@@ -82,7 +67,7 @@ function InstructionBridge({ step, open, onToggle }) {
                 d="M8 10h8M8 14h5M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8z"
               />
             </svg>
-            <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
+            <p className="truncate text-[15px] text-ink dark:text-neutral-100">
               “{step.instruction}”
             </p>
           </div>
@@ -111,9 +96,9 @@ function InstructionBridge({ step, open, onToggle }) {
                   <Detail label="Contextual phrasing">“{step.instruction_contextual}”</Detail>
                 )}
                 <div className="grid gap-2 sm:grid-cols-3">
-                  <DeltaList title="Dropped" items={step.lost} color="#E23B34" />
-                  <DeltaList title="Introduced" items={step.new} color="#1FA347" />
-                  <DeltaList title="Kept" items={step.preserved} color="#2E6FD6" />
+                  <DeltaList title="Dropped" items={step.lost} color={STAGE_BY_ID.enrich.color} />
+                  <DeltaList title="Introduced" items={step.new} color={STAGE_BY_ID.chain.color} />
+                  <DeltaList title="Kept" items={step.preserved} color={STAGE_BY_ID.neighbour.color} />
                 </div>
               </div>
             </motion.div>
@@ -127,10 +112,8 @@ function InstructionBridge({ step, open, onToggle }) {
 function Detail({ label, children }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-        {label}
-      </p>
-      <p className="mt-0.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</p>
+      <p className="eyebrow">{label}</p>
+      <p className="mt-1 text-sm text-ink dark:text-neutral-300">{children}</p>
     </div>
   )
 }
@@ -139,12 +122,13 @@ function DeltaList({ title, items, color }) {
   if (!items?.length) return null
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color }}>
+      <p className="eyebrow mb-2 flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
         {title}
       </p>
       <ul className="space-y-1">
         {items.slice(0, 4).map((it) => (
-          <li key={it} className="text-xs leading-snug text-neutral-600 dark:text-neutral-400">
+          <li key={it} className="text-[13px] leading-snug text-ink-2 dark:text-neutral-400">
             {it}
           </li>
         ))}
@@ -180,19 +164,10 @@ export default function ChainViewer({ data }) {
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-full border border-neutral-200 p-1 dark:border-neutral-700">
+      <div className="mb-8 flex flex-wrap items-center gap-4">
+        <div className="segmented">
           {datasets.map((d, i) => (
-            <button
-              key={d.key}
-              type="button"
-              onClick={() => pickDataset(i)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                i === dsIdx
-                  ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
-                  : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100'
-              }`}
-            >
+            <button key={d.key} type="button" data-on={i === dsIdx} onClick={() => pickDataset(i)}>
               {d.label}
             </button>
           ))}
@@ -207,12 +182,11 @@ export default function ChainViewer({ data }) {
                 setChainIdx(i)
                 setOpenStep(0)
               }}
-              className={`h-7 w-7 rounded-md text-xs font-medium transition-colors ${
+              className={`h-8 w-8 rounded-full text-xs font-medium tabular-nums transition-colors ${
                 i === chainIdx
-                  ? 'text-white'
-                  : 'text-neutral-500 ring-1 ring-inset ring-neutral-200 hover:text-neutral-900 dark:ring-neutral-700 dark:hover:text-neutral-100'
+                  ? 'bg-ink text-white dark:bg-neutral-100 dark:text-neutral-900'
+                  : 'text-ink-2 ring-1 ring-inset ring-line hover:text-ink dark:ring-white/10 dark:hover:text-neutral-100'
               }`}
-              style={i === chainIdx ? { backgroundColor: CHAIN } : undefined}
               aria-label={`Chain ${i + 1}`}
             >
               {i + 1}
@@ -220,7 +194,7 @@ export default function ChainViewer({ data }) {
           ))}
         </div>
 
-        <span className="ml-auto text-xs text-neutral-500 dark:text-neutral-400">
+        <span className="ml-auto text-xs tabular-nums text-ink-3">
           {chain.steps.length} turns · {chain.split} split
         </span>
       </div>
@@ -231,7 +205,7 @@ export default function ChainViewer({ data }) {
             <TrackCard
               track={track}
               badge={i === 0 ? 'Start' : i === tracks.length - 1 ? 'End' : `Turn ${i}`}
-              accent={i === 0 ? CHAIN : i === tracks.length - 1 ? '#7B3FF2' : '#2E6FD6'}
+              accent={i === 0 ? CHAIN : i === tracks.length - 1 ? STAGE_BY_ID.validate.color : STAGE_BY_ID.neighbour.color}
             />
             {i < chain.steps.length && (
               <InstructionBridge

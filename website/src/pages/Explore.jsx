@@ -33,10 +33,10 @@ function sampleIndices(n, k) {
   return Int32Array.from(chosen)
 }
 
-const START = '#1FA347'
-const MID = '#2E6FD6'
-const END = '#7B3FF2'
-const INSTRUCT = '#FB8B24'
+const START = '#30A46C'
+const MID = '#3E63DD'
+const END = '#8E4EC6'
+const INSTRUCT = '#F76B15'
 
 /** Rebuild the exporter's compact audio ref into what AudioPlayer expects. */
 function audioOf(tracks, i) {
@@ -202,12 +202,13 @@ function TrackPane({ track, role, color }) {
   return (
     <div className="p-4">
       <div className="flex items-center gap-2">
-        <span className="chip font-semibold text-white" style={{ backgroundColor: color }}>
+        <span className="eyebrow flex shrink-0 items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
           {role}
         </span>
-        <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{track.title}</p>
       </div>
-      <p className="mt-0.5 truncate text-xs text-neutral-600 dark:text-neutral-400">{track.artist}</p>
+      <p className="mt-1.5 truncate text-[15px] font-medium text-ink dark:text-neutral-100">{track.title}</p>
+      <p className="mt-0.5 truncate text-xs text-ink-2 dark:text-neutral-400">{track.artist}</p>
       {track.tags?.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {track.tags.map((t) => (
@@ -669,13 +670,8 @@ export default function Explore() {
 
                       {/* The instruction is the bridge — same orange as the active arc. */}
                       <div className="px-4">
-                        <div
-                          className="rounded-xl border px-3 py-2.5"
-                          style={{
-                            borderColor: hexToRgba(INSTRUCT, 0.5),
-                            backgroundColor: hexToRgba(INSTRUCT, 0.08),
-                          }}
-                        >
+                        <div className="relative overflow-hidden rounded-xl border border-line bg-white py-2.5 pl-4 pr-3 dark:border-white/10 dark:bg-white/[0.04]">
+                          <span className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: INSTRUCT }} aria-hidden />
                           <div className="flex items-center gap-1.5">
                             <select
                               value={Math.min(variantIdx, variants.length - 1)}
