@@ -13,21 +13,22 @@ from remix_video.facts import CATALOGUE_TOTAL, FIGURES, M4A_CATALOGUE, MTG_CATAL
 from remix_video.glass import _tip_dir, elbow_link, fork_link
 from remix_video.parts import catalogue
 from remix_video.stagebase import StageScene, explain, stat_row
-from remix_video.theme import ENRICH, INK, MUTED, PAPER, T_TINY, card, tint, txt
+from remix_video.theme import (EASE_IN, ENRICH, HOLD_READ, INK, LAG, MUTED, PAPER, T_ENTER, T_TINY,
+                               card, tint, txt)
 
 COLUMNS = ("audio", "caption", "lyrics", "tags")
 
 
 def proc_box(name: str, produces: str, color: str) -> VGroup:
     box = card(1.9, 0.72, color, alpha=0.12, radius=0.12)
-    t = txt(name, T_TINY * 1.1, color, BOLD).move_to(box.get_center() + UP * 0.1)
+    t = txt(name, T_TINY * 1.1, color, SEMIBOLD).move_to(box.get_center() + UP * 0.1)
     s = txt(produces, T_TINY * 0.8, MUTED).move_to(box.get_center() + DOWN * 0.15)
     return VGroup(box, t, s)
 
 
 def manifest_table(rows: int = 4) -> VGroup:
     """Named columns: the draft's anonymous blocks never said what a row held."""
-    heads = VGroup(*[txt(c, T_TINY * 0.72, ENRICH, BOLD) for c in COLUMNS])
+    heads = VGroup(*[txt(c, T_TINY * 0.72, ENRICH, SEMIBOLD) for c in COLUMNS])
     for h in heads:
         h.set(width=min(h.width, 0.52))
     heads.arrange(RIGHT, buff=0.16)
@@ -97,20 +98,20 @@ class Enrich(StageScene):
         content.add(line)
 
         self.play(LaggedStart(*[FadeIn(c, shift=RIGHT * 0.2) for c in cats], lag_ratio=0.18),
-                  FadeIn(line), run_time=1.0)
-        self.wait(0.4)
+                  FadeIn(line), run_time=1.0, rate_func=EASE_IN)
+        self.wait(0.7)
 
         self.play(
             *[Create(f) for f in feeds],
             FadeIn(afnext, shift=UP * 0.1), FadeIn(whisper, shift=DOWN * 0.1),
-            run_time=1.0,
+            run_time=1.1, rate_func=EASE_IN,
         )
-        self.wait(0.4)
+        self.wait(0.7)
 
-        self.play(*[Create(j) for j in joins], FadeIn(table[0]), FadeIn(table[1]), run_time=0.7)
-        self.play(FadeIn(table[2][0]), run_time=0.4)
-        self.play(LaggedStart(*[FadeIn(r, shift=LEFT * 0.12) for r in table[2][1]], lag_ratio=0.11),
-                  run_time=0.8)
+        self.play(*[Create(j) for j in joins], FadeIn(table[0]), FadeIn(table[1]), run_time=0.9, rate_func=EASE_IN)
+        self.play(LaggedStart(FadeIn(table[2][0]), *[FadeIn(r, shift=LEFT * 0.08) for r in table[2][1]],
+                              lag_ratio=0.2), run_time=1.2, rate_func=EASE_IN)
+        self.wait(0.5)
 
         figs = stat_row(
             [(thousands(CATALOGUE_TOTAL), "clips enriched"),
@@ -118,7 +119,8 @@ class Enrich(StageScene):
             ENRICH, buff=1.6,
         )
         content.add(figs)
-        self.play(FadeIn(figs, shift=UP * 0.15), run_time=0.5)
-        self.wait(1.0)
+        self.play(LaggedStart(*[FadeIn(f, shift=UP * 0.1) for f in figs], lag_ratio=LAG * 2),
+                  run_time=T_ENTER + 0.2, rate_func=EASE_IN)
+        self.wait(HOLD_READ)
 
         self.close_stage(content, rail, header)

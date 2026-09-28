@@ -14,15 +14,15 @@ from manim import *
 
 from .glass import StagePanel
 from .theme import (
-    INK, MUTED, PAPER, RAIL_LEFT, RAIL_TOP, STAGE_COLORS, STAGE_NAMES,
-    T_SMALL, T_TINY, Y_EXPLAIN, Y_FIGURES, Y_HEADER, txt,
+    EASE_IN, EASE_MOVE, INK, MUTED, PAPER, RAIL_LEFT, RAIL_TOP, STAGE_COLORS, STAGE_NAMES,
+    T_ENTER, T_MOVE, T_SMALL, T_TINY, Y_EXPLAIN, Y_FIGURES, Y_HEADER, txt,
 )
 
 # Where finished stages stack: a discreet rail of square cards, padded down from
 # the top edge and kept tight to the left so it never crowds the stage content.
-SLOT_W = 1.15
-SLOT_H = 1.15
-SLOT_GAP = 0.16
+SLOT_W = 0.92
+SLOT_H = 0.92
+SLOT_GAP = 0.2
 
 
 def slot_position(i: int) -> np.ndarray:
@@ -41,6 +41,18 @@ class StageScene(Scene):
     def setup(self):
         self.camera.background_color = PAPER
 
+    # House motion for every stage: the shared easing unless a call picks its own, and no
+    # step shorter than MIN_STEP (sub-half-second steps read as stutter, not speed).
+    # run_time below 0.05 is a deliberate instant swap and is left alone.
+    MIN_STEP = 0.5
+
+    def play(self, *animations, **kwargs):
+        kwargs.setdefault("rate_func", EASE_MOVE)
+        rt = kwargs.get("run_time")
+        if rt is not None and 0.05 <= rt < self.MIN_STEP:
+            kwargs["run_time"] = self.MIN_STEP
+        return super().play(*animations, **kwargs)
+
     # --- shared furniture ------------------------------------------------- #
     def color(self) -> str:
         return STAGE_COLORS[self.stage_index]
@@ -52,16 +64,16 @@ class StageScene(Scene):
         """Panels for stages already finished (0..upto-1), parked top-left."""
         rail = VGroup()
         for i in range(upto):
-            p = StagePanel(i + 1, STAGE_NAMES[i], STAGE_COLORS[i], SLOT_W, SLOT_H, label_size=0.62)
+            p = StagePanel(i + 1, STAGE_NAMES[i], STAGE_COLORS[i], SLOT_W, SLOT_H, label_size=0.58)
             p.move_to(slot_position(i))
-            p.set_opacity(0.9)
+            p.set_opacity(0.8)
             rail.add(p)
         return rail
 
     def title_in(self) -> VGroup:
         """Big stage title, centred, that then retreats to make room."""
-        n = txt(str(self.stage_index + 1), 1.5, self.color(), BOLD)
-        name = txt(self.name(), 0.62, INK, BOLD)
+        n = txt(str(self.stage_index + 1), 1.5, self.color(), SEMIBOLD)
+        name = txt(self.name(), 0.62, INK, SEMIBOLD)
         g = VGroup(n, name).arrange(RIGHT, buff=0.34)
         return g
 
@@ -78,12 +90,12 @@ class StageScene(Scene):
             self.add(rail)
 
         header = VGroup(
-            txt(f"{self.stage_index + 1}", 0.5, self.color(), BOLD),
-            txt(self.name(), 0.4, INK, BOLD),
+            txt(f"{self.stage_index + 1}", 0.5, self.color(), SEMIBOLD),
+            txt(self.name(), 0.4, INK, SEMIBOLD),
         ).arrange(RIGHT, buff=0.2)
         # Right of the rail, never over it.
         header.move_to(RIGHT * 1.6 + UP * Y_HEADER)
-        self.play(FadeIn(header, shift=DOWN * 0.2), run_time=0.4)
+        self.play(FadeIn(header, shift=DOWN * 0.12), run_time=T_ENTER, rate_func=EASE_IN)
         return rail, header
 
     def close_stage(self, content: VGroup, rail: VGroup, header: VGroup):
@@ -97,19 +109,18 @@ class StageScene(Scene):
         them and they hard-cut at the scene boundary instead of fading.
         """
         panel = StagePanel(self.stage_index + 1, self.name(), self.color(),
-                           SLOT_W, SLOT_H, label_size=0.62)
+                           SLOT_W, SLOT_H, label_size=0.58)
         panel.move_to(slot_position(self.stage_index))
-        panel.set_opacity(0.9)
+        panel.set_opacity(0.8)
 
         protected = {header, rail}
         live = Group(*[m for m in self.mobjects if m not in protected])
 
         self.play(
-            FadeOut(live, shift=DOWN * 0.2),
-            ReplacementTransform(header, panel),
-            run_time=0.8,
+            FadeOut(live, shift=DOWN * 0.12),
+            FadeTransform(header, panel),   # a crossfade: a letter-by-letter morph shows garbled text mid-way
+            run_time=T_MOVE, rate_func=EASE_MOVE,
         )
-        self.wait(0.15)
         return panel
 
 

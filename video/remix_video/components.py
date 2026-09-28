@@ -72,7 +72,7 @@ class TrackCard(VGroup):
         height = 2.05 if tags else 1.7
         self.bg = card(width, height, color, alpha=0.07)
 
-        self.title = txt(_clip(title, 22), T_SMALL, INK, BOLD)
+        self.title = txt(_clip(title, 22), T_SMALL, INK, SEMIBOLD)
         self.artist = txt(_clip(artist, 24), T_TINY, MUTED)
         self.wave = Waveform(seed=seed, width=width - 0.7, color=color, energy=energy)
 
@@ -159,7 +159,7 @@ def _wrapped_rich(segments, max_w: float, size: float = T_SMALL) -> VGroup:
 
     rows = VGroup()
     for line in lines:
-        row = VGroup(*[txt(w, size, c, BOLD if c != INK else NORMAL) for w, c in line])
+        row = VGroup(*[txt(w, size, c, SEMIBOLD if c != INK else NORMAL) for w, c in line])
         row.arrange(RIGHT, buff=size * 0.28)
         rows.add(row)
     return rows.arrange(DOWN, buff=0.11)
@@ -338,7 +338,7 @@ def expansion(size: float = 0.26) -> VGroup:
     def word(head: str | None, head_color: str, rest: str) -> VGroup:
         parts = []
         if head:
-            parts.append(txt(head, size, head_color, BOLD))
+            parts.append(txt(head, size, head_color, SEMIBOLD))
         if rest:
             parts.append(txt(rest, size, MUTED, NORMAL))
         g = VGroup(*parts)
@@ -413,7 +413,7 @@ def caption(scene: Scene, text: str, at=DOWN * 3.1, size: float = T_SMALL) -> Te
 
 def title_card(text: str, color: str = INK, size: float = 0.56) -> VGroup:
     """A short statement, centred, with a coloured underline."""
-    t = txt(text, size, INK, BOLD)
+    t = txt(text, size, INK, SEMIBOLD)
     rule = Line(LEFT, RIGHT, color=color, stroke_width=4).set_width(min(t.width, 4.2))
     rule.next_to(t, DOWN, buff=0.22)
     return VGroup(t, rule)

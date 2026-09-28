@@ -46,7 +46,7 @@ def axis_bars(width: float = 5.2) -> tuple[VGroup, list]:
         fill = RoundedRectangle(width=full_w, height=0.17, corner_radius=0.06,
                                 fill_color=INSTRUCT, fill_opacity=1, stroke_width=0)
         fill.align_to(track, LEFT)
-        count = txt(f"{val:,}", T_TINY * 0.9, INSTRUCT, BOLD)
+        count = txt(f"{val:,}", T_TINY * 0.9, INSTRUCT, SEMIBOLD)
         bar = VGroup(track, fill)
         row = VGroup(label, bar, count).arrange(RIGHT, buff=0.24)
         rows.add(row)
@@ -83,10 +83,10 @@ class Instructions(StageScene):
         line = explain("Two clips, two structured descriptions.")
         self.play(FadeIn(src, shift=RIGHT * 0.15), FadeIn(tgt, shift=RIGHT * 0.15),
                   FadeIn(line), run_time=0.9)
-        self.wait(0.5)
+        self.wait(0.7)
 
         # --- 2. the diff ------------------------------------------------------ #
-        diff_call = txt("diff(source, target)", T_TINY * 0.95, INSTRUCT, BOLD)
+        diff_call = txt("diff(source, target)", T_TINY * 0.95, INSTRUCT, SEMIBOLD)
         diff_call.move_to(LEFT * 1.55 + DOWN * 0.15)
 
         delta = json_frame(
@@ -122,11 +122,11 @@ class Instructions(StageScene):
         llm_box = card(2.6, 1.6, INSTRUCT, alpha=0.12, radius=0.14).move_to(LEFT * 0.5 + UP * 0.4)
         logos = Group(judge_logo("qwen", 0.62), judge_logo("gemma", 0.62)).arrange(RIGHT, buff=0.3)
         logos.move_to(llm_box.get_center() + UP * 0.24)
-        llm_t = txt("LLM", T_TINY * 1.05, INSTRUCT, BOLD).move_to(llm_box.get_center() + DOWN * 0.5)
+        llm_t = txt("LLM", T_TINY * 1.05, INSTRUCT, SEMIBOLD).move_to(llm_box.get_center() + DOWN * 0.5)
 
         feed = elbow_link(delta.get_right() + RIGHT * 0.04, llm_box.get_left() + LEFT * 0.03, INSTRUCT, 2.2)
 
-        real = txt(f'"{st["instruction"]}"', 0.27, INK, BOLD)
+        real = txt(f'"{st["instruction"]}"', 0.27, INK, SEMIBOLD)
         rbg = RoundedRectangle(
             width=real.width + 0.5, height=real.height + 0.4, corner_radius=0.13,
             fill_color=tint(INSTRUCT, 0.13), fill_opacity=1,
@@ -152,7 +152,7 @@ class Instructions(StageScene):
         self.play(picked.animate.move_to(UP * 2.0), run_time=0.5)
 
         budget = VGroup(
-            txt("≤ 4 clauses", 0.4, INSTRUCT, BOLD),
+            txt("≤ 4 clauses", 0.4, INSTRUCT, SEMIBOLD),
             txt("per instruction", T_TINY * 0.9, MUTED),
         ).arrange(DOWN, buff=0.1).move_to(LEFT * 5.1 + DOWN * 0.55)
 
@@ -187,8 +187,8 @@ class Instructions(StageScene):
              ("2", "phrasings: standalone / contextual")],
             INSTRUCT, buff=1.5,
         )
-        self.play(FadeIn(figs, shift=UP * 0.15), run_time=0.5)
-        self.wait(0.9)
+        self.play(FadeIn(figs, shift=UP * 0.1), run_time=0.8)
+        self.wait(2.0)
 
         content = VGroup(picked, budget, bars, bars_title, figs, line4)
         self.close_stage(content, rail, header)

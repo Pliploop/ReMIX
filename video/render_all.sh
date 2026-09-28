@@ -60,6 +60,7 @@ for entry in "${SCENES[@]}"; do
 done
 
 mkdir -p out
-"$FFMPEG" -y -f concat -safe 0 -i "$list" -c:v libx264 -pix_fmt yuv420p -crf 18 out/remix.mp4
+OUT="out/remix_${RES_DIR}.mp4"   # per quality, so a draft never overwrites the final film
+"$FFMPEG" -y -f concat -safe 0 -i "$list" -c:v libx264 -pix_fmt yuv420p -crf 18 "$OUT"
 rm -f "$list"
-echo "==> out/remix.mp4"
+echo "==> $OUT"

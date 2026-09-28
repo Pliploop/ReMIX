@@ -85,8 +85,8 @@ def catalogue(label: str, count: str, color: str, w: float = 1.5, h: float = 1.1
     note = music_note(color, 0.52).move_to(np.array([0.0, -0.08, 0.0]))
     body = VGroup(shell, note)
 
-    name = txt(label, T_TINY, INK, BOLD).next_to(body, DOWN, buff=0.16)
-    n = txt(count, T_TINY * 0.95, color, BOLD).next_to(name, DOWN, buff=0.05)
+    name = txt(label, T_TINY, INK, SEMIBOLD).next_to(body, DOWN, buff=0.16)
+    n = txt(count, T_TINY * 0.95, color, SEMIBOLD).next_to(name, DOWN, buff=0.05)
     return VGroup(body, name, n)
 
 
@@ -178,12 +178,12 @@ def json_frame(
     """A metadata frame with real JSON formatting: coloured keys, quoted values,
     braces. The first draft dumped raw text and it looked like a log file."""
     key_color = key_color or color
-    head = txt(title, T_TINY * 0.85, color, BOLD)
+    head = txt(title, T_TINY * 0.85, color, SEMIBOLD)
 
     lines = VGroup()
     lines.add(txt("{", T_TINY * 0.9, MUTED, weight=NORMAL))
     for k, v in rows:
-        k_t = txt(f'"{k}"', T_TINY * 0.82, key_color, BOLD)
+        k_t = txt(f'"{k}"', T_TINY * 0.82, key_color, SEMIBOLD)
         c_t = txt(":", T_TINY * 0.82, MUTED)
         v_t = txt(f'"{_clip(v, 20)}"', T_TINY * 0.82, INK)
         row = VGroup(k_t, c_t, v_t).arrange(RIGHT, buff=0.05)
@@ -216,7 +216,7 @@ def judge_logo(which: str, height: float = 0.42) -> Mobject:
         img.height = height
         return img
     label = "Qwen3.6" if which == "qwen" else "Gemma 4"
-    t = txt(label, T_TINY, INK, BOLD)
+    t = txt(label, T_TINY, INK, SEMIBOLD)
     bg = RoundedRectangle(width=t.width + 0.24, height=height, corner_radius=0.06,
                           fill_color=PAPER, fill_opacity=1,
                           stroke_color=FAINT, stroke_width=1.4)

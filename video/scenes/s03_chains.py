@@ -76,7 +76,7 @@ class Chains(StageScene):
                 chosen = other == b
                 score = 0.82 if chosen else rng.uniform(0.28, 0.6)
                 lab = txt(f"{score:.2f}", T_TINY * 0.8, CHAIN if chosen else MUTED,
-                          BOLD if chosen else NORMAL)
+                          SEMIBOLD if chosen else NORMAL)
                 lab.move_to((GRAPH_PTS[a] + GRAPH_PTS[other]) / 2 + UP * 0.16)
                 labels.add(lab)
                 highlights.add(edges[edge_index(x, y)])
@@ -148,8 +148,8 @@ class Chains(StageScene):
              ("1–6", "turns per chain")],
             CHAIN, buff=1.3,
         )
-        self.play(FadeIn(figs, shift=UP * 0.15), run_time=0.5)
-        self.wait(1.0)
+        self.play(FadeIn(figs, shift=UP * 0.1), run_time=0.8)
+        self.wait(2.0)
 
         content = VGroup(cards, hops, figs, line3)
         self.close_stage(content, rail, header)

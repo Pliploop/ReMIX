@@ -18,7 +18,7 @@ import numpy as np
 from manim import *
 
 from .components import Waveform, _chip, _clip
-from .theme import FAINT, FONT, HAIR, INK, INSTRUCT, MUTED, PAPER, T_TINY, T_SMALL, tint, txt
+from .theme import FAINT, FONT, HAIR, INK, INSTRUCT, MUTED, PAPER, STROKE, STROKE_ARROW, T_TINY, T_SMALL, tint, txt
 
 
 class GlassCard(VGroup):
@@ -51,7 +51,7 @@ class GlassCard(VGroup):
         body = RoundedRectangle(
             width=width, height=height, corner_radius=0.2,
             fill_color=PAPER, fill_opacity=0.62,
-            stroke_color=color, stroke_width=1.6, stroke_opacity=0.55,
+            stroke_color=color, stroke_width=STROKE, stroke_opacity=0.5,
         )
         gleam = RoundedRectangle(
             width=width - 0.22, height=height * 0.42, corner_radius=0.16,
@@ -75,7 +75,7 @@ class GlassCard(VGroup):
             )
             self.button = VGroup(self.button[0], self.button[1])
 
-        self.title = txt(_clip(title, 20), T_TINY * 1.18, INK, BOLD)
+        self.title = txt(_clip(title, 20), T_TINY * 1.18, INK, SEMIBOLD)
         self.artist = txt(_clip(artist, 22), T_TINY * 0.92, MUTED)
         head = VGroup(self.title, self.artist).arrange(DOWN, buff=0.06, aligned_edge=LEFT)
         top = VGroup(self.button, head).arrange(RIGHT, buff=0.16, aligned_edge=UP)
@@ -116,6 +116,7 @@ def elbow_link(
     so it arrives from underneath with the arrowhead pointing up. Boxes want to be
     entered from the side they face.
     """
+    width = min(width, STROKE_ARROW)   # hairline connectors, whatever the caller asked
     a = np.array(a, dtype=float)
     b = np.array(b, dtype=float)
     dx, dy = b[0] - a[0], b[1] - a[1]
@@ -194,6 +195,7 @@ def fork_link(
 
     reverse=True merges `targets` into `source` instead of fanning out.
     """
+    width = min(width, STROKE_ARROW)   # hairline connectors, whatever the caller asked
     source = np.array(source, dtype=float)
     targets = [np.array(t, dtype=float) for t in targets]
 
@@ -238,6 +240,7 @@ def organic_link(
 ) -> VMobject:
     """A curved link. Bows perpendicular to the run, sign varying with seed, so a
     graph of these looks grown rather than drawn with a ruler."""
+    width = min(width, STROKE_ARROW)   # hairline connectors, whatever the caller asked
     a = np.array(a, dtype=float)
     b = np.array(b, dtype=float)
     d = b - a
@@ -278,7 +281,7 @@ class StatBadge(VGroup):
 
     def __init__(self, value: str, label: str, color: str = INK, size: float = 0.5, **kwargs):
         super().__init__(**kwargs)
-        v = txt(value, size, color, BOLD)
+        v = txt(value, size * 0.9, color, SEMIBOLD)
         l = txt(label, T_TINY, MUTED)
         self.add(VGroup(v, l).arrange(DOWN, buff=0.09))
 
@@ -401,13 +404,13 @@ class StagePanel(VGroup):
         side = min(width, height)
         bg = RoundedRectangle(
             width=width, height=height, corner_radius=side * 0.22,
-            fill_color=tint(color, 0.07), fill_opacity=1,
-            stroke_color=color, stroke_width=1.3, stroke_opacity=0.8,
+            fill_color=tint(color, 0.05), fill_opacity=1,
+            stroke_color=color, stroke_width=STROKE, stroke_opacity=0.6,
         )
         self.body = panel_icon(n, color, scale=min(1.0, height / 1.05))
         self.body.move_to(bg.get_center())
 
-        label = txt(f"{n}. {name}", T_TINY * label_size, color, BOLD)
+        label = txt(f"{n}. {name}", T_TINY * label_size, color, MEDIUM)
         if label.width > width + 0.3:
             label.set(width=width + 0.3)
         label.next_to(bg, DOWN, buff=0.1)

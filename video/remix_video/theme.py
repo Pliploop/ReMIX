@@ -64,6 +64,25 @@ RAIL_TOP = 3.05
 RAIL_LEFT = -6.45
 
 
+# --- motion ---------------------------------------------------------------- #
+# One vocabulary of durations and easings, so every scene moves at the same tempo.
+# Arrivals decelerate into place (ease-out); moves accelerate and settle (in-out);
+# exits are quick. Holds are long enough to read one short sentence.
+T_ENTER = 0.7
+T_MOVE = 0.9
+T_EXIT = 0.45
+HOLD = 1.2          # after a beat
+HOLD_READ = 2.0     # after the stage's sentence and figures
+EASE_IN = rate_functions.ease_out_cubic
+EASE_MOVE = rate_functions.ease_in_out_cubic
+EASE_OUT = rate_functions.ease_in_quad
+LAG = 0.12          # stagger between siblings entering together
+
+# Hairlines: the figure's look at video scale. Thicker strokes read as clip art.
+STROKE = 1.25
+STROKE_ARROW = 1.8
+
+
 def tint(color: str, alpha: float = 0.10) -> str:
     """Blend a stage colour toward white -- the figure's tinted card fill."""
     return interpolate_color(ManimColor(PAPER), ManimColor(color), alpha).to_hex()
@@ -73,25 +92,26 @@ def txt(s: str, size: float = T_BODY, color: str = INK, weight: str = NORMAL) ->
     return Text(s, font=FONT, color=color, weight=weight).scale(size)
 
 
-def card(width: float, height: float, color: str, alpha: float = 0.08, radius: float = 0.16) -> RoundedRectangle:
-    """The figure's card: tinted fill, thin coloured border, generous radius."""
+def card(width: float, height: float, color: str, alpha: float = 0.06, radius: float = 0.14) -> RoundedRectangle:
+    """The figure's card: tinted fill, hairline coloured border, generous radius."""
     return RoundedRectangle(
         width=width,
         height=height,
         corner_radius=radius,
-        fill_color=tint(color, alpha),
+        fill_color=tint(color, alpha * 0.75),
         fill_opacity=1,
         stroke_color=color,
-        stroke_width=2.0,
+        stroke_width=STROKE,
+        stroke_opacity=0.85,
     )
 
 
-def arrow(start, end, color: str = INK, width: float = 3.0) -> Arrow:
+def arrow(start, end, color: str = INK, width: float = STROKE_ARROW) -> Arrow:
     return Arrow(
         start, end,
         color=color,
-        stroke_width=width,
+        stroke_width=min(width, STROKE_ARROW),
         buff=0.0,
-        max_tip_length_to_length_ratio=0.18,
-        tip_length=0.16,
+        max_tip_length_to_length_ratio=0.14,
+        tip_length=0.12,
     )

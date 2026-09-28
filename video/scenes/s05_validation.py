@@ -52,7 +52,7 @@ def person_icon(color: str, height: float = 0.62):
 
 def rater_box(title: str, badge: Mobject, color: str) -> VGroup:
     box = card(2.5, 1.15, color, alpha=0.11, radius=0.13)
-    t = txt(title, T_TINY * 0.95, color, BOLD).move_to(box.get_center() + DOWN * 0.38)
+    t = txt(title, T_TINY * 0.95, color, SEMIBOLD).move_to(box.get_center() + DOWN * 0.38)
     g = Group(box, badge, t)
     badge.move_to(box.get_center() + UP * 0.18)
     return g
@@ -63,7 +63,7 @@ def score_pills(values, color: str) -> VGroup:
         VGroup(
             Circle(radius=0.15, fill_color=tint(color, 0.3), fill_opacity=1,
                    stroke_color=color, stroke_width=1.6),
-            txt(str(v), T_TINY * 0.85, color, BOLD),
+            txt(str(v), T_TINY * 0.85, color, SEMIBOLD),
         ).arrange(ORIGIN)
         for v in values
     ]).arrange(RIGHT, buff=0.12)
@@ -77,7 +77,7 @@ class Validation(StageScene):
         st = steps()[1]
 
         # --- the instruction under test -------------------------------------- #
-        real = txt(f'"{st["instruction"]}"', 0.28, INK, BOLD)
+        real = txt(f'"{st["instruction"]}"', 0.28, INK, SEMIBOLD)
         rbg = RoundedRectangle(
             width=real.width + 0.5, height=real.height + 0.38, corner_radius=0.13,
             fill_color=tint(VALIDATE, 0.1), fill_opacity=1,
@@ -103,7 +103,7 @@ class Validation(StageScene):
         )
         self.play(*[Create(f) for f in feeds], run_time=0.6)
         self.play(FadeIn(llm), FadeIn(human), run_time=0.6)
-        self.wait(0.4)
+        self.wait(0.6)
 
         # --- the rubric they share -------------------------------------------- #
         # A ticked box, the question, and a star rating: bars never said these
@@ -115,7 +115,7 @@ class Validation(StageScene):
             box = RoundedRectangle(width=0.19, height=0.19, corner_radius=0.05,
                                    fill_color=PAPER, fill_opacity=1,
                                    stroke_color=VALIDATE, stroke_width=1.6)
-            tick = Text("✓", font=FONT, color=VALIDATE, weight=BOLD).scale(0.17).move_to(box)
+            tick = Text("✓", font=FONT, color=VALIDATE, weight=SEMIBOLD).scale(0.17).move_to(box)
             tick.set_opacity(0)
             ticks.add(tick)
             name = txt(label, T_TINY * 0.85, MUTED)
@@ -207,7 +207,7 @@ class Validation(StageScene):
             run_time=0.8,
         )
 
-        agree = txt(f"AC1 {FIGURES['ac1_lo']}–{FIGURES['ac1_hi']}", 0.4, CHAIN, BOLD)
+        agree = txt(f"AC1 {FIGURES['ac1_lo']}–{FIGURES['ac1_hi']}", 0.4, CHAIN, SEMIBOLD)
         agree.next_to(pair_rows, DOWN, buff=0.4)
         self.play(FadeIn(agree, scale=0.9), run_time=0.5)
         self.wait(0.9)
@@ -220,8 +220,8 @@ class Validation(StageScene):
              (str(VARIANTS_PER_STEP), "variants scored per step")],
             VALIDATE, buff=1.6,
         )
-        self.play(FadeIn(figs, shift=UP * 0.15), run_time=0.5)
-        self.wait(1.0)
+        self.play(FadeIn(figs, shift=UP * 0.1), run_time=0.8)
+        self.wait(2.0)
 
         content = VGroup(a_scores, b_scores, agree, bridge, figs, line3)
         self.play(FadeOut(Group(llm, human)), run_time=0.01)

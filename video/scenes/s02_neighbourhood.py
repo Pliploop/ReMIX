@@ -40,7 +40,7 @@ def vector_strip(n: int = 7, color: str = NEIGHBOUR, seed: int = 0) -> VGroup:
 
 def model_box(name: str, dim: int, color: str) -> VGroup:
     box = card(2.1, 0.64, color, alpha=0.13, radius=0.12)
-    t = txt(name, T_TINY * 1.05, color, BOLD).move_to(box.get_center() + UP * 0.08)
+    t = txt(name, T_TINY * 1.05, color, SEMIBOLD).move_to(box.get_center() + UP * 0.08)
     d = txt(f"{dim}-d", T_TINY * 0.85, MUTED).move_to(box.get_center() + DOWN * 0.15)
     return VGroup(box, t, d)
 
@@ -104,14 +104,14 @@ class Neighbourhood(StageScene):
             e.set_stroke(opacity=0)
         self.play(LaggedStart(*[e.animate.set_stroke(opacity=0.5) for e in edges], lag_ratio=0.03),
                   run_time=1.0)
-        self.wait(0.4)
+        self.wait(0.6)
 
         # --- 3. the score that made those edges ------------------------------ #
         # Between the rail (ends at x≈-5.3) and the header (starts at x≈-0.1).
         fbox = card(3.4, 0.8, NEIGHBOUR, alpha=0.1, radius=0.12).move_to(UP * 2.5 + LEFT * 2.9)
         # Subscripts via U+2090/U+209C, not the Mathematical Bold block (U+1D400+):
         # the sans font has no glyphs for those and renders tofu.
-        formula = txt("s(A,B) = ½ (sₐ + sₜ)", 0.33, NEIGHBOUR, BOLD).move_to(fbox.get_center())
+        formula = txt("s(A,B) = ½ (sₐ + sₜ)", 0.33, NEIGHBOUR, SEMIBOLD).move_to(fbox.get_center())
         line3 = explain("Each edge is scored: sound and description, averaged.")
         self.play(FadeIn(fbox), Write(formula), ReplacementTransform(line2, line3), run_time=0.8)
 
@@ -123,7 +123,7 @@ class Neighbourhood(StageScene):
         for (a, b) in SCORED:
             i = edge_index(a, b)
             val = rng.uniform(0.62, 0.9)
-            m = txt(f"{val:.2f}", T_TINY * 0.78, NEIGHBOUR, BOLD)
+            m = txt(f"{val:.2f}", T_TINY * 0.78, NEIGHBOUR, SEMIBOLD)
             m.move_to((GRAPH_PTS[a] + GRAPH_PTS[b]) / 2 + UP * 0.16)
             marks.add(m)
         weak_marks = VGroup()
@@ -149,7 +149,7 @@ class Neighbourhood(StageScene):
             *[n.animate.set_stroke(NEIGHBOUR, 2.6) for n in nodes],
             run_time=0.6,
         )
-        self.wait(0.9)
+        self.wait(1.6)
 
         # Everything leaves together; the graph is not left hanging while the
         # header flies to the rail.
