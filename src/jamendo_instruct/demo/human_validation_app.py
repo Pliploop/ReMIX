@@ -64,19 +64,14 @@ SENTINEL_FRACTION = 0.5
 
 
 def _annotator_id(st: Any) -> str:
-    for key in ("annotator", "rater", "token"):
-        value = st.query_params.get(key, "")
+    """A random id drafted once per session and written into the URL (?annotator=...), so a refresh
+    or a bookmark keeps the same rater. No names, no IPs."""
+    if "anonymous_rater_id" not in st.session_state:
+        value = st.query_params.get("annotator", "")
         if isinstance(value, list):
             value = value[0] if value else ""
-        value = str(value or "").strip()
-        if value:
-            return value
-    headers = getattr(getattr(st, "context", None), "headers", {}) or {}
-    ip = str(headers.get("cf-connecting-ip") or headers.get("x-forwarded-for") or "").split(",", 1)[0].strip()
-    if ip:
-        return "ip_" + hashlib.sha1(("jamendo-human-validation:" + ip).encode("utf-8")).hexdigest()[:12]
-    if "anonymous_rater_id" not in st.session_state:
-        st.session_state.anonymous_rater_id = "session_" + hashlib.sha1(os.urandom(16)).hexdigest()[:12]
+        st.session_state.anonymous_rater_id = str(value or "").strip() or "rater_" + hashlib.sha1(os.urandom(16)).hexdigest()[:12]
+    st.query_params["annotator"] = st.session_state.anonymous_rater_id
     return str(st.session_state.anonymous_rater_id)
 
 
@@ -1439,15 +1434,17 @@ def _hub_setup() -> str | None:
     the app refuses to take ratings rather than risk that.
     """
     repo, token, ratings_dir = (os.environ.get(k, "").strip() for k in ("DATASET_REPO", "HF_TOKEN", "REMIX_RATINGS_DIR"))
-    if not (repo and token and ratings_dir):
-        return None
+    if not ratings_dir:
+        return None                                   # cluster / cloudflared: local files, no sync
+    if not (repo and token):                          # a Space without its secrets would lose every rating
+        raise RuntimeError("DATASET_REPO and HF_TOKEN must be set in the Space settings")
     import shutil
 
     from huggingface_hub import CommitScheduler, snapshot_download
 
     import jamendo_instruct.demo.chains_demo as chains_demo
 
-    hub = Path(snapshot_download(repo, repo_type="dataset", token=token, allow_patterns=["audio/**", "ratings/**"],
+    hub = Path(snapshot_download(repo, repo_type="dataset", token=token, allow_patterns=["audio/**", "sidecars/**", "ratings/**"],
                                  local_dir=Path(ratings_dir).parent / "hub"))
     os.environ["REMIX_AUDIO_DIR"] = str(hub / "audio")
     for f in (hub / "ratings").rglob("*.jsonl"):

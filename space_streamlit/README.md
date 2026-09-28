@@ -38,8 +38,9 @@ fails, the app shows an error and takes no ratings.
 
 ## Rater links
 
-`https://pliploop-remix-ratings.hf.space/?annotator=<name>&code=<RATER_CODE>` gives each rater a
-stable id across browsers. Without `annotator`, the app falls back to a hash of the rater's IP.
+Send `https://pliploop-remix-ratings.hf.space/?code=<RATER_CODE>` (or the bare URL; the app then
+asks for the code). Each session drafts a random rater id (`rater_<hash>`) and writes it into the
+URL as `?annotator=...`; raters who bookmark that URL keep their id and progress. No names are used.
 
 Rebuild the upload folders with `scripts/prepare_rating_space.py`; pull ratings back with
 `scripts/sync_human_ratings.py --repo Pliploop/Remix-Human-Ratings`.
